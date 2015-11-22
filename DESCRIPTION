@@ -1,0 +1,16 @@
+Package: automlr
+Title: automatic machine learning in r
+Description: Package for interfacing mlr with algorithm configuration
+    optimization libraries, giving functionality for optimizing across different
+    ML algorithms.
+Authors@R: c(person("mb706", role = c("aut", "cre"), email = "mb706@uni"))
+URL: https://github.com/mlr-org/automlr
+BugReports: https://github.com/mlr-org/automlr/issues
+License: AGPL-3
+Encoding: UTF-8
+Roxygen: list(wrap = FALSE)
+LazyData: yes
+ByteCompile: yes
+Version: 0.1
+VignetteBuilder: knitr
+RoxygenNote: 5.0.1
