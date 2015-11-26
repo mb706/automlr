@@ -1,3 +1,9 @@
+#' @import BBmisc
+#' @import checkmate
+#' @import mlr
+#' @import ParamHelpers
+NULL
+
 #' Greet the user with some annoying message
 #' 
 #' ...to check whether package loads correctly.

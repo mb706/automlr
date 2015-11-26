@@ -8,9 +8,19 @@ URL: https://github.com/mlr-org/automlr
 BugReports: https://github.com/mlr-org/automlr/issues
 License: AGPL-3
 Encoding: UTF-8
+Depends:
+    mlr (>= 2.5),
+    ParamHelpers (>= 1.4)
+Imports:
+    BBmisc (>= 1.7),
+    checkmate (>= 1.4)
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
 Version: 0.1
-VignetteBuilder: knitr
 RoxygenNote: 5.0.1
+Collate:
+    'autolearners.R'
+    'lsambackends.R'
+    'automlr.R'
+    'zzz.R'
