@@ -1,8 +1,8 @@
 # the interface between frontend ('automlr()') and backend (inside the optXXX.R files)
 
-buildLearner = function(searchspace) {
+buildLearners = function(searchspace) {
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
-  makeModelMultiplexer(extractSubList(learners, "learner"))
+  makeModelMultiplexer(extractSubList(learners, "learner", simplify=FALSE))
 }
 
 aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL,
@@ -10,14 +10,21 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
+    oldamstate$task = NULL
+    oldamstate$measure = NULL
+    oldamstate$previous.versions = NULL
+    class(oldamstate) = "list"
     amstate$previous.versions = c(amstate$previous.versions, list(oldamstate))
     amstate$creation.time = Sys.time()
   }
   
   assert(!anyNA(amstate$spent))  # if amstate$spent contains NAs everything breaks...
   
-  
-  savefile = gsub('(\\.rds|)$', '.rds', savefile)
+  if (is.null(savefile)) {
+    save.interval = Inf
+  } else {
+    savefile = gsub('(\\.rds|)$', '.rds', savefile)
+  }
   # basename gives an informative filename in case savefile is a directory
   basename = paste0("automlr_", amstate$backend, format(Sys.time(), "_%F_%H-%M"))
   
@@ -73,8 +80,10 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
     assert(!anyNA(amstate$spent))  # this may happen if usedbudget does not contain all names that it should contain.
     amstate$seed = .Random.seed
     amstate$finish.time = Sys.time()
-    savefile = writefile(savefile, amstate, basename)
-    .Random.seed = amstate$seed  # since writefile may use the rng.
+    if (!is.null(savefile)) {
+      savefile = writefile(savefile, amstate, basename)
+      .Random.seed = amstate$seed  # since writefile may use the rng.
+    }
   }
   amstate
 }
