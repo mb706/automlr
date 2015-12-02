@@ -20,7 +20,12 @@ ByteCompile: yes
 Version: 0.1
 RoxygenNote: 5.0.1
 Collate:
+    'aminterface.R'
+    'autolearner.R'
     'autolearners.R'
+    'defaults.R'
     'lsambackends.R'
     'automlr.R'
+    'optDummy.R'
+    'utils.R'
     'zzz.R'

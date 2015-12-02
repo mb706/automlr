@@ -3,5 +3,9 @@
 #' 
 #' This is a list of learners that the infinitely wise developer of this package
 #' collected \emph{himself} that work well with automlr.
+#' @include autolearner.R
 #' @export
-autolearners = list()  # well the documentation didn't lie
+autolearners = list(
+    autolearner(makeLearner("classif.ksvm"), "learner"),
+    autolearner(makeLearner("classif.randomForest"), "learner")
+    )

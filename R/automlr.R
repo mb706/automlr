@@ -1,5 +1,3 @@
-
-
 #' Automatically choose a model with parameters to fit.
 #' 
 #' This is the main entry point of automlr.
@@ -24,7 +22,8 @@
 #'        to do many cheap, parallel evaluations if only \code{walltime} restriction is given, or few high information
 #'        gain evaluations if only \code{evals} restriction is given. If this ever happens, we may want to have an
 #'        additional parameter that has an influence on this orthogonal to providing a budget.
-#' @param searchspace a list of mlr \code{Learner} objects. The \code{par.set} attribute will define the
+#' @param searchspace a list of \code{Autolearner} objects which mainly wrap mlr \code{Learner} objects (see
+#'        \code{\link{autolearner}}. The \code{par.set} attribute will define the
 #'        hyperparameter search space for the individual learners. If not supplied, \code{\link{autolearners}} will
 #'        be used for the Task S3-method, and the AMState's searchspace will be used for the AMState and character S3
 #'        method. It is thus possible to expand or restrict the search space on subsequent calls to \code{automlr()};
@@ -37,15 +36,21 @@
 #' @param savefile A file in which intermediate progress will be saved. This is will prevent date getting
 #'        lost in case of a crash. The data written is an \code{AMState} object in an \code{.rds} file that can be
 #'        read and run with \code{automlr()} to resume optimization.\\This may refer to a specific file name, in which
-#'        case the file will be created or overwritten \emph{without warning}, or it may refer to a directory, in which
+#'        case the file will be created or overwritten \emph{without warning}, or it may refer to a directory (ending
+#'        with a '/'), in which
 #'        case a unique filename will be created that is guaranteed not to overwrite other files written by other
 #'        automlr processes, if such guarantee can be provided by the file system.\\If the first argument is an
 #'        \code{AMState} object, \code{savefile} will \emph{not} default to the \code{AMState}'s \emph{savefile}
-#'        argument bust must be supplied again; this is to prevent accidental file overwrites. If the first argument
+#'        but must be supplied again; this is to prevent accidental file overwrites. If the first argument
 #'        is a character, \code{savefile} defaults to \code{amstate} and therefore offers to seamlessly continue
 #'        optimization runs.
 #' @param backend A character(1) referring to the back end used for optimization. Must be one of \code{\link{lsambackends}}
 #'        results.
+#' @param save.interval the inteval, in seconds, in between which to save the intermediate result to \code{savefile}.
+#' @param new.seed if TRUE, the random seed saved in the AMState object will not be used; instead the rng state at time
+#'        of the invocation will be used. The default behaviour (FALSE) is to use the saved rng state so that invocations
+#'        with the same AMState object give a more deterministic result (insofar as execution time does not influence
+#'        behaviour).
 #' @param ... I don't know how to get rid of this warning, therefore I'm documenting the ellipsis here. TODO
 #'        there has to be a different way around this.
 #' @return AMState object containing the result as well as info about the run.
@@ -63,7 +68,7 @@
 #' > MORE RESULTS, THE WORLD IS BEAUTIFUL
 #' }
 #' 
-#' @include autolearners.R lsambackends.R
+#' @include autolearners.R lsambackends.R defaults.R
 #' @export
 automlr = function(task, ...) {
   UseMethod("automlr")
@@ -73,44 +78,115 @@ automlr = function(task, ...) {
 #' 
 #' @rdname automlr
 #' @export
-automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, prior=NULL, savefile=NULL, backend, ...) {
-  automlr(makeS3Obj("AMState",
+automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, prior=NULL, savefile=NULL,
+                        save.interval=default.save.interval, backend, ...) {
+  # Note: This is the 'canonical' function signature.
+  automlr(makeS3Obj(c("AMState", "AMObject"),
                     task=task,
                     measure=coalesce(measure, getDefaultMeasure(task)),
                     budget=budget,
+                    spent=c(walltime=0, cputime=0, modeltime=0, evals=0),
                     searchspace=searchspace,
                     prior=prior,
                     backend=backend,
-                    backendprivatedata=list()),
-          savefile=savefile)  # a delegated problem is a solved problem.
-}
-
-#' Continue automlr search from saved \code{AMState} object.
-#' 
-#' @rdname automlr
-#' @export
-automlr.AMState = function(task, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL, ...) {
-  task  # TODO the poodle's core
+                    backendprivatedata=new.env(parent=emptyenv()),
+                    seed=.Random.seed,
+                    creation.time=Sys.time(),
+                    finish.time=NULL,
+                    previous.versions=list()),
+          savefile=savefile, save.interval=save.interval)  # a delegated problem is a solved problem.
 }
 
 #' Continue automlr search from an \code{.rds} savefile, given as a character.
 #' 
 #' @rdname automlr
 #' @export
-automlr.character = function(task, budget=NULL, searchspace=NULL, prior=NULL, savefile=task, ...) {
+automlr.character = function(task, budget=NULL, searchspace=NULL, prior=NULL, savefile=task,
+                             save.interval=default.save.interval, new.seed=FALSE, ...) {
   truefilename = gsub('(\\.rds|)$', '.rds', task)
-  # yes, one could load an RDS file that contains a string referring to another RDS file...
+  # yes, one could load an RDS file that contains a character(1) referring to another RDS file...
   automlr(readRDS(truefilename),
           budget=budget,
           searchspace=searchspace,
           prior=prior,
-          savefile=savefile)
+          savefile=savefile,
+          save.interval=save.interval,
+          new.seed=new.seed)
 }
 
-# Give some cute info about a given AMState
-#' @method print AMState
+#' Continue automlr search from saved \code{AMState} object.
+#' 
+#' @rdname automlr
 #' @export
-print.AMState = function(x, ...) {
-  cat("You have a nice day ^___^\n")  # TODO
+automlr.AMState = function(task, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL,
+                           save.interval=default.save.interval, new.seed=FALSE, ...) {
+  # TODO: maybe check there's nothing in the '...'.
+  aminterface(task, budget, searchspace, prior, savefile, save.interval, new.seed)
 }
 
+#' Extract a prior from an AMState or AMResult object
+#' 
+#' The extracted prior can be used as an argument to further calls of \code{\link{automlr}}.
+#' @param amstate The AMState or AMResult object from which to extract the prior.
+#' @export
+extractprior = function(amstate) {
+  UseMethod("extractprior")
+}
+
+#' @rdname extractprior
+#' @export
+extractprior.AMState = function(amstate) {
+  newprior = callbackend("extractprior", amstate$backend, amstate$backendprivatedata)
+  callbackend("combinepriors", amstate$backend, amstate$prior, newprior)
+}
+
+#' @rdname extractprior
+#' @export
+extractprior.AMResult = function(amstate) {
+  amstate$newprior
+}
+
+#' Converte the AMState object as returned by \code{\link{automlr}} to a result object.
+#' 
+#' The result object contains information about the solution that is relatively backend-independent.
+#' @param amstate The AMState object which is to be converted.
+#' @export
+amresult = function(amstate) {
+  amstate$newprior = extractprior(amstate)
+  insert(amstate, callbackend("result", amstate$backend, amstate$backendprivatedata))
+  class(amstate) = c("AMResult", "AMObject")
+  amstate
+}
+
+#' Give some cute info about a given AMState
+#' @param x what to print. WTF I have to do this to get rid of R CMD check warnings?
+#' @param ... See \code{x}.
+#' @method print AMObject
+#' @export
+print.AMObject = function(x, ...) {
+  allversions = c(x$previous.versions, list(x))
+  catf("automlr %s.\nBackend: %s", ifelse("AMState" %in% class(x), "optimization state", "result"), x$backend)
+  catf("First created: %s\nLast finished: %s", allversions[[1]]$creation.time, x$finish.time)
+  cat("Total budget:\n")
+  print(x$budget)
+  cat("Total spent:\n")
+  print(x$spent)
+  if (length(allversions) > 1) {
+    cat("All invocations using this object:\n")
+    allversionsdf = data.frame(invocation.time=extractSubList(allversions, "creation.time"),
+        return.time=extractSubList(allversions, "finish.time"))
+    spentmatrix = t(sapply(allversions, function(v) v$spent[names(x$spent)]))
+    budgetmatrix = t(sapply(allversions, function(v) v$budget[names(x$spent)]))
+    colnames(spentmatrix) = paste("sp", colnames(spentmatrix), sep=".")
+    colnames(budgetmatrix) = paste("bg", colnames(budgetmatrix), sep=".")
+    print(cbind(allversionsdf, budgetmatrix, spentmatrix))
+  }
+  cat("Measure:\n")
+  print(x$measure)
+  cat("Task:\n")
+  print(x$task)
+  if ("AMResult" %in% class(x)) {
+    cat(x$resultstring)
+    cat("\n")
+  }
+}
