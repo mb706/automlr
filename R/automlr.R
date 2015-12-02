@@ -137,7 +137,11 @@ extractprior = function(amstate) {
 #' @export
 extractprior.AMState = function(amstate) {
   newprior = callbackend("extractprior", amstate$backend, amstate$backendprivatedata)
-  callbackend("combinepriors", amstate$backend, amstate$prior, newprior)
+  if (is.null(amstate$prior)) {
+    newprior
+  } else {
+    callbackend("combinepriors", amstate$backend, amstate$prior, newprior)
+  }
 }
 
 #' @rdname extractprior
@@ -153,7 +157,7 @@ extractprior.AMResult = function(amstate) {
 #' @export
 amresult = function(amstate) {
   amstate$newprior = extractprior(amstate)
-  insert(amstate, callbackend("result", amstate$backend, amstate$backendprivatedata))
+  amstate = insert(amstate, callbackend("result", amstate$backend, amstate$backendprivatedata))
   class(amstate) = c("AMResult", "AMObject")
   amstate
 }
@@ -173,18 +177,20 @@ print.AMObject = function(x, ...) {
   print(x$spent)
   if (length(allversions) > 1) {
     cat("All invocations using this object:\n")
-    allversionsdf = data.frame(invocation.time=extractSubList(allversions, "creation.time"),
-        return.time=extractSubList(allversions, "finish.time"))
+    # the following does a few gymnastics with do.call(c, ...) to keep the POSIXct type.
+    allversionsdf = data.frame(invocation.time=do.call(c, extractSubList(allversions, "creation.time", simplify=FALSE)),
+                               return.time=do.call(c, extractSubList(allversions, "finish.time", simplify=FALSE)))
     spentmatrix = t(sapply(allversions, function(v) v$spent[names(x$spent)]))
     budgetmatrix = t(sapply(allversions, function(v) v$budget[names(x$spent)]))
-    colnames(spentmatrix) = paste("sp", colnames(spentmatrix), sep=".")
-    colnames(budgetmatrix) = paste("bg", colnames(budgetmatrix), sep=".")
+    colnames(spentmatrix) = paste("sp", names(x$spent), sep=".")
+    colnames(budgetmatrix) = paste("bg", names(x$spent), sep=".")
     print(cbind(allversionsdf, budgetmatrix, spentmatrix))
   }
-  cat("Measure:\n")
+  cat("Measure: *****\n")
   print(x$measure)
-  cat("Task:\n")
+  cat("*****\nTask: *****\n")
   print(x$task)
+  cat("*****\n")
   if ("AMResult" %in% class(x)) {
     cat(x$resultstring)
     cat("\n")

@@ -6,7 +6,7 @@
 #'        This is never null.
 #' @param newprior same as 'prior'.
 combinepriors.dummy = function(prior, newprior) {
-  print("Called 'combinepriors'.")
+  cat("Called 'combinepriors'.\n")
   prior + newprior  # our cute 
 }
 
@@ -14,7 +14,7 @@ combinepriors.dummy = function(prior, newprior) {
 #' 
 #' @param env The private data of this backend.
 extractprior.dummy = function(env) {
-  print("Called 'extractprior'")
+  cat("Called 'extractprior'\n")
   env$prior
 }
 
@@ -26,7 +26,7 @@ extractprior.dummy = function(env) {
 #' @param prior The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner the learner object that was built from the declared search space.
 setup.dummy = function(env, prior, learner) {
-  print("Called 'setup'")
+  cat("Called 'setup'\n")
   env$prior = coalesce(prior, 1)
   env$learner = learner
   env$evals = 0
@@ -42,7 +42,7 @@ setup.dummy = function(env, prior, learner) {
 #'        (time spent executing model fits), \code{evals} (number of model fit evaluations). Time is always
 #'        given in seconds.
 optimize.dummy = function(env, stepbudget) {
-  print("Called 'optimize' with budget:")
+  cat("Called 'optimize' with budget:\n")
   print(stepbudget)
   env$evals = env$evals + 1
   env$prior = env$prior + 1
@@ -58,6 +58,6 @@ optimize.dummy = function(env, stepbudget) {
 #' Names should not collide with AMState / AMResult property names.
 #' @param env The private data of this backend.
 result.dummy = function(env) {
-  print("Called 'result'")
+  cat("Called 'result'\n")
   list(resultstring=paste0("Dummy result. Prior grew to ", env$prior, ", evals: ", env$evals))
 }
