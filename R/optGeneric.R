@@ -1,22 +1,18 @@
-
-#' Reference implementation that exemplifies the backend interface.
-#'
 #' should return whatever kind of object the backend accepts as 'prior'.
+#' 
 #' @param env should not be used
 #' @param prior A 'prior' object as returned by \code{\link{extractprior.dummy}}.
 #'        This is never null.
 #' @param newprior same as 'prior'.
-amcombinepriors.dummy = function(env, prior, newprior) {
-  cat("Called 'combinepriors'.\n")
-  prior + newprior  # our cute 
+amcombinepriors = function(env, prior, newprior) {
+  UseMethod("amcombinepriors")
 }
 
 #' should return whatever kind of object this backend accepts as 'prior'.
 #' 
 #' @param env The private data of this backend.
-amgetprior.dummy = function(env) {
-  cat("Called 'extractprior'\n")
-  env$prior
+amgetprior = function(env) {
+  UseMethod("amgetprior")
 }
 
 #' return value is ignored; should modify env.
@@ -26,12 +22,8 @@ amgetprior.dummy = function(env) {
 #' @param env The private data of this backend.
 #' @param prior The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner the learner object that was built from the declared search space.
-amsetup.dummy = function(env, prior, learner) {
-  cat("Called 'setup'\n")
-  env$prior = coalesce(prior, 1)
-  env$learner = learner
-  env$evals = 0
-  invisible()
+amsetup= function(env, prior, learner) {
+  UseMethod("amsetup")
 }
 
 #' return a vector detailing the spent budget.
@@ -42,12 +34,8 @@ amsetup.dummy = function(env, prior, learner) {
 #'        (time since invocation), \code{cputime} (total cpu time of optimization process), \code{modeltime}
 #'        (time spent executing model fits), \code{evals} (number of model fit evaluations). Time is always
 #'        given in seconds.
-amoptimize.dummy = function(env, stepbudget) {
-  cat("Called 'optimize' with budget:\n")
-  print(stepbudget)
-  env$evals = env$evals + 1
-  env$prior = env$prior + 1
-  c(walltime=10, cputime=10, modeltime=10, evals=1)
+amoptimize = function(env, stepbudget) {
+  UseMethod("amoptimize")
 }
 
 #' must return a named list which will be inserted into the result object.
@@ -58,7 +46,6 @@ amoptimize.dummy = function(env, stepbudget) {
 #' 
 #' Names should not collide with AMState / AMResult property names.
 #' @param env The private data of this backend.
-amresult.dummy = function(env) {
-  cat("Called 'result'\n")
-  list(resultstring=paste0("Dummy result. Prior grew to ", env$prior, ", evals: ", env$evals))
+amresult = function(env) {
+  UseMethod("amresult")
 }

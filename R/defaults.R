@@ -2,4 +2,4 @@
 
 default.save.interval = 300
 
-requiredBackendFunctions = c("combinepriors", "extractprior", "setup", "optimize", "result")
+requiredBackendFunctions = c("amcombinepriors", "amgetprior", "amsetup", "amoptimize", "amresult")

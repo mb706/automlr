@@ -2,7 +2,11 @@
 
 buildLearners = function(searchspace) {
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
-  makeModelMultiplexer(extractSubList(learners, "learner", simplify=FALSE))
+  onlyModels = extractSubList(learners, "learner", simplify=FALSE)
+  modelParsets = extractSubList(onlyModels, "par.set", simplify=FALSE)
+  names(modelParsets) = extractSubList(onlyModels, "id")
+  mm = makeModelMultiplexer(onlyModels)
+  mm$par.set = do.call(makeModelMultiplexerParamSet, c(list(mm), modelParsets))
 }
 
 aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL,
@@ -67,7 +71,7 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   
   # set up or change backendprivatedata. This gets called once whenever some part of the AMState object
   # may have changed.
-  callbackend("setup", amstate$backend, amstate$backendprivatedata, amstate$prior, objectiveLearner)
+  amsetup(amstate$backendprivatedata, amstate$prior, objectiveLearner)
   
   # the writing out of intermediate results to `savefile` is done here and not delegated to the
   # backend functions. We call the backend with timeout until next write to disk. This greatly
@@ -75,7 +79,7 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
     stepbudget['walltime'] = min(stepbudget['walltime'], save.interval, na.rm=TRUE)
-    usedbudget = callbackend("optimize", amstate$backend, amstate$backendprivatedata, stepbudget)
+    usedbudget = amoptimize(amstate$backend, amstate$backendprivatedata, stepbudget)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     assert(!anyNA(amstate$spent))  # this may happen if usedbudget does not contain all names that it should contain.
     amstate$seed = .Random.seed

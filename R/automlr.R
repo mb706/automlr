@@ -89,7 +89,7 @@ automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, 
                     searchspace=searchspace,
                     prior=prior,
                     backend=backend,
-                    backendprivatedata=new.env(parent=emptyenv()),
+                    backendprivatedata=setClasses(new.env(parent=emptyenv()), backend),
                     seed=.Random.seed,
                     creation.time=Sys.time(),
                     finish.time=NULL,
@@ -136,11 +136,11 @@ extractprior = function(amstate) {
 #' @rdname extractprior
 #' @export
 extractprior.AMState = function(amstate) {
-  newprior = callbackend("extractprior", amstate$backend, amstate$backendprivatedata)
+  newprior = amgetprior(amstate$backendprivatedata)
   if (is.null(amstate$prior)) {
     newprior
   } else {
-    callbackend("combinepriors", amstate$backend, amstate$prior, newprior)
+    amcombinepriors(amstate$backendprivatedata, amstate$prior, newprior)
   }
 }
 
@@ -157,7 +157,7 @@ extractprior.AMResult = function(amstate) {
 #' @export
 amresult = function(amstate) {
   amstate$newprior = extractprior(amstate)
-  amstate = insert(amstate, callbackend("result", amstate$backend, amstate$backendprivatedata))
+  amstate = insert(amstate, amresult(amstate$backendprivatedata))
   class(amstate) = c("AMResult", "AMObject")
   amstate
 }

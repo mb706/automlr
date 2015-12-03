@@ -19,16 +19,6 @@ deepcopy = function(obj) {
   unserialize(serialize(obj, NULL))
 }
 
-# call the backend function fname.<backendname> with arguments given in `...` or in
-# optional argument 'arglist'.
-callbackend = function(fname, backend, ...) {
-  args = list(...)
-  if (!is.null(args$arglist)) {
-    args = args$argslist
-  }
-  do.call(paste(fname, backend, sep="."), args)
-}
-
 # write 'object' to file 'filename'. if filename ends with a '/', it is assumed
 # to refer to a directory in which the file should be created using name 'basename', 
 # postfixed with a possible postfix to avoid collision and '.rds'. 
