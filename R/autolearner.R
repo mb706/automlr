@@ -9,8 +9,9 @@
 #' (is combined with another learner, e.g. bagging), \code{multimeta} (e.g. is combined with
 #' multiple different learners, e.g. stacking).
 #' @export
-autolearner = function(learner, stacktype) {
+autolearner = function(learner, stacktype, pspace=NULL) {
   makeS3Obj("Autolearner",
             learner=learner,
-            stacktype=stacktype)
+            stacktype=stacktype,
+            pspace=pspace)
 }
