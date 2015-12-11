@@ -1,14 +1,5 @@
 # the interface between frontend ('automlr()') and backend (inside the optXXX.R files)
 
-buildLearners = function(searchspace) {
-  learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
-  onlyModels = extractSubList(learners, "learner", simplify=FALSE)
-  modelParsets = extractSubList(onlyModels, "par.set", simplify=FALSE)
-  names(modelParsets) = extractSubList(onlyModels, "id")
-  mm = makeModelMultiplexer(onlyModels)
-  mm$par.set = do.call(makeModelMultiplexerParamSet, c(list(mm), modelParsets))
-}
-
 aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL,
                        save.interval=default.save.interval, new.seed=FALSE, ...) {
   if (!is.null(amstate$finish.time)) {

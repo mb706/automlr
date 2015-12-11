@@ -9,9 +9,9 @@
 #' (is combined with another learner, e.g. bagging), \code{multimeta} (e.g. is combined with
 #' multiple different learners, e.g. stacking).
 #' @export
-autolearner = function(learner, stacktype, pspace=NULL) {
+autolearner = function(learner, stacktype, searchspace=NULL) {
   makeS3Obj("Autolearner",
             learner=learner,
             stacktype=stacktype,
-            pspace=pspace)
+            searchspace=coalesce(pspace, filterParams(getParamSet(learner), tunable=TRUE)))
 }
