@@ -8,10 +8,11 @@
 #' Must be one of \code{preprocessing} (e.g. feature selection), \code{learner}, \code{meta}
 #' (is combined with another learner, e.g. bagging), \code{multimeta} (e.g. is combined with
 #' multiple different learners, e.g. stacking).
+#' @param searchspace a \code{ParamSet} object reqpresenting the relevant parameter search space.
 #' @export
 autolearner = function(learner, stacktype, searchspace=NULL) {
   makeS3Obj("Autolearner",
             learner=learner,
             stacktype=stacktype,
-            searchspace=coalesce(pspace, filterParams(getParamSet(learner), tunable=TRUE)))
+            searchspace=coalesce(searchspace, filterParams(getParamSet(learner), tunable=TRUE)))
 }

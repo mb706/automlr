@@ -70,7 +70,7 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
     stepbudget['walltime'] = min(stepbudget['walltime'], save.interval, na.rm=TRUE)
-    usedbudget = amoptimize(amstate$backend, amstate$backendprivatedata, stepbudget)
+    usedbudget = amoptimize(amstate$backend, stepbudget)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     assert(!anyNA(amstate$spent))  # this may happen if usedbudget does not contain all names that it should contain.
     amstate$seed = .Random.seed

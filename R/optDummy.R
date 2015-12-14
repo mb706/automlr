@@ -3,7 +3,7 @@
 #'
 #' should return whatever kind of object the backend accepts as 'prior'.
 #' @param env should not be used
-#' @param prior A 'prior' object as returned by \code{\link{extractprior.dummy}}.
+#' @param prior A 'prior' object as returned by \code{\link{amgetprior.dummy}}.
 #'        This is never null.
 #' @param newprior same as 'prior'.
 amcombinepriors.dummy = function(env, prior, newprior) {

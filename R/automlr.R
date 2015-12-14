@@ -155,7 +155,7 @@ extractprior.AMResult = function(amstate) {
 #' The result object contains information about the solution that is relatively backend-independent.
 #' @param amstate The AMState object which is to be converted.
 #' @export
-amresult = function(amstate) {
+amfinish = function(amstate) {
   amstate$newprior = extractprior(amstate)
   amstate = insert(amstate, amresult(amstate$backendprivatedata))
   class(amstate) = c("AMResult", "AMObject")
