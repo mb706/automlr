@@ -40,3 +40,13 @@ writefile = function(filename, object, basename) {
   }
   filename
 }
+
+# append opt path op2 to opt path op1. This happens in-place.
+appendOptPath = function(op1, op2) {
+  # TODO: handle extra
+  # TODO: check equality of par.set etc.
+  for (vect in c("error.message", "exec.time", "dob", "eol")) {
+    op1$env[[vect]] = c(op1$env[[vect]], op2$env[[vect]])
+  }
+  op1$env$path = rbind(op1$env$path, op2$env$path)
+}

@@ -62,7 +62,7 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   
   # set up or change backendprivatedata. This gets called once whenever some part of the AMState object
   # may have changed.
-  amsetup(amstate$backendprivatedata, amstate$prior, objectiveLearner)
+  amsetup(amstate$backendprivatedata, amstate$prior, objectiveLearner, amstate$task)  # TODO: also give measure.
   
   # the writing out of intermediate results to `savefile` is done here and not delegated to the
   # backend functions. We call the backend with timeout until next write to disk. This greatly
@@ -70,7 +70,7 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
     stepbudget['walltime'] = min(stepbudget['walltime'], save.interval, na.rm=TRUE)
-    usedbudget = amoptimize(amstate$backend, stepbudget)
+    usedbudget = amoptimize(amstate$backendprivatedata, stepbudget)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     assert(!anyNA(amstate$spent))  # this may happen if usedbudget does not contain all names that it should contain.
     amstate$seed = .Random.seed

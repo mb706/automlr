@@ -2,6 +2,7 @@
 #' @import checkmate
 #' @import mlr
 #' @import ParamHelpers
+#' @import parallelMap
 NULL
 
 #' Greet the user with some annoying message

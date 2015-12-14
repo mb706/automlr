@@ -13,7 +13,8 @@ Depends:
     ParamHelpers (>= 1.4)
 Imports:
     BBmisc (>= 1.7),
-    checkmate (>= 1.4)
+    checkmate (>= 1.4),
+    parallelMap (>= 1.3)
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes

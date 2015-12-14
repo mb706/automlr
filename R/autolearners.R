@@ -6,6 +6,13 @@
 #' @include autolearner.R
 #' @export
 autolearners = list(
-    autolearner(makeLearner("classif.ksvm"), "learner"),
-    autolearner(makeLearner("classif.randomForest"), "learner")
+    autolearner(makeLearner("classif.ksvm"), "learner",
+        makeParamSet(
+              makeDiscreteParam("C", values = 2^(-2:2)),
+              makeDiscreteParam("sigma", values = 2^(-2:2))
+        )),
+    autolearner(makeLearner("classif.randomForest"), "learner",
+        makeParamSet(
+              makeIntegerParam("ntree", lower=1, upper=500)
+        ))
     )

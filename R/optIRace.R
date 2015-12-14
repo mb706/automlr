@@ -11,7 +11,7 @@ amgetprior.amirace = function(env) {
 }
 
 # no bells and whistles here either
-amsetup.amirace = function(env, prior, learner) {
+amsetup.amirace = function(env, prior, learner, task) {
   env$learner = learner
   env$tc = NULL  # TODO makeTuneControlRandom()  # TODO: how do we set a time constraint?
   invisible()

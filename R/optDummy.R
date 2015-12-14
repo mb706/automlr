@@ -26,7 +26,8 @@ amgetprior.amdummy = function(env) {
 #' @param env The private data of this backend.
 #' @param prior The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner the learner object that was built from the declared search space.
-amsetup.amdummy = function(env, prior, learner) {
+#' @param task the task
+amsetup.amdummy = function(env, prior, learner, task) {
   cat("Called 'setup'\n")
   env$prior = coalesce(prior, 1)
   env$learner = learner
