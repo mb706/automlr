@@ -21,7 +21,7 @@ amsetup.amrandom = function(env, prior, learner, task) {
 
 # TODO: return whatever the user might be interested in
 amresult.amrandom = function(env) {
-  res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace, getDefaultMeasure(env$task),
+  res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace, list(getDefaultMeasure(env$task)),
       makeTuneControlRandom(maxit=1000), env$opt.path)
   list(resultstring="Result was generated, find it as $res.", res=res)
 }
