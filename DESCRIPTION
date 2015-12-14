@@ -29,6 +29,8 @@ Collate:
     'buildLearners.R'
     'optDummy.R'
     'optGeneric.R'
+    'optIRace.R'
+    'optMBO.R'
     'optRandom.R'
     'utils.R'
     'zzz.R'

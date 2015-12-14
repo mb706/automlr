@@ -1,30 +1,29 @@
 
 # 'random' has no prior, so do nothing here
-combinepriors.random = function(prior, newprior) {
+amcombinepriors.amrandom = function(prior, newprior) {
   NULL
 }
 
 # 'random' has no prior, so do nothing here
-extractprior.random = function(env) {
+amgetprior.amrandom = function(env) {
   NULL
 }
 
 # no bells and whistles here either
-setup.random = function(env, prior, learner) {
+amsetup.amrandom = function(env, prior, learner) {
   env$learner = learner
   env$tc = makeTuneControlRandom()  # TODO: how do we set a time constraint?
   invisible()
 }
 
 # TODO: return whatever the user might be interested in
-result.dummy = function(env) {
+amresult.amrandom = function(env) {
   list(resultstring="The returning result stuff is under construction.")
 }
 
 # now this is where the fun happens
-optimize.dummy = function(env, stepbudget) {
-
-  c(walltime=10, cputime=10, modeltime=10, evals=1)
+amoptimize.amrandom = function(env, stepbudget) {
+  NULL  # TODO
 }
 
 # filter out the tunable params, transform to finite interval
