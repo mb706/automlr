@@ -11,7 +11,7 @@ amgetprior.amrandom = function(env) {
 
 # no bells and whistles here either
 amsetup.amrandom = function(env, prior, learner, task) {
-  class(learner) = c("amrandom.wrapped", class(learner))
+  class(learner) = c("amrandomWrapped", class(learner))
   env$learner = learner
   env$rdesc = do.call(makeResampleDesc, resampleOptions)
   env$task = task
@@ -49,6 +49,7 @@ amoptimize.amrandom = function(env, stepbudget) {
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
     } else {
+      # TODO: this fails catastrophically in case the search space changes.
       appendOptPath(env$opt.path, tuneresult$opt.path)
     }
   }
@@ -56,21 +57,24 @@ amoptimize.amrandom = function(env, stepbudget) {
   learner$am.env$usedbudget
 }
 
-trainLearner.amrandom.wrapped = function(.learner, ...) {
-  if (learner$am.env$outofbudget) {
+#' @export
+trainLearner.amrandomWrapped = function(.learner, ...) {
+  if (.learner$am.env$outofbudget) {
     stop("out of budget")
   }
   evaltime = system.time(result <- NextMethod("trainLearner"))
-  learner$am.env$usedbudget['modeltime'] = learner$am.env$usedbudget['modeltime'] + evaltime[3]
+  catf("train: %f", evaltime[3])
+  .learner$am.env$usedbudget['modeltime'] = .learner$am.env$usedbudget['modeltime'] + evaltime[3]
   result
 }
 
-predictLearner.amrandom.wrapped = function(.learner, ...) {
+#' @export
+predictLearner.amrandomWrapped = function(.learner, ...) {
   evaltime = system.time(result <- NextMethod("predictLearner"))
-
+  catf("predict: %f", evaltime[3])
   env = .learner$am.env
 
-  env$usedbudget['walltime'] = as.numeric(difftime(env$starttime, Sys.time(), units = "secs"))
+  env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
 
   numcpus = parallelGetOptions()$settings$cpus
   if (is.na(numcpus)) {
