@@ -50,3 +50,39 @@ appendOptPath = function(op1, op2) {
   }
   op1$env$path = rbind(op1$env$path, op2$env$path)
 }
+
+# copied this from mlr logFunOpt.R
+# we give info about everything except memory, since reporting that takes lots of time
+logFunDefault = function(learner, task, resampling, measures, par.set, control, opt.path, dob,
+      x.string, y, remove.nas, stage, prev.stage, prefixes) {
+  if (stage == 1L) {
+    start.time = Sys.time()
+    messagef("[%s] %i: %s", prefixes[stage], dob, x.string)
+    return(list(start.time = start.time))
+  } else if (stage == 2L) {
+    end.time = Sys.time()
+    diff.time = difftime(time1 = end.time, time2 = prev.stage$start.time, units = "mins")
+    messagef("[%s] %i: %s; time: %.1f min",
+              prefixes[stage], dob, perfsToString(y), diff.time[[1]])
+    return(NULL)
+  }
+}
+
+# similarly copied from mlr logFunOpt.R
+logFunTune = function(learner, task, resampling, measures, par.set, control, opt.path, dob,
+      x, y, remove.nas, stage, prev.stage) {
+  
+  x.string = paramValueToString(par.set, x, show.missing.values = !remove.nas)
+  # shorten tuning logging a bit. we remove the sel.learner prefix from params
+  if (inherits(learner, "ModelMultiplexer"))
+    x.string = gsub(paste0(x$selected.learner, "\\."), "", x.string)
+  
+  logFunDefault(learner, task, resampling, measures, par.set, control, opt.path, dob,
+          x.string, y, remove.nas, stage, prev.stage, prefixes = c("Tune-x", "Tune-y")
+  )
+}
+
+# copied from mlr helpers.R
+perfsToString = function(y) {
+  paste(paste(names(y), "=", formatC(y, digits = 3L), sep = ""), collapse = ",")
+}

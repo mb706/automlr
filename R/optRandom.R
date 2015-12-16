@@ -43,7 +43,7 @@ amoptimize.amrandom = function(env, stepbudget) {
 
   while (!stopcondition(stepbudget, learner$am.env$usedbudget)) {
     iterations = min(ifelse('evals' %in% names(stepbudget), stepbudget['evals'] - learner$am.env$usedbudget['evals'], Inf), 1000)
-    ctrl = makeTuneControlRandom(maxit=iterations)  # chop up 'evals' budget into 1000s
+    ctrl = makeTuneControlRandom(maxit=iterations, log.fun=logFunTune)  # chop up 'evals' budget into 1000s
     tuneresult = tuneParams(learner, env$task, env$rdesc, par.set=learner$searchspace, control=ctrl)
     learner$am.env$usedbudget['evals'] = learner$am.env$usedbudget['evals'] + iterations  # this is not very precise. Should count the errors in the OptPath.
     if (is.null(env$opt.path)) {
@@ -62,16 +62,14 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   if (.learner$am.env$outofbudget) {
     stop("out of budget")
   }
-  evaltime = system.time(result <- NextMethod("trainLearner"))
-  catf("train: %f", evaltime[3])
+  evaltime = system.time(result <- NextMethod("trainLearner"), gcFirst=FALSE)
   .learner$am.env$usedbudget['modeltime'] = .learner$am.env$usedbudget['modeltime'] + evaltime[3]
   result
 }
 
 #' @export
 predictLearner.amrandomWrapped = function(.learner, ...) {
-  evaltime = system.time(result <- NextMethod("predictLearner"))
-  catf("predict: %f", evaltime[3])
+  evaltime = system.time(result <- NextMethod("predictLearner"), gcFirst=FALSE)
   env = .learner$am.env
 
   env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
@@ -83,7 +81,8 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
   env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpus  # TODO this is pretty hackish
 
   env$usedbudget['modeltime'] = env$usedbudget['modeltime'] + evaltime[3]
-
+  # TODO: when doing parallel stuff, this is unknowable. maybe we can look into parent environments and see what
+  # is written in the opt.path, but that is all the options available.
   if (stopcondition(env$stepbudget, env$usedbudget)) {
     configureMlr(on.learner.error = "quiet")
     env$outofbudget = TRUE
