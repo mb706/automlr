@@ -5,8 +5,8 @@
 #' meta information. This is used to define the automlr searchspace.
 #' @param learner An mlr Learner object or similar, depending on stacktype.
 #' @param stacktype character(1) describing how this object can be connected with other learners.
-#' Must be one of \code{preprocessing} (e.g. feature selection), \code{learner}, \code{meta}
-#' (is combined with another learner, e.g. bagging), \code{multimeta} (e.g. is combined with
+#' Must be one of \code{preprocessing} (e.g. feature selection), \code{learner}, \code{wrapper}
+#' (is combined with another learner, e.g. bagging), \code{multiwrapper} (e.g. is combined with
 #' multiple different learners, e.g. stacking).
 #' @param searchspace a \code{ParamSet} object reqpresenting the relevant parameter search space.
 #' @export
