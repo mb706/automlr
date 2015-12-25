@@ -33,5 +33,6 @@ Collate:
     'optIRace.R'
     'optMBO.R'
     'optRandom.R'
+    'preprocess.R'
     'utils.R'
     'zzz.R'
