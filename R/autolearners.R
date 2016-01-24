@@ -57,7 +57,7 @@ autolearners = list(
             makeDiscreteParam("type", c("C-svc", "nu-svc", "C-bsvc")),
             makeDiscreteParam("kernel", c("rbfdot", "polydot")),
             makeNumericParam("C", lower=log(0.5), upper=log(4), trafo=exp),
-            makeNumericParam("sigma", lower=log(0.5), upper=log(4), trafo=exp, reqires=quote(kernel == "rbfdot")),
+            makeNumericParam("sigma", lower=log(0.5), upper=log(4), trafo=exp, requires=quote(kernel == "rbfdot")),
             makeIntegerParam("degree", lower=1, upper=5, requires=quote(kernel == "polydot")),
             makeNumericParam("scale", lower=log(0.1), upper=log(10), trafo=exp, requires=quote(kernel == "polydot")),
             makeNumericParam("nu", lower=log(0.05), upper=log(0.5), trafo=exp, requires=quote(type == "nu-svc"))

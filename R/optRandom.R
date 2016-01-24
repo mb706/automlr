@@ -137,14 +137,14 @@ checkoutofbudget = function(env, numcpus, evaltime=0, il=FALSE) {
     return(env$outofbudget)
   }
   env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
-  print(env$usedbudget['walltime'])
+  #print(env$usedbudget['walltime'])
   
   if (is.na(numcpus)) {
     numcpus = 1
   }
   env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpus
   modeltime = env$usedbudget['modeltime'] + evaltime
-  print(modeltime)
+  #print(modeltime)
   
   # when doing parallel stuff, this is unknowable.
   if (env$untouched) {
