@@ -21,7 +21,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
 
   hasTarget = is.null(target)
   if (hasTarget) {
-    targetData = data[[target]]
+    targetData = data[target]
     data[target] = NULL
   }
   # determine the numeric & factor cols
@@ -78,7 +78,9 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
     if (impute.numeric == "remove.na") {
       delendum = naRows(data, cols.numeric)
       data = data[!delendum, ]
-      targetData = targetData[!delendum]
+      if (hasTarget) {
+        targetData = targetData[!delendum, ]
+      }
     } else {
       ppobject$pop.numeric = lapply(data[cols.numeric], function(x) {
             switch(impute.numeric,
@@ -94,7 +96,9 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
     if (impute.factor == "remove.na") {
       delendum = naRows(data, cols.factor)
       data = data[!delendum, ]
-      targetData = targetData
+      if (hasTarget) {
+        targetData = targetData[!delendum, ]
+      }
     } else if (impute.factor == "distinct") {
       data[cols.factor] = lapply(data[cols.factor], addNA, ifany=FALSE)
     } else {
@@ -121,6 +125,33 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
       data[cols.numeric] = ica$S
       ppobject$rotation = ica$K %*% ica$W
     }
+  }
+  
+  if (hasTarget) {
+    data[target] = targetData
+
+    if (length(target) == 0) {  # target is empty --> cluster task.
+      dummyTask = makeClusterTask("dummy", data)
+    } else if (length(target) == 1) {  # target is numeric --> regression task; otherwise classification
+      if (is.numeric(targetData[[1]])) {
+        dummyTask = makeRegrTask("dummy", data, target)
+      } else {
+        dummyTask = makeClassifTask("dummy", data, target)  # if data is not numeric, logical nor factorial an error is thrown.
+      }
+    } else {
+      # two target columns, first numeric, second numeric or logical -> survival task
+      if (length(target) == 2 && is.numeric(targetData[[1]]) &&
+          (is.numeric(targetData[[2]]) || is.logical(targetData[[2]]))) {
+        dummyTask = makeSurvTask("dummy", data, target, ifelse(is.numeric(targetData[[2]], "icens", "rcens")))
+      } else {
+        # last default: multilabel. If target is not logical, this will throw an error.
+        dummyTask = makeMultilabelTask("dummy", data, target)
+      }
+    }
+    # missing: costsens. The preprocessWrapper interface does not allow us
+    # to distinguish cost sensitive tasks from clustering tasks.
+
+  
   }
 
   if (DEBUG) {
