@@ -1,7 +1,9 @@
 
 preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor=0, univariate.trafo="off",
     impute.numeric="remove.na", impute.factor="remove.na", multivariate.trafo="off", feature.filter="off",
-    feature.filter.thresh = 0, DEBUG=FALSE) {
+    feature.filter.thresh = 0, keep.data=FALSE) {
+  # TODO: handle ordered factors
+  # TODO: /maybe/ add a "ignore these columns" parameter
   # first: check arguments
   assertClass(data, classes = "data.frame")
 
@@ -13,13 +15,13 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
   assertChoice(multivariate.trafo, c("off", "pca", "ica"))
   assertChoice(feature.filter, c("off", "info.gain", "chi.squared", "rf.importance"))
   if (feature.filter != "off") {
-    assertPercentage(feature.filter.thresh)
+    assertNumber(feature.filter.thresh)
   }
   
   ppobject = addClasses(as.list(environment()), "ampreproc")  # collect all arguments given
   ppobject$data = NULL
 
-  hasTarget = is.null(target)
+  hasTarget = !is.null(target) && length(target) > 0
   if (hasTarget) {
     targetData = data[target]
     data[target] = NULL
@@ -129,10 +131,14 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
   
   if (hasTarget) {
     data[target] = targetData
+  }
 
-    if (length(target) == 0) {  # target is empty --> cluster task.
-      dummyTask = makeClusterTask("dummy", data)
-    } else if (length(target) == 1) {  # target is numeric --> regression task; otherwise classification
+  if (hasTarget && feature.filter != "off") {
+    ## If feature.filter ever works with empty target, dummy.task would need to be "cluster".
+    #if (length(target) == 0) {  # target is empty --> cluster task.
+    #  dummyTask = makeClusterTask("dummy", data)
+    #} else 
+    if (length(target) == 1) {  # target is numeric --> regression task; otherwise classification
       if (is.numeric(targetData[[1]])) {
         dummyTask = makeRegrTask("dummy", data, target)
       } else {
@@ -151,11 +157,15 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
     # missing: costsens. The preprocessWrapper interface does not allow us
     # to distinguish cost sensitive tasks from clustering tasks.
 
-  
+    filteredTask = filterFeatures(dummyTask, method=feature.filter, threshold=feature.filter.thresh)
+
+    oldcols = colnames(data)
+    data = getTaskData(filteredTask)
+    ppobject$dropcols = c(ppobject$dropcols, setdiff(oldcols, colnames(data)))
   }
 
-  if (DEBUG) {
-    ppobject$debugdata = data
+  if (keep.data) {
+    ppobject$data = data
   }
 
   ppobject
@@ -165,7 +175,7 @@ predict.ampreproc = function(object, newdata, ...) {
   # all right lets go
   # drop low variance cols
   newdata = newdata[names(newdata) %nin% object$dropcols]
-  
+
   # univariate trafo
   if (length(object$cols.numeric) > 0) {
     if (object$univariate.trafo != "off") {
@@ -173,18 +183,18 @@ predict.ampreproc = function(object, newdata, ...) {
       ndata = scale(ndata, center=coalesce(object$center, FALSE), scale=coalesce(object$scale, FALSE))
       newdata[object$cols.numeric] = ndata
     }
-    
+
     if (object$impute.numeric == "remove.na") {
       newdata = removeNa(newdata, object$cols.numeric)
     } else {
       newdata[object$cols.numeric] = mapply(imputeRandom, newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY=FALSE)
     }
-    
+
     if (object$multivariate.trafo != "off") {
       newdata[object$cols.numeric] = as.matrix(newdata[object$cols.numeric]) %*% object$rotation
     }
   }
-  
+
   if (length(object$cols.factor) > 0) {
     if (object$impute.factor == "remove.na") {
       newdata = removeNa(newdata, object$cols.factor)
@@ -206,3 +216,50 @@ imputeRandom = function(x, pop) {
   x[is.na(x)] = sample(pop, size=sum(is.na(x)), replace=TRUE)
   x
 }
+
+#' @title Wrap learner with preProcess function
+#'
+#' @export
+makePreprocWrapperAm = function (learner, ...) {
+  # NOTE:
+  # some of these arguments are useless dependent on the format of the data: whether there are numeric / factorial columns,
+  #  and how many there are.
+  # setting ppa.nzv.cutoff.* to their maximum values would effectively remove all numeric / factor columns, therefore allowing 
+  # conversion for learners that don't support some types.
+  # TODO: maybe a "off" for imputation should also be given, in case some learners can handle NAs according to their properties.
+  par.set = makeParamSet(
+    makeNumericLearnerParam("ppa.nzv.cutoff.numeric", lower=0, default=0),
+    makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower=0, upper=1, default=0),
+    makeDiscreteLearnerParam("ppa.univariate.trafo", c("off", "center", "scale", "centerscale", "range"), default="off"),
+    makeDiscreteLearnerParam("ppa.impute.numeric", c("remove.na", "mean", "median", "hist"), default="hist"),
+    makeDiscreteLearnerParam("ppa.impute.factor", c("remove.na", "distinct", "mode", "hist"), default="distinct"),
+    makeDiscreteLearnerParam("ppa.multivariate.trafo", c("off", "pca", "ica"), default="off"),
+    makeDiscreteLearnerParam("ppa.feature.filter", c("off", "info.gain", "chi.squared", "rf.importance"), default="off"),
+    makeNumericLearnerParam("ppa.feature.filter.thresh", lower=0, requires=quote(ppa.feature.filter != "off"))
+  )
+  par.vals = getDefaults(par.set)
+  par.vals = insert(par.vals, list(...))
+  
+  trainfun = function(data, target, args) {
+    ppobject = do.call(preProcess, c(list(data=data, target=target, keep.data=TRUE), args))
+    data = ppobject$data
+    ppobject$data = NULL
+    list(data=data, control=ppobject)
+  }
+  
+  predictfun = function(data, target, args, control) {
+    predict(control, data)
+  }
+  
+  x = makePreprocWrapper(learner, trainfun, predictfun, par.set, par.vals)
+  addClasses(x, "PreprocWrapperAm")
+}
+
+#' @export
+getLearnerProperties.PreprocWrapperAm = function(learner) {
+  props = getLearnerProperties(learner$next.learner)
+  par.vals = getHyperPars(learner)
+  props = union(props, "missings")
+  props
+}
+
