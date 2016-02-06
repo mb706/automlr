@@ -5,16 +5,8 @@
 #' collected \emph{himself} that work well with automlr.
 #' @include autolearner.R
 #' @export
-autolearners.small = list(
-    autolearner(makeLearner("classif.ksvm"), "learner",
-        makeParamSet(
-              makeDiscreteParam("C", values = 2^(-2:2)),
-              makeDiscreteParam("sigma", values = 2^(-2:2))
-        )),
-    autolearner(makeLearner("classif.randomForest"), "learner",
-        makeParamSet(
-              makeIntegerParam("ntree", lower=1, upper=500)
-        ))
+
+
 #    autolearner(function(x) makePreprocWrapperCaret(x, ppc.na.remove=FALSE), "wrapper",
 #        makeParamSet(
 #              makeLogicalParam("ppc.BoxCox", requires=quote(!(ppc.YeoJohnson || ppc.expoTrans))),  # this doesn't work
@@ -36,34 +28,52 @@ autolearners.small = list(
 #              makeIntegerParam("ppc.k", requires=quote((ppc.knnImpute))),
 #              makeNumericParam("ppc.fudge", requires=quote((ppc.BoxCox)))
 #        ))
-    )
+
 
 autolearners = list(
-    autolearner(makeLearner("classif.naiveBayes"), "learner",
-        makeParamSet(
-            makeNumericParam("laplace", lower=0, upper=1)
-        )),
-    autolearner(makeLearner("classif.binomial"), "learner",
-        makeParamSet(
-            makeDiscreteParam("link", c("logit", "probit", "cloglog", "cauchit", "log"))
-        )),
-    autolearner(makeLearner("classif.randomForest"), "learner",
-        makeParamSet(
-            makeIntegerParam("ntree", lower=1, upper=1000),
-            makeIntegerParam("nodesize", lower=1, upper=5)
-        )),
-    autolearner(makeLearner("classif.ksvm"), "learner",
-        makeParamSet(
-            makeDiscreteParam("type", c("C-svc", "nu-svc", "C-bsvc")),
-            makeDiscreteParam("kernel", c("rbfdot", "polydot")),
-            makeNumericParam("C", lower=log(0.5), upper=log(4), trafo=exp),
-            makeNumericParam("sigma", lower=log(0.5), upper=log(4), trafo=exp, requires=quote(kernel == "rbfdot")),
-            makeIntegerParam("degree", lower=1, upper=5, requires=quote(kernel == "polydot")),
-            makeNumericParam("scale", lower=log(0.1), upper=log(10), trafo=exp, requires=quote(kernel == "polydot")),
-            makeNumericParam("nu", lower=log(0.05), upper=log(0.5), trafo=exp, requires=quote(type == "nu-svc"))
-        )),
-    autolearner(makeLearner("classif.avNNet"), "learner",
-        makeParamSet(
-            makeNumericParam("decay", lower=log(.0001), upper=log(.2), trafo=exp)
-        ))
-    )
+    autolearner("classif.logreg"),
+    autolearner("classif.probit"),
+    autolearner("classif.plr",
+        list(
+# ** vp
+            sp(lambda, "real", c(1e-5, 100), "exp"),
+            sp(cp.type, "cat", c("bic", "aic")),
+# ** cp
+            sp(cp, "fix", NULL))),
+    autolearner("classif.lda",
+        list(
+# ** vp
+            sp(method, "cat", c("moment", "mle", "mve", "t"), id="da.method"),
+            sp(nu, "int", c(2, 64), "exp", id="da.nu", req=quote(method=='t')),
+            sp(predict.method, "cat", c("plug-in", "predictive", "debiased"), id="da.pm"),
+# ** dp
+            sp(tol, "def", .0001),
+            sp(CV, "def", FALSE))),
+    autolearner("classif.qda",
+        list(
+# ** vp
+            sp(method, "cat", c("moment", "mle", "mve", "t"), id="da.method"),
+            sp(nu, "int", c(2, 64), "exp", id="da.nu", req=quote(method=='t')),
+            sp(predict.method, "cat", c("plug-in", "predictive", "debiased"), id="da.pm"))),
+    autolearner("classif.linDA",
+        list(
+# ** dp
+            sp(validation, "def", NULL))),
+    autolearner("classif.sparseLDA",
+        list(
+# ** vp
+            sp(lambda, "real", c(1e-10, 1), "exp"),
+            sp(maxIte, "int", c(50, 400), "exp"),
+# ** dp
+            sp(trace, "def", FALSE),
+            sp(tol, "def", 1e-6))),
+    autolearner("classif.rrlda",
+        list(
+# ** vp
+            sp(lambda, "real", c(0.01, 10)),
+            sp(hp, "real", c(0.3, 1)),
+            sp(nssamples, "int", c(10, 1000), "exp"),
+            sp(maxit, "int", c(50, 400), "exp"),
+            sp(penalty, "cat", c("L1", "L2")),
+# ** dp
+            sp(prior, "def", NULL))))
