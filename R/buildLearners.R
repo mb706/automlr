@@ -3,13 +3,17 @@
 #' Take a list of autolearners and create a (big) mlr Learner object
 #' 
 #' @param searchspace list of autolearners.
-buildLearners = function(searchspace) {
+#' @param task the task that the searchspace is being created. \code{buildLearners} respects the task
+#'        type, presence of NAs and type of covariates. Currently not supported: weights, request of
+#'        probability assignment instead of class.
+#' @export
+buildLearners = function(searchspace, task) {
   # ok, this will be a big project. what do we need?
-  # [ ] load the mlr learners if an id is given. I think mlr has an aux function for that
+  # [x] load the mlr learners if an id is given. I think mlr has an aux function for that? Yes, but it is private :-/
   # [ ] filter out learners by what is needed, e.g.
   #   [ ] check if the learner can handle the input data format (numeric, factorial)
   #   [ ] check if there is a wrapper that turns the input data into appropriate format (e.g. removes factors)
-  #   [ ] (advanced) filter out classif/reg by task type
+  #   [x] (advanced) filter out classif/reg by task type
   # [ ] create the appropriate search space
   #   [ ] for default, check if the given defaults are actually the builtin defaults; warn if not and add "our" default as fixed value
   #   [ ] for fixed, set the fixed value
@@ -19,6 +23,7 @@ buildLearners = function(searchspace) {
   #     [ ] respect the transformation if required, respecting int / real types
   #     [ ] check that given parameter is the right type as the builtin type
   #     [ ] check that given range is within the builtin range / given categories are feasible
+  #   [ ] question? does makeModelMultiplexer keep hyperparameter settings? answer: yes, it does.
   # [ ] some magic
   #   [ ] parameters that are somehow transformed to other parameters. Can we thus solve classif.bartMachine$mh_prob_steps?
   #   [ ] maybe we hack mlr itself and make transformation functions that depend on other hyperparameters.
@@ -29,9 +34,27 @@ buildLearners = function(searchspace) {
   #     [ ] removing factors / removing numerics; respecting that factors/numerics might not be present to begin with.
   #     [ ] removing / not removing NAs (in factors/numerics); respecting that NAs might not be present to begin with.
   # [ ] somehow link the same-id parameters
-  #   [ ] warning if id happens only once. 
+  #   [ ] warning if id happens only once.
+  learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]  # exclude e.g. wrappers
+  for (i in seq_along(learners)) {
+    l = myCheckLearner(learners[[i]]$learners)
+    s = learners[[i]]$searchspace
+    if (task$type != l$type) {  # skip this learner, it is not fit for the task
+      next
+    }
+    # TODO: check whether the covariate type is supported
+  }
 }
 
+#' 
+myCheckLearner = function (learner) {
+  if (is.character(learner)) {
+    learner = makeLearner(learner)
+  } else {
+    assertClass(learner, classes = "Learner")
+  }
+  learner
+}
 
 buildLearners.old = function(searchspace) {
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
