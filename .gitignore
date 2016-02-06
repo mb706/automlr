@@ -18,3 +18,5 @@ inst/doc/
 man/*
 NAMESPACE
 .project
+tmp.R
+.ipynb_checkpoints
