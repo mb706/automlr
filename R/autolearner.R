@@ -3,7 +3,9 @@
 #' \code{Autolearner} objects wrap mlr \code{Learner} objects as well as preprocessing functions
 #' and provide additional
 #' meta information. This is used to define the automlr searchspace.
-#' @param learner An mlr Learner object or similar, depending on stacktype.
+#' @param learner An mlr Learner object or similar, depending on stacktype. May also be the ID of
+#'        learner (postpones allocation of memory and loading of packages and may therefore be
+#'        preferred.
 #' @param stacktype character(1) describing how this object can be connected with other learners.
 #' Must be one of \code{preprocessing} (e.g. feature selection), \code{learner}, \code{wrapper}
 #' (is combined with another learner, e.g. bagging), \code{multiwrapper} (e.g. is combined with
@@ -33,12 +35,11 @@ autolearner = function(learner, searchspace, stacktype="learner") {
 #'        (discrete), \code{bool} (logical), \code{fix} (fixed value of whatever type), \code{def}
 #'        using default value / not setting the value.
 #' @param trafo may be "exp" for exponential transformation. Transforms integer parameters in a 
-#'        smart way. Only applies for \code{real} and \code{int} values.
+#'        smart way. Only applies for \code{real} and \code{int} values. May also be an R function.
 #' @param id may be given to identify parameters of different learners having the same function.
 #' @param dummy this is a dummy variable that has no equivalent in the learners searchspace.
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
-#' @param 
 sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, req=NULL, dim=1) {
   makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo,id=id, dummy=dummy,
       req=req, dim=dim)

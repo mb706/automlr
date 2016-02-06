@@ -29,8 +29,13 @@
 #              makeNumericParam("ppc.fudge", requires=quote((ppc.BoxCox)))
 #        ))
 
+makeNamedAlList = function(l) {  # make a named list, more convenient to use
+    n = sapply(l, function(item) ifelse(is.character(item$learner, item$learner, item$learner$id)))
+    names(l) = n
+    l
+}
 
-autolearners = list(
+autolearners = makeNamedAlList(
     autolearner("classif.logreg"),
     autolearner("classif.probit"),
     autolearner("classif.plr",
