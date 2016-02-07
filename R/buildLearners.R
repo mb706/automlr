@@ -14,7 +14,7 @@ buildLearners = function(searchspace, task) {
   #   [ ] check if the learner can handle the input data format (numeric, factorial)
   #   [ ] check if there is a wrapper that turns the input data into appropriate format (e.g. removes factors)
   #   [x] (advanced) filter out classif/reg by task type
-  # [ ] create the appropriate search space
+  # [x] create the appropriate search space
   #   [x] for default, check if the given defaults are actually the builtin defaults; warn if not and add "our" default as fixed value
   #   [x] for fixed, set the fixed value
   #   [x] for variable search space, add the parameter to the search space
@@ -36,17 +36,23 @@ buildLearners = function(searchspace, task) {
   # [ ] somehow link the same-id parameters
   #   [ ] warning if id happens only once.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]  # exclude e.g. wrappers
+  learnerObjects = list()
+  modelTuneParsets = list()
   for (i in seq_along(learners)) {
-    l = myCheckLearner(learners[[i]]$learners)
+    l = myCheckLearner(learners[[i]]$learner)
     sslist = learners[[i]]$searchspace
     if (task$type != l$type) {  # skip this learner, it is not fit for the task
       next
     }
     # TODO: check whether the covariate type is supported
     aux = buildTuneSearchSpace(sslist, l)
-    tss = aux$tss
-    l = aux$l  # updated learner object with fixed hyperparameters
+    modelTuneParsets[[l$id]] = aux$tss
+    learnerObjects = c(learnerObjects, aux$l)  # updated learner object with fixed hyperparameters
   }
+  multiplexer = makeModelMultiplexer(learnerObjects)
+  tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets)
+  multiplexer$searchspace = tuneParamSet
+  multiplexer
 }
 
 buildTuneSearchSpace = function(sslist, l) {
@@ -192,14 +198,12 @@ createTrafo = function(min, max, isint) {
   }
 }
 
-buildLearners.old = function(searchspace) {
-  learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
-  onlyModels = extractSubList(learners, "learner", simplify=FALSE)
-  modelParsets = extractSubList(learners, "searchspace", simplify=FALSE)
-  names(modelParsets) = extractSubList(onlyModels, "id")
-  mm = makeModelMultiplexer(onlyModels)
-  mm$searchspace = do.call(makeModelMultiplexerParamSet, c(list(mm), modelParsets))
-
+#' Like mlr's mMMPS but respecting requirements.
+#'
+#' @param multiplexer the model multiplexer to use to create the ParamSet
+#' @param modelParsets the list of param sets that are used to create the mmps.
+makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
+  searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets))
   # now we need to deal with the bug that makeModelMultiplexer overrides requirements
   for (modeliter in seq_along(modelParsets)) {
     origpars = modelParsets[[modeliter]]$pars
@@ -213,7 +217,7 @@ buildLearners.old = function(searchspace) {
       cpname = names(origpars)[paramiter]
       cprequires = cp$requires
       newname = paste(modelid, cpname, sep='.') # the name fo the current Param within mm$searchspace
-      newrequires = mm$searchspace$pars[[newname]]$requires
+      newrequires = searchspace$pars[[newname]]$requires
       if (is.null(cprequires)) {
         # if there is no '$requires' we don't need to do anything
         next
@@ -226,8 +230,8 @@ buildLearners.old = function(searchspace) {
       # at this position, newrequires has the form
       # (new requires) && (old requires)
       # where the use of short-cirquiting && should solve any problems that we might get when querying isFeasible.
-      mm$searchspace$pars[[newname]]$requires = newrequires
+      searchspace$pars[[newname]]$requires = newrequires
     }
   }
-  mm
+  searchspace
 }
