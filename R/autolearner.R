@@ -6,23 +6,25 @@
 #' @param learner An mlr Learner object or similar, depending on stacktype. May also be the ID of
 #'        learner (postpones allocation of memory and loading of packages and may therefore be
 #'        preferred.
-#' @param stacktype character(1) describing how this object can be connected with other learners.
-#' Must be one of \code{preprocessing} (e.g. feature selection), \code{learner}, \code{wrapper}
-#' (is combined with another learner, e.g. bagging), \code{multiwrapper} (e.g. is combined with
-#' multiple different learners, e.g. stacking).
 #' @param searchspace a \code{ParamSet} object reqpresenting the relevant parameter search space.
+#' @param stacktype character(1) describing how this object can be connected with other learners.
+#' Must be one of \code{requiredwrapper} (e.g. feature selection), \code{learner}, \code{wrapper}
+#' (is optionally combined with another learner, e.g. bagging)
 #' @export
-autolearner.old = function(learner, searchspace=list(), stacktype="learner") {
+autolearner = function(learner, searchspace=list(), stacktype="learner") {
+  
+  assertChoice(stacktype, c("learner", "wrapper", "requiredwrapper"))
+  names = extractSubList(searchspace, "name")
+  if (any(duplicated(names))) {
+    stopf("Duplicated names %s for learner '%s'", paste(unique(names[duplicated(names)]), collapse=", "),
+        if(is.character(learner)) learner else learner$id) 
+  }
   makeS3Obj("Autolearner",
             learner=learner,
             searchspace=searchspace,
             stacktype=stacktype)
 }
 
-
-autolearner = function(learner, searchspace, stacktype="learner") {
-  
-}
 
 #' Define the searchspace parameter in a short form
 #' 
@@ -41,17 +43,45 @@ autolearner = function(learner, searchspace, stacktype="learner") {
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
 sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, req=NULL, dim=1) {
-  # TODO: various checks
-  # 'exp' or any other trafo only valid for 'int' or 'real'
-  # values[1] > values[0] for int or real
-  # dummy is T/F, id and name are strings, values has the right type, dim is integer >= 1
-  # values is NULL for bool type
-  # type is one of the allowed types
-  # dim is integer >= 1
-  # name is nonempty character
-  # id is nonempty character
-  # id not possible for fixed / defaults
-  # check values has the right length according to type
+  assertChoice(type, c("real", "int", "cat", "bool", "fix", "def"))
+
+  assertString(name)
+  assert(nchar(name) > 0)
+
+  if (type %in% c("real", "int")) {
+    assertVector(values, strict=TRUE, any.missing=FALSE, len=2)
+    if (type == "real") {
+      assertNumber(values[0], finite=TRUE)
+      assertNumber(values[1], lower=values[0], finite=TRUE)
+    } else {
+      assertInteger(values[0], finite=TRUE)
+      assertInteger(values[1], lower=1 + values[0])
+    }
+  } else if (type %in% c("fix", "def")) {
+    assertVector(values, strict=TRUE, len=1)
+  } else if (type == "cat"){
+    assertVector(values, strict=TRUE, min.len=2)
+  } else {  # type == "bool"
+    assertNull(values)
+  }
+
+  if (!is.null(trafo) && trafo != "exp") {
+    assertFunction(trafo, nargs=1)
+  }
+
+  if (!is.null(id)) {
+    assertString(id)
+    assert(type %nin% c("fix", "def"))
+    assert(nchar(id) > 0)
+  }
+
+  assertLogical(dummy, len=1)
+  if (!is.null(req)) {
+    assert(checkClass(req, "call"), checkClass(req, "expression"))
+  }
+
+  assertInteger(dim, lower=1, len=1)
+
   makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo, id=id, dummy=dummy,
       req=req, dim=dim)
 }
