@@ -41,6 +41,17 @@ autolearner = function(learner, searchspace, stacktype="learner") {
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
 sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, req=NULL, dim=1) {
-  makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo,id=id, dummy=dummy,
+  # TODO: various checks
+  # 'exp' or any other trafo only valid for 'int' or 'real'
+  # values[1] > values[0] for int or real
+  # dummy is T/F, id and name are strings, values has the right type, dim is integer >= 1
+  # values is NULL for bool type
+  # type is one of the allowed types
+  # dim is integer >= 1
+  # name is nonempty character
+  # id is nonempty character
+  # id not possible for fixed / defaults
+  # check values has the right length according to type
+  makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo, id=id, dummy=dummy,
       req=req, dim=dim)
 }

@@ -15,15 +15,15 @@ buildLearners = function(searchspace, task) {
   #   [ ] check if there is a wrapper that turns the input data into appropriate format (e.g. removes factors)
   #   [x] (advanced) filter out classif/reg by task type
   # [ ] create the appropriate search space
-  #   [ ] for default, check if the given defaults are actually the builtin defaults; warn if not and add "our" default as fixed value
-  #   [ ] for fixed, set the fixed value
-  #   [ ] for variable search space, add the parameter to the search space
-  #     [ ] warn if there is a requirement in the builtin parameter but not ours?
-  #     [ ] do a simple hack for dummy variables (check it is actually a dummy!)
-  #     [ ] respect the transformation if required, respecting int / real types
-  #     [ ] check that given parameter is the right type as the builtin type
-  #     [ ] check that given range is within the builtin range / given categories are feasible
-  #   [ ] question? does makeModelMultiplexer keep hyperparameter settings? answer: yes, it does.
+  #   [x] for default, check if the given defaults are actually the builtin defaults; warn if not and add "our" default as fixed value
+  #   [x] for fixed, set the fixed value
+  #   [x] for variable search space, add the parameter to the search space
+  #     [x] warn if there is a requirement in the builtin parameter but not ours?
+  #     [x] do a simple hack for dummy variables (check it is actually a dummy!)
+  #     [x] respect the transformation if required, respecting int / real types
+  #     [x] check that given parameter is the right type as the builtin type
+  #     [x] check that given range is within the builtin range / given categories are feasible
+  #   [x] question? does makeModelMultiplexer keep hyperparameter settings? answer: yes, it does.
   # [ ] some magic
   #   [ ] parameters that are somehow transformed to other parameters. Can we thus solve classif.bartMachine$mh_prob_steps?
   #   [ ] maybe we hack mlr itself and make transformation functions that depend on other hyperparameters.
@@ -38,12 +38,138 @@ buildLearners = function(searchspace, task) {
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]  # exclude e.g. wrappers
   for (i in seq_along(learners)) {
     l = myCheckLearner(learners[[i]]$learners)
-    s = learners[[i]]$searchspace
+    sslist = learners[[i]]$searchspace
     if (task$type != l$type) {  # skip this learner, it is not fit for the task
       next
     }
     # TODO: check whether the covariate type is supported
+    aux = buildTuneSearchSpace(sslist, l)
+    tss = aux$tss
+    l = aux$l  # updated learner object with fixed hyperparameters
   }
+}
+
+buildTuneSearchSpace = function(sslist, l) {
+  tuneSearchSpace = list()
+  for (j in seq_along(sslist)) {
+    param = s[[j]]
+    if (param$type == "bool") {
+      # useful since now we can automatically check for feasibility by checking whether everything in param$values is feasible.
+      param$values = c(TRUE, FALSE)
+    }
+    if (param$dummy) {  # dummy --> is not in the learner
+      if (param$name %in% getParamIds(getParamSet(l))) {
+        stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
+            param$name, l$id)
+      }
+      l$par.set = c(l$par.set, makeParamSet(createParameter(param)))
+    } else {
+      lp = getParamSet(l)
+      lpids = getParamIds(lp)
+      lptypes = getParamTypes(lp)
+      names(lptypes) = lpids
+      if (param$name %nin% lpids) {
+        stopf("Parameter '%s' as listed in search space is not available for learner '%s'.",
+            param$name, l$id)
+      }
+      if (!allfeasible(lp, param$values, param$name, param$dim)) {
+        stopf("Parameter '%s' as listed in search space has infeasible bounds '%' for learner '%s'.",
+            param$name, paste(param$values, collapse=" "), l$id)
+      }
+      if ((param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) &&
+          (param$type %in% c("int", "real") && lptypes[[param$name]] %nin% c("numeric", "numericvector"))) {
+        stopf("Parameter '%s' as listed in search space has wrong type '%' for learner '%s'",
+            param$name, param$type, l$id)
+      }
+      if ((param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) ||
+          (param$type == "bool" && lptypes[[param$name]] %nin% c("logical", "logicalvector")) ||
+          (param$type == "cat" &&
+            lptypes[[param$name]] %nin% c("discrete", "discretevector", "character", "charactervector"))) {
+        warningf("Parameter '%s' for learner '%s' is of type '%s' and has different (but feasible) type '%' listed in search space.",
+            param$name, l$id, lptypes[[param$name]], param$type)
+      }
+      if (hasRequires(lp$pars[[param$name]]) && is.null(param$req)) {
+        warningf("Parameter '%s' for learner '%s' has a 'requires' argument but the one given in the search space has not.",
+            param$name, l$id)
+      }
+    }
+    if (param$type == "def") {
+      # check whether this is /actually/ the default
+      truedefault = getDefaults(getParamSet(l))[[param$name]]
+      defaultcandidate = getHyperPars(l)[[param$name]]
+      if (!is.null(defaultcandidate)) {
+        # we try to use the default, but apparently the value is already set in the learner object.
+        if (is.null(truedefault) || truedefault != defaultcandidate) {
+          truedefault = 
+          warningf("Parameter '%s' for learner '%s' is of type 'default', but the learner has it already set to '%s'.",
+              param$name, l$id, defaultcandidate)
+          truedefault = defaultcandidate
+        }
+      }
+      if (is.null(truedefault) != is.null(param$values) ||
+          (!is.null(truedefault) && truedefault != param$values)) {
+        warningf("Parameter '%s' for learner '%s' is of type 'default' but its alleged default '%s' differs from the true default '%s'.",
+            param$name, l$id,
+            if (is.null(param$values)) "NULL" else param$values,
+            if (is.null(truedefault)) "NULL" else truedefault)
+        param$type = "fix"
+    }
+    if (param$type == "fix") {
+      assignment = list(rep(param$values, param$dim))
+      names(assignment) = param$name
+      l = setHyperPars(l, par.vals=assignment)
+    } else if (param$type != "def") {
+      tuneSearchSpace = c(tuneSearchSpace, createParameter(param))
+    }
+  }
+  list(tss=makeParamSet(params=tuneSearchSpace), l=l)
+}
+
+allfeasible = function(ps, totest, name, dimension) {
+  testlist = list(0)
+  names(testlist) = name
+  for (t in totest) {
+    testlist[[1]] = rep(t, dimension)
+    if (!isFeasible(ps, testlist)) {
+      return(FALSE)
+    }
+  }
+  TRUE
+}
+
+createParameter = function(param) {
+  if (param$type %in% c("int", "real")) {
+    pmin = param$values[0]
+    pmax = param$values[1]
+  }
+  if (param$trafo == "exp") {
+    if (param$type == "real") {
+      aux = createTrafo(pmin, pmax, FALSE)
+    } else {
+      # param$type == "int"
+      aux = createTrafo(pmin, pmax, TRUE)
+    }
+    ptrafo = aux$trafo
+    pmin = aux$newmin
+    pmax = aux$newmax
+  } else {
+    ptrafo = param$trafo  # will either be a function or NULL
+  }
+  switch(param$type,
+      real=makeNumericVectorParam(param$name, param$dim, pmin, pmax, trafo=ptrafo, requires=param$req),
+      int=makeIntegerVectorParam(param$name, param$dim, pmin, pmax, trafo=ptrafo, requires=param$req),
+      cat=makeDiscreteVectorParam(param$name, param$dim, param$values, requires=param$req),
+      bool=makeLogicalVectorParam(param$name, param$dim, requires=param$req),
+      # the possibilities 'fix' and 'def' are only reached if we are creating a dummy parameter
+      fix={  # for whatever reason one would want this...
+        warningf("Parameter '%s' for learner '%s is marked dummy and has type 'fix'; This usually does not make sense.",
+            param$name, l$id)
+        makeDiscreteVectorParam(param$name, param$dim, param$values, requires=param$req)
+      },
+      def={
+        stopf("Parameter '%s' for learner '%s' is marked as dummy must not have type 'def'.",
+            param$name, l$id)
+      }, stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, l$id))
 }
 
 #' 
@@ -54,6 +180,16 @@ myCheckLearner = function (learner) {
     assertClass(learner, classes = "Learner")
   }
   learner
+}
+
+createTrafo = function(min, max, isint) {
+  if (isint) {
+    ratio = sqrt((min+1) / min)
+    sequence = unique(c(min * ratio ^ (seq(from=0, to=floor(log(max, base=ratio)))), max))
+    return(list(trafo=function(x) sequence[x], newmin=1, newmax=length(sequence)))
+  } else {
+    return(list(trafo=function(x) min * (max / min)^x, newmin=0, newmax=1))
+  }
 }
 
 buildLearners.old = function(searchspace) {
