@@ -352,17 +352,15 @@
    - alpha :: 0..1: nonterminal node probability parameter
    - beta :: 1..3: nonterminal node probability parameter
    - k :: 1..4: distribution parameter
-   - mh_prob_steps :: MANUAL will be normalized. we use different parameters: a: 0..1, b: 0..1, where mh_prob_steps = ((1-a)*b, (1-a)*(1-b), a)
+   - mh_prob_steps :: 0.00000001..1: len(3) prior probabilities for three different actions. The program normalizes this.
 **** Default Parameters:
    - num_burn_in :: 250: number of trees to use as burn-in
    - num_iterations_after_burn_in :: 1000: number of MCMC samples
-   - q :: NULL: not used for classification
-   - nu :: NULL: not used for classification
+   - q :: 0.9: not used for classification
    - prob_rule_class :: 0.5: prob to choose positive outcome
    - debug_log :: FALSE
    - cov_prior_vec :: NULL: relative probability of being split candidate for each covariate.
    - use_missing_data :: TRUE
-   - replace_missing_data_with_x_j_bar :: FALSE
    - use_missing_data_dummies_as_covars :: FALSE: (TODO: need to add this feature to preprocess)
    - replace_missing_data_with_x_j_bar :: FALSE: (this is in preprocess)
    - impute_missingness_with_rf_impute :: FALSE: (need to add this to preprocess)
@@ -475,7 +473,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - Kinverse :: int 3..40: MANUAL number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
+   - K :: int 3..40: MANUAL{sp("K", "real", c(2, 40), trafo=function(x) round(sum(info$n.feat) / x))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
    - L :: int 25..100: number of trees
 ** Boosting
 *** classif.ada
@@ -843,7 +841,7 @@
    - ydim :: int 5..100 exp: {koho.y} grid Y size (I don't really know how this works..)
    - topo :: rectangular, hexagonal: {koho.topo} topology of the grid
    - rlen :: int 50..400 exp: {koho.rlen} idk lol
-   - alpha :: MANUAL [0.1..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
+   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x), dim=2} [0.1..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
    - xweight :: 0.5..0.9: {koho.xweight} initial weight given to X map
    - n.hood :: circular, square: {koho.shape} shape of neighbourhood
 **** Default Parameters:
@@ -852,7 +850,6 @@
 **** Changed (fixed) Parameters:
    - contin :: FALSE: indicate that we are dealing with categories
    - keep.data :: FALSE
-   - model :: FALSE: TODO: The function trainLearner.classif.binomial sets this to FALSE, the getParamSet says this defaults to TRUE. I guess FALSE it is...
 *** classif.lvq1
 - "Learning Vector Quantization 1"
 *** classif.naiveBayes
@@ -899,7 +896,7 @@
    - ydim :: int 5..100 exp: {koho.y} grid Y size (I don't really know how this works..)
    - topo :: rectangular, hexagonal: {koho.topo} topology of the grid
    - rlen :: int 50..400 exp: {koho.rlen} idk lol
-   - alpha :: MANUAL [0.1..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
+   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x), dim=2} [0.4..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
    - xweight :: 0.5..0.9: {koho.xweight} initial weight given to X map
    - n.hood :: circular, square: {koho.shape} shape of neighbourhood
 **** Default Parameters:
@@ -907,7 +904,6 @@
    - toroidal :: TRUE: edges of map are joined
 **** Changed (fixed) Parameters:
    - contin :: FALSE: indicate that we are dealing with categories
-
 * regr
 ** regr.avNNet
 x

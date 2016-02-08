@@ -1,4 +1,6 @@
 
+#' @include autolearner.R
+
 #' A list of learners with corresponding \code{par.set}s that can be searched over.
 #' 
 #' This is a list of learners that the infinitely wise developer of this package
@@ -29,12 +31,7 @@
 #              makeNumericParam("ppc.fudge", requires=quote((ppc.BoxCox)))
 #        ))
 
-makeNamedAlList = function(...) {  # make a named list, more convenient to use
-  l = list(...)
-  n = sapply(l, function(item) ifelse(is.character(item$learner), item$learner, item$learner$id))
-  names(l) = n
-  l
-}
+
 
 autolearners = makeNamedAlList(
     autolearner("classif.glmnet",
@@ -333,6 +330,33 @@ autolearners = makeNamedAlList(
             sp("maxcompete", "def", 4),
             sp("maxsurrogate", "def", 5),
             sp("parms", "def", NULL))),
+    autolearner("classif.bartMachine",
+        list(
+# ** vp
+            sp("num_trees", "int", c(25, 200), "exp"),
+            sp("alpha", "real", c(0, 1)),
+            sp("beta", "real", c(1, 3)),
+            sp("k", "real", c(1, 4)),
+            sp("mh_prob_steps", "real", c(0.00000001, 1), dim=3),
+# ** cp
+            sp("run_in_sample", "fix", FALSE),
+            sp("verbose", "fix", FALSE),
+# ** dp
+            sp("num_burn_in", "def", 250),
+            sp("num_iterations_after_burn_in", "def", 1000),
+            sp("q", "def", 0.9),
+            sp("prob_rule_class", "def", 0.5),
+            sp("debug_log", "def", FALSE),
+            sp("cov_prior_vec", "def", NULL),
+            sp("use_missing_data", "def", TRUE),
+            sp("use_missing_data_dummies_as_covars", "def", FALSE),
+            sp("replace_missing_data_with_x_j_bar", "def", FALSE),
+            sp("impute_missingness_with_rf_impute", "def", FALSE),
+            sp("impute_missingness_with_x_j_bar_for_lm", "def", TRUE),
+            sp("num_rand_samps_in_library", "def", 10000),
+            sp("mem_cache_for_speed", "def", TRUE),
+            sp("serialize", "def", FALSE),
+            sp("seed", "def", NULL))),
     autolearner("classif.randomForest",
         list(
 # ** vp
@@ -415,6 +439,11 @@ autolearners = makeNamedAlList(
             sp("reportErrorEvery", "def", 0),
             sp("saveForest", "def", TRUE),
             sp("saveErrorPropagation", "def", FALSE))),
+    autolearner("classif.rotationForest",
+        list(
+# ** vp
+            sp("K", "real", c(2, 40), trafo=function(x) round(sum(info$n.feat) / x)),
+            sp("L", "int", c(25, 100)))),
     autolearner("classif.ada",
         list(
 # ** vp
@@ -730,7 +759,7 @@ autolearners = makeNamedAlList(
             sp("algorithm", "cat", c("backprop", "rprop+", "rprop-", "sag", "slr")),
             sp("learningrate.limit", "real", c(.01, 2), "exp", req=quote(algorithm != "backprop"), dim=2),
             sp("learningrate.factor", "real", c(.01, 2), "exp", req=quote(algorithm != "backprop"), dim=2),
-            sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate", req=quote(algorithm== "backprop")),
+            sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate", req=quote(algorithm == "backprop")),
             sp("err.fct", "cat", c("sse", "ce")),
             sp("act.fct", "cat", c("logistic", "tanh")),
             sp("linear.output", "bool"),
@@ -759,6 +788,22 @@ autolearners = makeNamedAlList(
             sp("sae_output", "cat", c("sigm", "linear", "softmax")),
 # ** dp
             sp("visible_dropout", "def", 0))),
+    autolearner("classif.bdk",
+        list(
+# ** vp
+            sp("xdim", "int", c(5, 100), "exp", id="koho.x"),
+            sp("ydim", "int", c(5, 100), "exp", id="koho.y"),
+            sp("topo", "cat", c("rectangular", "hexagonal"), id="koho.topo"),
+            sp("rlen", "int", c(50, 400), "exp", id="koho.rlen"),
+            sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2),
+            sp("xweight", "real", c(0.5, 0.9), id="koho.xweight"),
+            sp("n.hood", "cat", c("circular", "square"), id="koho.shape"),
+# ** cp
+            sp("contin", "fix", FALSE),
+            sp("keep.data", "fix", FALSE),
+# ** dp
+            sp("radius", "def", NULL),
+            sp("toroidal", "def", TRUE))),
     autolearner("classif.lvq1"),
     autolearner("classif.naiveBayes",
         list(
@@ -781,4 +826,19 @@ autolearners = makeNamedAlList(
             sp("D", "def", FALSE),
             sp("S", "def", NULL),
             sp("E", "def", FALSE),
-            sp("output-debug-info", "def", FALSE))))
+            sp("output-debug-info", "def", FALSE))),
+    autolearner("classif.xyf",
+        list(
+# ** vp
+            sp("xdim", "int", c(5, 100), "exp", id="koho.x"),
+            sp("ydim", "int", c(5, 100), "exp", id="koho.y"),
+            sp("topo", "cat", c("rectangular", "hexagonal"), id="koho.topo"),
+            sp("rlen", "int", c(50, 400), "exp", id="koho.rlen"),
+            sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2),
+            sp("xweight", "real", c(0.5, 0.9), id="koho.xweight"),
+            sp("n.hood", "cat", c("circular", "square"), id="koho.shape"),
+# ** cp
+            sp("contin", "fix", FALSE),
+# ** dp
+            sp("radius", "def", 0),
+            sp("toroidal", "def", TRUE))))

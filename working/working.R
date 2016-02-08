@@ -67,9 +67,11 @@ isFeasible(getParamSet(makeLearner("classif.lqa"))$pars[['gamma']], 1)
 
 getParamSet(makeLearner("classif.lqa"))$pars[['gamma']]$lower - 1
 
-s = ParamHelpers::generateRandomDesign(10, lbig$searchspace, TRUE)
+s = ParamHelpers::generateRandomDesign(1000, lbig$searchspace, TRUE)
 
+s
 printAllGiven(s)
+
 quote({a; b})
 
 lbig$searchspace$pars$classif.lqa.lambda1$requires
@@ -106,11 +108,17 @@ as.expression(B)
 
 lbig$searchspace$pars$classif.glmboost.mstop$requires
 
-mod = makeLearner("classif.glmboost")
+mod = makeLearner("classif.svm")
+
 mmod = makeModelMultiplexer(list(mod))
-ps = makeParamSet(makeDiscreteParam("m", values=c("cv",  "aic", "mstop")), makeIntegerParam("mstop", 25, 500, 25, requires=quote(m == "mstop")))
-generateRandomDesign(10, psx)
+
+ps = makeParamSet(makeDiscreteParam("type", values=c("nu-classification",  "C-classification")),
+  makeNumericParam("nu", .001, 1, 1, requires=quote(type == "nu-classification")))
+generateRandomDesign(10, ps)
 
 debugonce(automlr:::makeModelMultiplexerParamSetEx)
-psx = automlr:::makeModelMultiplexerParamSetEx(mmod, list(classif.glmboost=ps))
-psx$pars$classif.glmboost.mstop$requires
+
+psx = automlr:::makeModelMultiplexerParamSetEx(mmod, list(classif.svm=ps))
+
+psx$pars$classif.svm.nu$requires
+lbig$searchspace$pars$classif.svm.nu$requires
