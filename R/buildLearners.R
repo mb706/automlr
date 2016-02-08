@@ -33,8 +33,10 @@ buildLearners = function(searchspace, task) {
   #   [ ] wrappers have to be able to give some information about transformations they make
   #     [ ] removing factors / removing numerics; respecting that factors/numerics might not be present to begin with.
   #     [ ] removing / not removing NAs (in factors/numerics); respecting that NAs might not be present to begin with.
+  #   [ ] parameter dependency on number of columns etc. is easy by injecting an environment into the trafo function.
   # [ ] somehow link the same-id parameters
   #   [ ] warning if id happens only once.
+  
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]  # exclude e.g. wrappers
   learnerObjects = list()
   modelTuneParsets = list()
@@ -284,11 +286,27 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
         # if there is no '$requires' we don't need to do anything
         next
       }
+      # what we are going to do is substitute the variable names with their new prefixed versions.
+      # HOWEVER: R uses different scoping for function calls than for variables. therefore e.g.
+      # > c <- 1
+      # > c(c, c)
+      # doesn't give an error. This is a pain when trying to do what I'm doing here. So we will
+      # manually substitute all function calls with different names.
+      #
+      # the width.cutoff may be a problem? I wouldn't assume so if deparse keeps function name and opening parenthesis on the same line.
+      funcallmatch = "(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)((?:[^`\\\\]|\\\\.)+`))([[:blank:]]*\\()"
+      parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", deparse(as.expression(cprequires), control=c("keepInteger", "keepNA"), width.cutoff=500))
+      #the following would be dumb: parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1], fixed=TRUE) # NO!
+      cprequires = asQuoted(parsed)
       # the following line is a bit of R magic. Use do.call, so that cprequires, which is a
       # 'quote' object, is expanded to its actual content. The 'substitute' call will change all
       # names of the old parameters to the new parameters.
       cprequires = do.call(substitute, list(cprequires, substitution))
-      newrequires = substitute((a) && (b), list(a=newrequires, b=cprequires))
+      
+      funcallmatchReverse = "(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))([[:blank:]]*\\()"
+      parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", deparse(cprequires, control=c("keepInteger", "keepNA"), width.cutoff=500))
+      cprequires = eval(asQuoted(parsed))
+      newrequires = substitute((a) && eval(b), list(a=newrequires, b=cprequires))
       # at this position, newrequires has the form
       # (new requires) && (old requires)
       # where the use of short-cirquiting && should solve any problems that we might get when querying isFeasible.
