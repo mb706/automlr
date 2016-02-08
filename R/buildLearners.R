@@ -1,5 +1,6 @@
 
 
+
 #' Take a list of autolearners and create a (big) mlr Learner object
 #' 
 #' @param searchspace list of autolearners.
@@ -40,6 +41,8 @@ buildLearners = function(searchspace, task) {
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]  # exclude e.g. wrappers
   learnerObjects = list()
   modelTuneParsets = list()
+  info.env = new.env(parent=baseenv())
+  info.env$info = getTaskDescription(task)
   for (i in seq_along(learners)) {
     l = myCheckLearner(learners[[i]]$learner)
     sslist = learners[[i]]$searchspace
@@ -47,7 +50,7 @@ buildLearners = function(searchspace, task) {
       next
     }
     # TODO: check whether the covariate type is supported
-    aux = buildTuneSearchSpace(sslist, l)
+    aux = buildTuneSearchSpace(sslist, l, info.env)
     modelTuneParsets[[l$id]] = aux$tss
     learnerObjects = c(learnerObjects, list(aux$l))  # updated learner object with fixed hyperparameters
   }
@@ -69,7 +72,7 @@ buildLearners = function(searchspace, task) {
   multiplexer
 }
 
-buildTuneSearchSpace = function(sslist, l) {
+buildTuneSearchSpace = function(sslist, l, info.env) {
   lp = getParamSet(l)
   lpids = getParamIds(lp)
   lptypes = getParamTypes(lp)
@@ -91,7 +94,7 @@ buildTuneSearchSpace = function(sslist, l) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
             param$name, l$id)
       }
-      l$par.set = c(l$par.set, makeParamSet(createParameter(param)))
+      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
       lptypes = getParamTypes(lp)  # recreate lptypes here, since it may have changed 
@@ -163,7 +166,7 @@ buildTuneSearchSpace = function(sslist, l) {
       names(assignment) = param$name
       l = setHyperPars(l, par.vals=assignment)
     } else if (param$type != "def") {  # variable parameter
-      tuneSearchSpace = c(tuneSearchSpace, list(createParameter(param)))
+      tuneSearchSpace = c(tuneSearchSpace, list(createParameter(param, info.env)))
     }
   }
   list(tss=makeParamSet(params=tuneSearchSpace), l=l)
@@ -181,12 +184,12 @@ allfeasible = function(ps, totest, name, dimension) {
   TRUE
 }
 
-createParameter = function(param) {
+createParameter = function(param, info.env) {
   if (param$type %in% c("int", "real")) {
     pmin = param$values[1]
     pmax = param$values[2]
   }
-  if (!is.null(param$trafo) && param$trafo == "exp") {
+  if (!is.null(param$trafo) && identical(param$trafo, "exp")) {
     if (param$type == "real") {
       aux = createTrafo(pmin, pmax, FALSE)
     } else {
@@ -231,7 +234,11 @@ createParameter = function(param) {
       def=stopf("Parameter '%s' for learner '%s' is marked as dummy must not have type 'def'.",
           param$name, l$id),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, l$id)))
-  do.call(constructor, paramlist, quote=TRUE)
+  pobject = do.call(constructor, paramlist, quote=TRUE)
+  if (!is.null(pobject$trafo)) {
+    environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names=TRUE), parent=info.env)
+  }
+  pobject
 }
 
 #' Turn learner id string into learner object, if necessary

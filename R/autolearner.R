@@ -68,7 +68,7 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
     assertNull(values)
   }
 
-  if (!is.null(trafo) && trafo != "exp") {
+  if (!is.null(trafo) && !identical(trafo, "exp")) {
     assertFunction(trafo, nargs=1)
   }
 
@@ -90,4 +90,11 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
 
   makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo, id=id, dummy=dummy,
       req=req, dim=dim)
+}
+
+makeNamedAlList = function(...) {  # make a named list, more convenient to use
+  l = list(...)
+  n = sapply(l, function(item) ifelse(is.character(item$learner), item$learner, item$learner$id))
+  names(l) = n
+  l
 }
