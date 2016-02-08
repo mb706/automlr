@@ -47,18 +47,39 @@ buildLearners = function(searchspace, task) {
     # TODO: check whether the covariate type is supported
     aux = buildTuneSearchSpace(sslist, l)
     modelTuneParsets[[l$id]] = aux$tss
-    learnerObjects = c(learnerObjects, aux$l)  # updated learner object with fixed hyperparameters
+    learnerObjects = c(learnerObjects, list(aux$l))  # updated learner object with fixed hyperparameters
   }
   multiplexer = makeModelMultiplexer(learnerObjects)
+  
+  # TODO: it remains to be seen whether the following is necessary and / or a good thing to do.
+  #  - in favour: maybe the learner objects don't remember the fixed hyperparameters that are given to them.
+  #  - against: maybe there will be complaints when a hyperparameter is set for a learner that isn't active b/c of requirements.
+  for (l in learnerObjects) {
+    hs = getHyperPars(l)
+    vals = list()
+    for (hname in names(hs)) {
+      vals[[paste(l$id, hname, sep=".")]] = hs[[hname]]
+    }
+    multiplexer = setHyperPars(multiplexer, par.vals=vals)
+  }
   tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets)
   multiplexer$searchspace = tuneParamSet
   multiplexer
 }
 
 buildTuneSearchSpace = function(sslist, l) {
+  lp = getParamSet(l)
+  lpids = getParamIds(lp)
+  lptypes = getParamTypes(lp)
+  names(lptypes) = lpids
+  allParams = extractSubList(sslist, "name")
+  untouchedParams = setdiff(lpids, allParams)
+  if (length(untouchedParams)) {
+    warningf("Learner '%s' has parameters %s that are not mentioned in search space.",
+        l$id, paste(untouchedParams, collapse=", "))
+  }
   tuneSearchSpace = list()
-  for (j in seq_along(sslist)) {
-    param = s[[j]]
+  for (param in sslist) {
     if (param$type == "bool") {
       # useful since now we can automatically check for feasibility by checking whether everything in param$values is feasible.
       param$values = c(TRUE, FALSE)
@@ -69,34 +90,39 @@ buildTuneSearchSpace = function(sslist, l) {
             param$name, l$id)
       }
       l$par.set = c(l$par.set, makeParamSet(createParameter(param)))
-    } else {
       lp = getParamSet(l)
       lpids = getParamIds(lp)
-      lptypes = getParamTypes(lp)
+      lptypes = getParamTypes(lp)  # recreate lptypes here, since it may have changed 
       names(lptypes) = lpids
+    } else {
       if (param$name %nin% lpids) {
         stopf("Parameter '%s' as listed in search space is not available for learner '%s'.",
             param$name, l$id)
       }
       if (!allfeasible(lp, param$values, param$name, param$dim)) {
-        stopf("Parameter '%s' as listed in search space has infeasible bounds '%' for learner '%s'.",
+        # there is one 'special case': param$values might be names that index into lp$pars[[param$name]]$values.
+        vals = getValues(lp)[[param$name]]
+        if (isSubset(param$values, names(vals))) {
+          param$values = vals[param$values]
+          assert(allfeasible(lp, param$values, param$name, param$dim))
+        } else {
+          stopf("Parameter '%s' as listed in search space has infeasible bounds '%s' for learner '%s'.",
             param$name, paste(param$values, collapse=" "), l$id)
+        }
       }
-      if ((param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) &&
+      if ((lptypes[[param$name]] != "untyped") &&
+          (param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) &&
           (param$type %in% c("int", "real") && lptypes[[param$name]] %nin% c("numeric", "numericvector"))) {
-        stopf("Parameter '%s' as listed in search space has wrong type '%' for learner '%s'",
+        stopf("Parameter '%s' as listed in search space has wrong type '%s' for learner '%s'",
             param$name, param$type, l$id)
       }
-      if ((param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) ||
-          (param$type == "bool" && lptypes[[param$name]] %nin% c("logical", "logicalvector")) ||
-          (param$type == "cat" &&
-            lptypes[[param$name]] %nin% c("discrete", "discretevector", "character", "charactervector"))) {
-        warningf("Parameter '%s' for learner '%s' is of type '%s' and has different (but feasible) type '%' listed in search space.",
+      if ((lptypes[[param$name]] != "untyped") &&
+          ((param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) ||
+           (param$type == "bool" && lptypes[[param$name]] %nin% c("logical", "logicalvector")) ||
+           (param$type == "cat" &&
+             lptypes[[param$name]] %nin% c("discrete", "discretevector", "character", "charactervector")))) {
+        warningf("Parameter '%s' for learner '%s' is of type '%s' and has different (but feasible) type '%s' listed in search space.",
             param$name, l$id, lptypes[[param$name]], param$type)
-      }
-      if (hasRequires(lp$pars[[param$name]]) && is.null(param$req)) {
-        warningf("Parameter '%s' for learner '%s' has a 'requires' argument but the one given in the search space has not.",
-            param$name, l$id)
       }
     }
     if (param$type == "def") {
@@ -119,13 +145,23 @@ buildTuneSearchSpace = function(sslist, l) {
             if (is.null(param$values)) "NULL" else param$values,
             if (is.null(truedefault)) "NULL" else truedefault)
         param$type = "fix"
+      }
+    }
+    if (!param$dummy && param$type !="def" && hasRequires(lp$pars[[param$name]]) && is.null(param$req)) {
+      warningf("Parameter '%s' for learner '%s' has a 'requires' argument but the one given in the search space has not.",
+          param$name, l$id)
     }
     if (param$type == "fix") {
-      assignment = list(rep(param$values, param$dim))
+      if (lptypes[[param$name]] == "discretevector") {
+        assignment = list(rep(list(param$values), param$dim))
+      } else {
+        assignment = list(if (param$dim > 1) rep(param$values, param$dim) else param$values)
+      }
+
       names(assignment) = param$name
       l = setHyperPars(l, par.vals=assignment)
-    } else if (param$type != "def") {
-      tuneSearchSpace = c(tuneSearchSpace, createParameter(param))
+    } else if (param$type != "def") {  # variable parameter
+      tuneSearchSpace = c(tuneSearchSpace, list(createParameter(param)))
     }
   }
   list(tss=makeParamSet(params=tuneSearchSpace), l=l)
@@ -135,8 +171,8 @@ allfeasible = function(ps, totest, name, dimension) {
   testlist = list(0)
   names(testlist) = name
   for (t in totest) {
-    testlist[[1]] = rep(t, dimension)
-    if (!isFeasible(ps, testlist)) {
+    testlist[[1]] = if (dimension > 1) rep(t, dimension) else t
+    if (!isFeasible(ps$pars[[name]], testlist[[1]])) {  # this would be easier if there was a way to disable requirements checking.
       return(FALSE)
     }
   }
@@ -145,10 +181,10 @@ allfeasible = function(ps, totest, name, dimension) {
 
 createParameter = function(param) {
   if (param$type %in% c("int", "real")) {
-    pmin = param$values[0]
-    pmax = param$values[1]
+    pmin = param$values[1]
+    pmax = param$values[2]
   }
-  if (param$trafo == "exp") {
+  if (!is.null(param$trafo) && param$trafo == "exp") {
     if (param$type == "real") {
       aux = createTrafo(pmin, pmax, FALSE)
     } else {
@@ -161,24 +197,44 @@ createParameter = function(param) {
   } else {
     ptrafo = param$trafo  # will either be a function or NULL
   }
-  switch(param$type,
-      real=makeNumericVectorParam(param$name, param$dim, pmin, pmax, trafo=ptrafo, requires=param$req),
-      int=makeIntegerVectorParam(param$name, param$dim, pmin, pmax, trafo=ptrafo, requires=param$req),
-      cat=makeDiscreteVectorParam(param$name, param$dim, param$values, requires=param$req),
-      bool=makeLogicalVectorParam(param$name, param$dim, requires=param$req),
-      # the possibilities 'fix' and 'def' are only reached if we are creating a dummy parameter
-      fix={  # for whatever reason one would want this...
+  if (param$dim > 1) {
+    constructor = switch(param$type,
+        real=makeNumericVectorParam,
+        int=makeIntegerVectorParam,
+        cat=makeDiscreteVectorParam,
+        bool=makeLogicalVectorParam,
+        fix=makeDiscreteVectorParam,
+        NULL)
+    paramlist = list(id=param$name, len=param$dim, requires=param$req)
+  } else {
+    constructor = switch(param$type,
+        real=makeNumericParam,
+        int=makeIntegerParam,
+        cat=makeDiscreteParam,
+        bool=makeLogicalParam,
+        fix=makeDiscreteParam,
+        NULL)
+    paramlist = list(id=param$name, requires=param$req)
+  }
+  paramlist = c(paramlist, switch(param$type,
+      int=list(lower=pmin, upper=pmax, trafo=ptrafo),
+      real=list(lower=pmin, upper=pmax, trafo=ptrafo),
+      cat=list(values=param$values),
+      bool=list(),
+      fix={
         warningf("Parameter '%s' for learner '%s is marked dummy and has type 'fix'; This usually does not make sense.",
             param$name, l$id)
-        makeDiscreteVectorParam(param$name, param$dim, param$values, requires=param$req)
+        list(values=param$values)
       },
-      def={
-        stopf("Parameter '%s' for learner '%s' is marked as dummy must not have type 'def'.",
-            param$name, l$id)
-      }, stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, l$id))
+      def=stopf("Parameter '%s' for learner '%s' is marked as dummy must not have type 'def'.",
+          param$name, l$id),
+      stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, l$id)))
+  do.call(constructor, paramlist, quote=TRUE)
 }
 
+#' Turn learner id string into learner object, if necessary
 #' 
+#' @param learner a character scalar or learner object
 myCheckLearner = function (learner) {
   if (is.character(learner)) {
     learner = makeLearner(learner)
@@ -190,10 +246,16 @@ myCheckLearner = function (learner) {
 
 createTrafo = function(min, max, isint) {
   if (isint) {
+    assert(min >= 0)
+    addzero = if (min == 0) 0
+    if (min == 0) {
+     min = 1
+   }
     ratio = sqrt((min+1) / min)
-    sequence = unique(c(min * ratio ^ (seq(from=0, to=floor(log(max, base=ratio)))), max))
+    sequence = unique(c(addzero, round(min * ratio ^ (seq(from=0, to=floor(log(max, base=ratio))))), max))
     return(list(trafo=function(x) sequence[x], newmin=1, newmax=length(sequence)))
   } else {
+    assert(min > 0)
     return(list(trafo=function(x) min * (max / min)^x, newmin=0, newmax=1))
   }
 }
