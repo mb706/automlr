@@ -50,7 +50,7 @@
    - maxit :: 1e5
    - type.logistic :: NULL: use default algorithm
    - type.multinomial :: NULL: standard lasso penalty
-   - fdev :: e-5
+   - fdev :: 1e-5
    - devmax :: .999
    - eps :: 1e-6
    - big :: 9.9e35
@@ -60,7 +60,7 @@
    - mxit :: 100
    - factory :: FALSE
 **** Changed (fixed) Parameters:
-   - nlambda.min.ratio :: .0001
+   - lambda.min.ratio :: .0001
    - nlambda :: 200: resolution of precomputed models
    - mnlam :: 200: resolution of precomputed models; need to set this too, seems to be a bug
    - standardize :: FALSE: is done already
@@ -68,6 +68,8 @@
 - Uses glm() for binomial classification
 **** Variable Parameters:
    - link :: logit, probit, cauchit, log, cloglog: link function
+**** Default Parameters:
+   - model :: TRUE: this is a BUG giving this hyper parameter gives an error.
 *** classif.LiblineaRXXX
 - Different methods:
 **** Variable Parameters:
@@ -84,16 +86,16 @@
 - GLM fitted with LQA algorithm
 **** Variable Parameters:
    - penalty :: adaptive.lasso, ao, bridge, enet, fused.lasso, genet, icb, lasso, licb, oscar, penalreg, ridge, scad, weighted.fusion
-   - lambda :: .001..100: regularization parameter; req: penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad")
-   - gamma :: .001..100: regularization parameter; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
-   - alpha :: .001..100: regularization parameter; req: penalty == "genet"
-   - c :: .001..100: regularization parameter; req: penalty == "oscar"
-   - a :: .001..100: regularization parameter; req: penalty == "scad"
-   - lambda1 :: .001..100: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
-   - lambda2 :: .001..100: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
+   - lambda :: .001..100 exp: regularization parameter; req: penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad")
+   - gamma :: 1.0001..100 exp: regularization parameter; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
+   - alpha :: .001..100 exp: regularization parameter; req: penalty == "genet"
+   - c :: .001..100 exp: regularization parameter; req: penalty == "oscar"
+   - a :: 2..100 exp: regularization parameter; req: penalty == "scad"
+   - lambda1 :: .001..100 exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
+   - lambda2 :: .001..100 exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
    - method :: lqa.update2, ForwardBoost, GBlockBoost
 **** Default Parameters:
-   - var.eps :: .Machine$double.eps: MANUAL{sp(var.eps, "def", .Machine$double.eps)} tol when checking for 0 variance
+   - var.eps :: .Machine$double.eps: MANUAL{sp("var.eps", "def", .Machine$double.eps)} tol when checking for 0 variance
    - max.steps :: 5000: maximum lqa algorithm steps
    - conv.eps :: .001: convergence break for parameter updating
    - conv.stop :: TRUE: stop when coeffs are converged
@@ -110,14 +112,14 @@
 **** Variable Parameters:
    - lambda :: 1e-5..100 exp: regularization parameter
    - cp.type :: bic, aic
-**** Changed (fixed) Parameters:
-   - cp :: NULL: must be missing, so that cp.type has an effect
+**** Default Parameters:
+   - cp :: 2: will be ignored when cp.type is given.
 ** discriminant analysis
 *** classif.lda
 - Linear discriminant analysis
 **** Variable Parameters:
    - method :: moment, mle, mve, t: {da.method}
-   - nu :: int 2..64 exp: {da.nu} t degrees of freedom, req: method=='t'
+   - nu :: 2..64 exp: {da.nu} t degrees of freedom, req: method=='t'
    - predict.method :: plug-in, predictive, debiased: {da.pm}
 **** Default Parameters:
    - tol :: .0001
@@ -127,7 +129,7 @@
 - see also: classif.lda
 **** Variable Parameters:
    - method :: moment, mle, mve, t: {da.method}
-   - nu :: int 2..64 exp: {da.nu} t degrees of freedom, req: method=='t'
+   - nu :: 2..64 exp: {da.nu} t degrees of freedom, req: method=='t'
    - predict.method :: plug-in, predictive, debiased: {da.pm}
 *** classif.linDA
 - linear discriminant analysis
@@ -180,7 +182,7 @@
    - lambda.freqs :: 0..1: shrinkage intensity for frequencies
    - diagonal :: TRUE, FALSE: DDA vs. LDA
 **** Default Parameters:
-   - verbose :: FALSE: no output
+   - verbose :: TRUE: output
 *** classif.plsdaCaret
 - partial least squares discriminant analysis
 **** Variable Parameters:
@@ -194,11 +196,11 @@
    - method :: polyreg, mars, bruto, gen.ridge
    - start.method :: kmeans, lvq
    - tries :: int 5..20: number of retries of mda initialization
-   - criterion :: missclassification, deviance: optimization crit for mda init.
+   - criterion :: misclassification, deviance: optimization crit for mda init.
 **** Default Parameters:
    - tot.df :: NULL: total degrees of freedom; we declare df per class
    - dimension :: NULL: not specifying model dimension in advance
-   - eps :: 2.22e-16
+   - eps :: 2.22e-16: MANUAL{sp("eps", "def", .Machine$double.eps)}
    - iter :: 5: number of iterations
    - trace :: FALSE
 **** Changed (fixed) Parameters:
@@ -261,7 +263,7 @@
 **** Default Parameters:
    - X :: NULL: (false): don't optimize, /we/ are doing that already
    - E :: NULL: no effect when X not given.
-   - A :: NULL: use default NN alg
+   - A :: weka.core.neighboursearch.LinearNNSearch: use default NN alg
    - W :: NULL: no window
    - output-debug-info :: FALSE
 ** TREE
@@ -339,6 +341,7 @@
 **** Default Parameters:
    - maxcompete :: 4: only affects output
    - maxsurrogate :: 5: only affects output
+   - parms :: NULL: further parameters not given
 **** Changed (fixed) Parameters:
    - xval :: 0: no crossvalidation
 ** Random Forests
@@ -375,6 +378,7 @@
 - TODO: THIS IS FUCKED UP BEYOND REPAIR, SOMEONE NEEDS TO REPAIR THE MLR INTERFACE FIRST
 - Random forest and bagging ensemble
 **** Variable Parameters:
+   - xxx :: MANUAL repair this...
    - ntree :: int 100..4000 exp: {rf.numtree} number of trees to grow
    - mtry :: 3..20 exp: number of sampled variables. TODO: could also do 'NULL' or 0 or Inf, but the formalism doesn't allow that so far.
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
@@ -411,11 +415,14 @@
    - nodesize :: int 1..32 exp: {rf.nodesize} terminal node size
    - numRandomCuts :: int 1..16 exp: number of tried cuts
    - evenCuts :: TRUE, FALSE
-   - subsetSizesIsNull :: TRUE, FALSE: my dummy variable
+   - subsetSizesIsNull :: TRUE, FALSE: DUMMY
    - subsetSizes :: int 10..1000 exp: req: subsetSizesIsNull == FALSE
 **** Default Parameters:
    - numThreads :: 1: let's not get too fancy
    - subsetGroups :: NULL: not for optimization
+   - tasks :: NULL: task feature not used
+   - probOfTaskCuts :: NULL
+   - numRandomTaskCuts :: 1
 **** Changed (fixed) Parameters:
    - na.action :: fuse
 *** classif.randomForestSRC
@@ -468,7 +475,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - Kinverse :: int 3..40: number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
+   - Kinverse :: int 3..40: MANUAL number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
    - L :: int 25..100: number of trees
 ** Boosting
 *** classif.ada
@@ -493,6 +500,7 @@
    - delta :: 1e-10: tolerance for convergence
    - maxcompete :: 4: only affects output
    - maxsurrogate :: 5: only affects output
+   - verbose :: FALSE: little output
 **** Changed (fixed) Parameters:
    - max.iter :: 40: newton steps. Conservatively chosen for large data sets; this might be relevant when we start optimizing runtime
    - xval :: 0: no crossvalidation
@@ -536,11 +544,12 @@
 **** Changed (fixed) Parameters:
    - xval :: 0: no crossvalidation
 *** classif.bst
-- Gradient Boosting, seems like this wouldn't be adding anything so I'll skip it for now
+**** Variable Parameters:
+   - xxx :: MANUAL Gradient Boosting, seems like this wouldn't be adding anything so I'll skip it for now
 *** classif.gbm
 - "Generalized Boosted Regression Modeling"
 **** Variable Parameters:
-   - distribution :: bernoulli, adaboost, gaussian, laplace, huberized, multinomial, pooisson, pairwise
+   - distribution :: bernoulli, adaboost, gaussian, laplace, huberized, multinomial, poisson, pairwise
    - n.trees :: int 100..4000 exp
    - interaction.depth :: int 1..3: max order of interactions
    - n.minobsinnode :: int 1..32 exp
@@ -556,7 +565,7 @@
 **** Variable Parameters:
    - family :: AdaExp, Binomial
    - mstop :: int 25..400 exp: req: m == "mstop"
-   - msto :: 400: req: m != "mstop"
+   - msto :: 400: DUMMY req: m != "mstop"
    - nu :: .001...3 exp
    - risk :: inbag, oobag, none
    - stopintern :: TRUE, FALSE
@@ -582,15 +591,15 @@
    - nrounds :: int 1..16 exp: number of passes. Not sure whether this is a sensible range.
 **** Default Parameters:
    - silent :: 0: some output
-   - objective :: NULL: is supplied by learner function
-   - eval_metrix :: NULL: use default
+   - eval_metric :: error: use default
    - maximize :: TRUE: does not matter since early.stop.round is NULL.
 **** Changed (fixed) Parameters:
    - nthread :: 1: only one thread
    - verbose :: 0: stay silent
-   - print.every.n :: 0: stay silent
-   - early.stop.round :: NULL
-   - missing :: NULL: we don't have a missing indicator.
+   - print.every.n :: 1000000000: stay silent
+   - early.stop.round :: 1000000000: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
+   - missing :: 2147359313: we don't have a missing indicator, but we can't give NULL here, so we take a number that is unlikely to be chosen.
+   - objective :: NULL: we must set this to NULL so it gets chosen automatically.
 ** SVM
 *** classif.dcSVM
 - Divide and Conquer kernel Support Vector Machine
@@ -600,7 +609,7 @@
    - kernel :: 1, 2, 3: kernel type
    - max.levels :: int 1..32 exp: maximum number of levels
    - final.training :: FALSE, TRUE: usually false
-   - cluster.method :: kmeans, kernkmeans, mlKmeans: {svm.cluster} clustering algorithm
+   - cluster.method :: kmeans, kernkmeans: {svm.cluster} clustering algorithm
 **** Default Parameters:
    - pre.scale :: FALSE: we scale ourselves
    - seed :: NULL: random seed
@@ -620,7 +629,7 @@
    - lambda :: 0.5..4 exp: weight of global l2 norm
    - type :: 1, 2, 3, 5: idk, the default parameter set says so
    - cost :: 0.1..10 exp: inverse of regularisation constant
-   - cluster.method :: kmeans, kernkmeans, mlKmeans: {svm.cluster} clustering algorithm
+   - cluster.method :: kmeans, kernkmeans: {svm.cluster} clustering algorithm
 **** Default Parameters:
    - cluster.object :: NULL: internal object
    - sparse :: TRUE: return sparse object
@@ -651,10 +660,10 @@
 **** Default Parameters:
    - tol :: .001: termination criterion
    - class.weights :: NULL
-   - fit :: NULL
 **** Changed (fixed) Parameters:
    - scaled :: FALSE: we do that ourselves
    - cache :: 400
+   - fit :: FALSE: don't include computed values
 *** classif.gaterSVM
 - "Mixture SVMs with gater function"
 - described in "A Parallel Mixture of SVMs for Very Large Scale Problems"
@@ -668,10 +677,11 @@
    - c :: 1, 100, 10000: upper bound for samples / subset is n / m + c.
 **** Default Parameters:
    - seed :: NULL: random seed
-   - verbose :: TRUE: print training info
    - valid.x :: NULL
    - valid.y :: NULL
    - valid.metric :: NULL
+**** Changed (fixed) Parameters:
+   - verbose :: TRUE: print training info
 *** classif.lssvm
 - Least Squares Support Vector Machine
 **** Variable Parameters:
@@ -684,10 +694,11 @@
    - offset :: 0..4: {svm.offset} req: kernel %in% c("polydot", "tanhdot")
    - order :: int 0..6: {svm.order} integer, req: kernel == "besseldot"
 **** Default Parameters:
-   - tol :: .001: termination criterion
-   - fit :: NULL: TODO is named 'fitted' in mlr, which is a BUG
+   - tol :: .0001: termination criterion
 **** Changed (fixed) Parameters:
    - scaled :: FALSE: we do that ourselves
+   - fitted :: FALSE: TODO is named 'fitted' in mlr, which is a BUG
+   - fit :: 0: DUMMY
 *** classif.svm
 **** Variable Parameters:
    - type :: C-classification, nu-classification
@@ -709,7 +720,8 @@
    - scale :: FALSE: we do that ourselves.
 ** Neural Nets
 *** classif.avNNet
-- seems to be bagging using nnet; ignoring this for the time being.
+**** Variable Parameters:
+   - xxx :: MANUAL seems to be bagging using nnet; ignoring this for the time being.
 *** classif.dbnDNN
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
@@ -724,12 +736,13 @@
    - batchsize :: int 5..500 exp: {nn.bs}
    - hidden_dropout :: 0.5..1: {nn.dropout}
    - output :: sigm, linear, softmax: {nn.output}
-   - cd :: 1, 2, 3: boltzmann machine init rounds
+   - cd :: 1..5: boltzmann machine init rounds
 **** Default Parameters:
    - visible_dropout :: 0
 *** classif.mlp
 - Multilayer perceptron
-- Skipping this for now since we have a few NNs already
+**** Variable Parameters:
+   - xxx :: MANUAL Skipping this for now since we have a few NNs already
 *** classif.multinom
 - multinomial log-linear models via neural nets
 **** Variable Parameters:
@@ -745,7 +758,7 @@
    - abstoll :: 0.0001
    - reltoll :: 1e-8
 **** Changed (fixed) Parameters:
-   - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely
+   - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely. DUMMY since mlr doesn't know about it.
 *** classif.nnet
 - Single-hidden-layer neural network with multinomial log-linear models and possible skip-layer connections
 **** Variable Parameters:
@@ -787,7 +800,7 @@
    - hidden :: 3..100 exp: len(2) {nn.h2} req: numlayers==2
    - hidde :: 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
    - hidd :: 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
-   - threshold :: .1...0001 exp: stopping criterion
+   - threshold :: .0001...1 exp: stopping criterion
    - stepmax :: int 50..400 exponential: number of iterations
    - rep :: int 1..16 exp: repetitions of fitting
    - algorithm :: backprop, rprop+, rprop-, sag, slr
@@ -877,7 +890,8 @@
 **** Default Parameters:
    - D :: FALSE: no debug mode
    - S :: NULL: no seed
-   - E :: NULL: check error rate
+   - E :: FALSE: check error rate
+   - output-debug-info :: FALSE
 *** classif.xyf
 - Supervised version of Kohonen's self-organising maps
 **** Variable Parameters:
