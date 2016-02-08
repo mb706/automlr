@@ -160,12 +160,12 @@
    - crossval :: TRUE, FALSE
    - train.fraction :: 0.1..0.9: the fraction of the data used for training
    - fold :: int 1..32 exp: number of crossval- or bootstrap samples
-   - K :: int 30..3000 exp: steps until temp == 0; req: simAnn == TRUE && schedule == 1
-   - alpha :: 1..4: power of temp reduction; req: simAnn == TRUE && schedule == 2
-   - zero.temp :: .001..0.1 exp: temp at which to set temperature to 0 req: simAnn == TRUE && schedule == 1
-   - halflife :: 5..1000 exp: steps that reduce temperature to 1/2. req: simAnn == TRUE && schedule == 1
-   - T.start :: .01..100 exp: starting temp; req: simAnn == TRUE
-   - schedule :: 1, 2: req: simAnn == FALSE
+   - K :: int 30..3000 exp: steps until temp == 0; req: SimAnn == TRUE && schedule == 1
+   - alpha :: 1..4: power of temp reduction; req: SimAnn == TRUE && schedule == 2
+   - zero.temp :: .001..0.1 exp: temp at which to set temperature to 0 req: SimAnn == TRUE && schedule == 1
+   - halflife :: 5..1000 exp: steps that reduce temperature to 1/2. req: SimAnn == TRUE && schedule == 1
+   - T.start :: .01..100 exp: starting temp; req: SimAnn == TRUE
+   - schedule :: 1, 2: req: SimAnn == FALSE
    - trafo :: TRUE, FALSE: use transformed variables
    - SimAnn :: TRUE, FALSE: use simulated annealing
 **** Default Parameters:
@@ -649,7 +649,7 @@
    - type :: C-svc, nu-svc, C-bsvc, spoc-svc, kbb-svc: svm type
    - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot, stringdot: {svm.kernel}
    - C :: .125..8 exp: {svm.c} constraint violation cost. req: type %in% c("C-svc", "C-bsvc", "spoc-svc", "kbb-svc")
-   - nu :: .001...1 exp: {svm.nu} req: type==nu-svc
+   - nu :: .001...1 exp: {svm.nu} req: type == "nu-svc"
    - epsilon :: .001...5 exp: {svm.epsilon} insensitive loss epsilon. req: type %in% c("eps-svr", "nu-svr", "eps-bsvm")
    - sigma :: .001..100 exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
    - degree :: int 1..10 exp: {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
@@ -804,9 +804,9 @@
    - stepmax :: int 50..400 exponential: number of iterations
    - rep :: int 1..16 exp: repetitions of fitting
    - algorithm :: backprop, rprop+, rprop-, sag, slr
-   - learningrate.limit :: .01..2 exp: len(2) req: algorithm != backprop
-   - learningrate.factor :: .01..2 exp: len(2) req: algorithm != backprop
-   - learningrate :: 0.01..2 exp: {nn.lrate} req: algorithm==backprop
+   - learningrate.limit :: .01..2 exp: len(2) req: algorithm != "backprop"
+   - learningrate.factor :: .01..2 exp: len(2) req: algorithm != "backprop"
+   - learningrate :: 0.01..2 exp: {nn.lrate} req: algorithm == "backprop"
    - err.fct :: sse, ce: error function
    - act.fct :: logistic, tanh: activation function
    - linear.output :: TRUE, FALSE: linear output
