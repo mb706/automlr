@@ -25,6 +25,11 @@ autolearner = function(learner, searchspace=list(), stacktype="learner") {
             stacktype=stacktype)
 }
 
+#' @export
+print.Autolearner = function(x, ...) {
+  cat(sprintf("<automlr learner '%s'>\n", ifelse(is.character(x$learner), x$learner, x$learner$id)))
+}
+
 
 #' Define the searchspace parameter in a short form
 #' 
@@ -49,18 +54,16 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
   assert(nchar(name) > 0)
 
   if (type %in% c("real", "int")) {
-    assertVector(values, strict=TRUE, any.missing=FALSE, len=2)
-    if (type == "real") {
-      assertNumber(values[0], finite=TRUE)
-      assertNumber(values[1], lower=values[0], finite=TRUE)
-    } else {
-      assertInteger(values[0], finite=TRUE)
-      assertInteger(values[1], lower=1 + values[0])
+    assertNumeric(values, any.missing=FALSE, len=2)
+    assert(values[2] > values[1])
+    if (type == "int") {
+      assert(all(as.integer(values) == values))
+      values = as.integer(values)
     }
   } else if (type %in% c("fix", "def")) {
-    assertVector(values, strict=TRUE, len=1)
+    is.null(values) || assertVector(values, strict=TRUE, len=1)
   } else if (type == "cat"){
-    assertVector(values, strict=TRUE, min.len=2)
+    assertVector(values, strict=TRUE, min.len=1)
   } else {  # type == "bool"
     assertNull(values)
   }
@@ -79,6 +82,9 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
   if (!is.null(req)) {
     assert(checkClass(req, "call"), checkClass(req, "expression"))
   }
+
+  assert(all(as.integer(dim) == dim))
+  dim = as.integer(dim)
 
   assertInteger(dim, lower=1, len=1)
 
