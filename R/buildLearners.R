@@ -26,34 +26,109 @@ buildLearners = function(searchspace, task) {
   #     [x] check that given range is within the builtin range / given categories are feasible
   #   [x] question? does makeModelMultiplexer keep hyperparameter settings? answer: yes, it does.
   # [ ] some magic
-  #   [ ] parameters that are somehow transformed to other parameters. Can we thus solve classif.bartMachine$mh_prob_steps?
-  #   [ ] maybe we hack mlr itself and make transformation functions that depend on other hyperparameters.
+  #   [/] parameters that are somehow transformed to other parameters. Can we thus solve classif.bartMachine$mh_prob_steps?
+  #   [/] maybe we hack mlr itself and make transformation functions that depend on other hyperparameters.
   #       - this cannot work because there may be circular dependencies.
   #       - so we need to somehow wrap classif.pamr to make threshold.predict = max(thresholds) * threshold.predict.fraction i guess
   #   [ ] i think i have to reimplement classif.LiblineaRXXX myself to get the broken parameter space back together.
   #   [ ] wrappers have to be able to give some information about transformations they make
   #     [ ] removing factors / removing numerics; respecting that factors/numerics might not be present to begin with.
   #     [ ] removing / not removing NAs (in factors/numerics); respecting that NAs might not be present to begin with.
-  #   [ ] parameter dependency on number of columns etc. is easy by injecting an environment into the trafo function.
+  #   [x] parameter dependency on number of columns etc. is easy by injecting an environment into the trafo function.
   # [ ] somehow link the same-id parameters
-  #   [ ] warning if id happens only once.
+  #   [x] warning if id happens only once.
   
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]  # exclude e.g. wrappers
+  wrappers = searchspace[extractSubList(searchspace, "stacktype") %in% c("wrapper", "requiredwrapper")]
+  
   learnerObjects = list()
   modelTuneParsets = list()
+  taskdesc = getTaskDescription(task)
+  
+  if (taskdesc$has.weights) {
+    stop("Tasks with weights are currently not supported.")
+  }
+  
   info.env = new.env(parent=baseenv())
-  info.env$info = getTaskDescription(task)
+  info.env$info = taskdesc
+  idRef = list()
+  # short reference of important features to watch:
+  #  - taskdesc has:
+  #    - type (classif, regr, ...) that must match the learner
+  #    - n.feat with: numerics, factors, ordered, preprocessing may depend on this
+  #    - has.missings: preprocessing may depend on this
+  #    - has.weights: give an error, since we can't handle weights right now.
+  #    - length(class.levels) if twoclass or multiclass. This will reduce our search space since some can't handle multi
+  #  - learner properties can be:
+  #    - what covariates can be handled?
+  #      - factors
+  #      - ordered
+  #      - numerics
+  #    - what target variables can be handled?
+  #      - oneclass
+  #      - twoclass
+  #      - multiclass
+  #    - missings -- NAs allowed?
+  #    - ** the following would be nice in the future but is currently being ignored **
+  #      - weights -- weights can be handled
+  #      - class.weights -- class weights can be handled
+  #      - form of prediction
+  #        - prob -- probability can be predicted
+  #        - se -- standard error can be predicted
+
+  # wrapper need additional field 'automlrInfoEx' containing:
+  #  $conversion: function taking one of "factors", "ordered", "numerics", "missings" and returning a subset of these
+  #   (the empty string if the input type can be removed).
+
+  allcovtypes = c("factors", "ordered", "numerics")
+  covtypes = allcovtypes[taskdesc$n.feat[allcovtypes] > 0]
+  allcovtypes = c(allcovtypes, "missings")
+  if (taskdesc$has.missings) {
+    covtypes = c(covtypes, "missings")
+  }
+  mincovtypes = covtypes
+  maxcovtypes = c(covtypes, "missings")  # absence of missings is never a problem
+  canRemoveType = FALSE
+  for (w in wrappers) {
+    if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
+      break
+    }
+    for (t in covtypes) {
+      conv = w$automlrInfoEx$conversion(t)
+      if ("" %in% conv) {
+        mincovtypes = setdiff(mincovtypes, t)
+      }
+      maxcovtypes = union(maxcovtypes, setdiff(t, ""))
+    }
+  }
+
   for (i in seq_along(learners)) {
     l = myCheckLearner(learners[[i]]$learner)
+    
     sslist = learners[[i]]$searchspace
-    if (task$type != l$type) {  # skip this learner, it is not fit for the task
+    if (taskdesc$type != l$type) {  # skip this learner, it is not fit for the task
       next
     }
-    # TODO: check whether the covariate type is supported
-    aux = buildTuneSearchSpace(sslist, l, info.env)
+    if (!hasLearnerProperties(l, c("oneclass", "twoclass", "multiclass")[min(3, length(td$class.levels))])) {
+      # can't handle the target variable type
+      next
+    }
+    learnercovtypes = intersect(allcovtypes, getLearnerProperties(l))
+    if (length(setdiff(mincovtypes, learnercovtypes)) == 0) {
+      # there are feature types that no wrapper can remove that the learner can't handle
+      next
+    }
+    if (length(intersect(maxcovtypes, learnercovtypes)) == 0) {
+      # we can't convert the features to any kind of feature that the learner can handle
+      next
+    }
+    aux = buildTuneSearchSpace(sslist, l, info.env, idRef)
     modelTuneParsets[[l$id]] = aux$tss
     learnerObjects = c(learnerObjects, list(aux$l))  # updated learner object with fixed hyperparameters
+    idRef = aux$idRef
   }
+  checkParamIds(idRef)
+
   multiplexer = makeModelMultiplexer(learnerObjects)
   
   # TODO: it remains to be seen whether the following is necessary and / or a good thing to do.
@@ -72,7 +147,31 @@ buildLearners = function(searchspace, task) {
   multiplexer
 }
 
-buildTuneSearchSpace = function(sslist, l, info.env) {
+checkParamIds = function(idRef) {
+  # check that the IDs match.
+  for (parid in names(idRef)) {
+    if (length(idRef[[parid]]) == 1) {
+      warningf("Parameter '%s' of learner '%s' is the only one with parameter id '%s'.",
+          idRef[[parid]][[1]]$param$id, idRef[[parid]][[1]]$learner$id, parid)
+      next
+    }
+    needstomatch = c("type", "len", "lower", "upper", "values", "allow.inf")
+    protopar = idRef[[parid]][[1]]$param
+    for (otherpar in idRef[[parid]]) {
+      for (property in needstomatch) {
+        prop1 = protopar[[property]]
+        prop2 = otherpar$param[[property]]
+        if (!identical(prop1, prop2)) {
+          stopf("Prameter '%s' of learner '%s' has the same id '%s' as param '%s' of learner '%s', but their '%s' property do not match. ('%s' vs. '%s')",
+              protopar$id, idRef[[parid]][[1]]$learner$id, parid, otherpar$param$id, otherpar$learner$id, property,
+              if (is.null(prop1)) "NULL" else prop1, if (is.null(prop2)) "NULL" else prop2)
+        }
+      }
+    }
+  }
+}
+
+buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
   lp = getParamSet(l)
   lpids = getParamIds(lp)
   lptypes = getParamTypes(lp)
@@ -166,10 +265,14 @@ buildTuneSearchSpace = function(sslist, l, info.env) {
       names(assignment) = param$name
       l = setHyperPars(l, par.vals=assignment)
     } else if (param$type != "def") {  # variable parameter
-      tuneSearchSpace = c(tuneSearchSpace, list(createParameter(param, info.env)))
+      newparam = createParameter(param, info.env)
+      if (!is.null(param$id)) {
+        idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
+      }
+      tuneSearchSpace = c(tuneSearchSpace, list(newparam))
     }
   }
-  list(tss=makeParamSet(params=tuneSearchSpace), l=l)
+  list(tss=makeParamSet(params=tuneSearchSpace), l=l, idRef=idRef)
 }
 
 allfeasible = function(ps, totest, name, dimension) {
