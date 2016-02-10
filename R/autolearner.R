@@ -26,6 +26,20 @@ autolearner = function(learner, searchspace=list(), stacktype="learner") {
 }
 
 #' @export
+wrapper = function(name, constructor, conversion) {
+  assertFunction(constructor)
+  assertFunction(conversion, nargs=1)
+  
+  input = c("factors", "ordered", "numerics", "missings")
+  output = c(input, "")
+  for (inp in c("factors", "ordered", "numerics", "missings")) {
+    assert(all(conversion(inp) %in% output))
+  }
+  
+  list(name=name, constructor=constructor, conversion=conversion)
+}
+
+#' @export
 print.Autolearner = function(x, ...) {
   cat(sprintf("<automlr learner '%s'>\n", ifelse(is.character(x$learner), x$learner, x$learner$id)))
 }

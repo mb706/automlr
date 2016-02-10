@@ -134,7 +134,7 @@ lsmall = buildLearners(list(automlr::autolearners$classif.glmboost), iris.task)
 generateRandomDesign(10, lsmall$searchspace)
 
 ps = BBmisc::extractSubList(lbig$base.learners, "properties")
-Filter(function(x) ("numerics" %nin% x), ps)
+Filter(function(x) ("ordered" %in% x), ps)
 length(allfacs)
 Filter(function(x) "ordered" %in% x, allfacs)
 
@@ -149,4 +149,27 @@ listWrapperCombinations(c("a", "b", "c"), c(F, T, T))
 duplicated(ids)
 ids = c('a', 'b', 'c')
 rep(list(ids), 1)
+
+generateRandomDesign(10, lsmall$searchspace)
+
+
+conva = function(x) x
+convb = function(x) c(x, "")
+wrappers = list(
+  a=list(required=TRUE, id="a", conversion=convb, searchspace=makeParamSet(makeLogicalParam("a1", req=quote(TRUE == automlr.remove.factors)))))
+taskdesc = getTaskDescription(iris.task)
+idRef = list()
+canHandleX = list(
+  missings=c("a", "b"),
+  factors=c("a", "c", "d"),
+  ordered=c("a", "c"))
+
+devtools::load_all("..")  # this veritable package itself
+res = automlr:::makeAMExoWrapper(NULL, wrappers, taskdesc, idRef, c("missings", "factors", "ordered", "numerics"), canHandleX)
+res
+
+res$wrappers$a$searchspace$pars$a1$requires
+
+debugger()
+
 

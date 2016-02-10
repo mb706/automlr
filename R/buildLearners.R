@@ -86,20 +86,25 @@ buildLearners = function(searchspace, task) {
   if (taskdesc$has.missings) {
     covtypes = c(covtypes, "missings")
   }
+  requiredClassProperty = c("oneclass", "twoclass", "multiclass")[min(3, length(td$class.levels))]
   mincovtypes = covtypes
   maxcovtypes = c(covtypes, "missings")  # absence of missings is never a problem
   canRemoveType = FALSE
+  wrapperList = list()
+  handlerList = list()
   for (w in wrappers) {
     if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
       break
     }
     for (t in covtypes) {
-      conv = w$automlrInfoEx$conversion(t)
+      conv = w$learner$conversion(t)
       if ("" %in% conv) {
         mincovtypes = setdiff(mincovtypes, t)
       }
       maxcovtypes = union(maxcovtypes, setdiff(t, ""))
     }
+    w$learner$searchspace = makeParamSet(lapply(w$searchspace, createParameter, info.env=info.env))
+    wrapperList[w$learner$name] = w$learner
   }
 
   for (i in seq_along(learners)) {
@@ -109,7 +114,7 @@ buildLearners = function(searchspace, task) {
     if (taskdesc$type != l$type) {  # skip this learner, it is not fit for the task
       next
     }
-    if (!hasLearnerProperties(l, c("oneclass", "twoclass", "multiclass")[min(3, length(td$class.levels))])) {
+    if (!hasLearnerProperties(l, requiredClassProperty)) {
       # can't handle the target variable type
       next
     }
@@ -121,6 +126,9 @@ buildLearners = function(searchspace, task) {
     if (length(intersect(maxcovtypes, learnercovtypes)) == 0) {
       # we can't convert the features to any kind of feature that the learner can handle
       next
+    }
+    for (canHandle in intersect(allcovtypes, getLearnerProperties(l))) {
+      handlerList[[canHandle]] = c(handlerList[[canHandle]], l$id)
     }
     aux = buildTuneSearchSpace(sslist, l, info.env, idRef)
     modelTuneParsets[[l$id]] = aux$tss
@@ -144,7 +152,7 @@ buildLearners = function(searchspace, task) {
   }
   tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets)
   multiplexer$searchspace = tuneParamSet
-  multiplexer
+  makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, c(covtypes, requiredClassProperty), handlerList)
   # TODO: the plan to resolve the conversion of data into other forms by the wrapper (e.g. ordered->factor, factor->numeric):
   # I write an exo-wrapper that introduces a few hyperparameters:
   # automlr.has.{numerics,ordered,factors,missings}. Some of them are clamped to one state (e.g. if there are no missings to begin with).
