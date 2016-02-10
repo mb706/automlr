@@ -122,3 +122,31 @@ psx = automlr:::makeModelMultiplexerParamSetEx(mmod, list(classif.svm=ps))
 
 psx$pars$classif.svm.nu$requires
 lbig$searchspace$pars$classif.svm.nu$requires
+
+
+automlr:::allfeasible(getParamSet(makeLearner("classif.bdk")), c(0, 1), "alpha", 2)
+
+devtools::load_all("..")  # this veritable package itself
+lbig = buildLearners(automlr:::autolearners, iris.task)
+
+lsmall = buildLearners(list(automlr::autolearners$classif.glmboost), iris.task)
+
+generateRandomDesign(10, lsmall$searchspace)
+
+ps = BBmisc::extractSubList(lbig$base.learners, "properties")
+Filter(function(x) ("numerics" %nin% x), ps)
+length(allfacs)
+Filter(function(x) "ordered" %in% x, allfacs)
+
+
+listWrapperCombinations = function(ids, required) {
+  requiredIDs = ids[required]
+  unlist(sapply(seq_along(ids), function(l) apply(expand.grid(rep(list(ids), l)), 1, function(x)
+        if (all(requiredIDs %in% x) && all(!duplicated(x))) paste(x, collapse="$"))))
+}
+
+listWrapperCombinations(c("a", "b", "c"), c(F, T, T))
+duplicated(ids)
+ids = c('a', 'b', 'c')
+rep(list(ids), 1)
+
