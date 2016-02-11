@@ -86,7 +86,7 @@ buildLearners = function(searchspace, task) {
   if (taskdesc$has.missings) {
     covtypes = c(covtypes, "missings")
   }
-  requiredClassProperty = c("oneclass", "twoclass", "multiclass")[min(3, length(td$class.levels))]
+  requiredClassProperty = c("oneclass", "twoclass", "multiclass")[min(3, length(taskdesc$class.levels))]
   mincovtypes = covtypes
   maxcovtypes = c(covtypes, "missings")  # absence of missings is never a problem
   canRemoveType = FALSE
@@ -104,8 +104,9 @@ buildLearners = function(searchspace, task) {
       maxcovtypes = union(maxcovtypes, setdiff(t, ""))
     }
     w$learner$searchspace = makeParamSet(lapply(w$searchspace, createParameter, info.env=info.env))
-    wrapperList[w$learner$name] = w$learner
+    wrapperList[[w$learner$name]] = w$learner
   }
+
 
   for (i in seq_along(learners)) {
     l = myCheckLearner(learners[[i]]$learner)
@@ -119,7 +120,7 @@ buildLearners = function(searchspace, task) {
       next
     }
     learnercovtypes = intersect(allcovtypes, getLearnerProperties(l))
-    if (length(setdiff(mincovtypes, learnercovtypes)) == 0) {
+    if (length(setdiff(mincovtypes, learnercovtypes)) != 0) {
       # there are feature types that no wrapper can remove that the learner can't handle
       next
     }
@@ -136,6 +137,11 @@ buildLearners = function(searchspace, task) {
     idRef = aux$idRef
   }
   checkParamIds(idRef)
+  
+  if (length(learnerObjects) == 0) {
+    warning("No model fits the given task, returning NULL.")
+    return(NULL)
+  }
 
   multiplexer = makeModelMultiplexer(learnerObjects)
   
@@ -218,7 +224,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
             param$name, l$id)
       }
-      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env)))
+      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, do.trafo=FALSE)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
       lptypes = getParamTypes(lp)  # recreate lptypes here, since it may have changed 
@@ -312,10 +318,21 @@ allfeasible = function(ps, totest, name, dimension) {
   TRUE
 }
 
-createParameter = function(param, info.env) {
+createParameter = function(param, info.env, do.trafo=TRUE) {
   if (param$type %in% c("int", "real")) {
     pmin = param$values[1]
     pmax = param$values[2]
+  }
+  if (!do.trafo) {
+    if (!is.null(param$trafo)) {
+      if (param$type %in% c("int", "real") && !identical(param$trafo, "exp")) {
+        # if the transformation is not our own 'exp' trafo, then we can't say for sure what the real bounds are, or even what the param type is.
+        pmin = -Inf
+        pmax = Inf
+        param$type = "real"
+      }
+      param$trafo = NULL
+    }
   }
   if (!is.null(param$trafo) && identical(param$trafo, "exp")) {
     if (param$type == "real") {
@@ -365,6 +382,9 @@ createParameter = function(param, info.env) {
   pobject = do.call(constructor, paramlist, quote=TRUE)
   if (!is.null(pobject$trafo)) {
     environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names=TRUE), parent=info.env)
+    if (identical(param$trafo, "exp")) {
+      pobject$origValues = param$values
+    }
   }
   pobject
 }
@@ -389,10 +409,14 @@ createTrafo = function(min, max, isint) {
      min = 1
    }
     ratio = sqrt((min+1) / min)
-    sequence = unique(c(addzero, round(min * ratio ^ (seq(from=0, to=floor(log(max, base=ratio))))), max))
+    sequence = unique(c(addzero, round(min * ratio ^ (seq(from=0, to=floor(log(max/min, base=ratio))))), max))
     return(list(trafo=function(x) sequence[x], newmin=1, newmax=length(sequence)))
   } else {
+    #  !!! We have to evaluate 'min' and 'max' here, otherwise they stay in the environment as 'promise' objects
+    # and weird stuff happens! 
     assert(min > 0)
+    assert(max > 0)
+
     return(list(trafo=function(x) min * (max / min)^x, newmin=0, newmax=1))
   }
 }

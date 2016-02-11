@@ -82,8 +82,12 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
     assertNull(values)
   }
 
-  if (!is.null(trafo) && !identical(trafo, "exp")) {
-    assertFunction(trafo, nargs=1)
+  if (!is.null(trafo)) {
+    if (identical(trafo, "exp")) { 
+      assert(type %in% c("real", "int"))
+    } else {
+      assertFunction(trafo, nargs=1)
+    }
   }
 
   if (!is.null(id)) {

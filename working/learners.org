@@ -473,7 +473,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - K :: int 3..40: MANUAL{sp("K", "real", c(2, 40), trafo=function(x) round(sum(info$n.feat) / x))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
+   - K :: int 3..40: MANUAL{sp("K", "real", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x)))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
    - L :: int 25..100: number of trees
 ** Boosting
 *** classif.ada
@@ -567,7 +567,7 @@
    - nu :: .001...3 exp
    - risk :: inbag, oobag, none
    - stopintern :: TRUE, FALSE
-   - m :: mstop, cv, aic
+   - m :: mstop, cv: also option 'aic', but for some reason that doesn't work (BUG?)
 **** Default Parameters:
    - center :: FALSE
    - trace :: FALSE
