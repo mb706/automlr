@@ -15,7 +15,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
             names(wrappers), extractSubList(wrappers, "required")))
   # wrappersetup has the format outermostWrapper$wrapper...$wrapper$innermostwrapper.
   # step 0: introduce the outside parameters that control this.
-  allDelendum = c("missings", "factors", "ordered")
+  # TODO: automlr.remove.xxx defaults to FALSE if xxx is not present.
+  allDelendum = c("missings", "factors", "ordered", "numerics")
   deleters = list()
   newparams = c(list(), wrapperSelectParam)
   missingsVar = list(

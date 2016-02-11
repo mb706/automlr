@@ -17,7 +17,7 @@ autolearner = function(learner, searchspace=list(), stacktype="learner") {
   names = extractSubList(searchspace, "name")
   if (any(duplicated(names))) {
     stopf("Duplicated names %s for learner '%s'", paste(unique(names[duplicated(names)]), collapse=", "),
-        if(is.character(learner)) learner else learner$id) 
+        if(is.character(learner)) learner else coalesce(learner$id, learner$name)) 
   }
   makeS3Obj("Autolearner",
             learner=learner,
@@ -26,7 +26,7 @@ autolearner = function(learner, searchspace=list(), stacktype="learner") {
 }
 
 #' @export
-wrapper = function(name, constructor, conversion) {
+autoWrapper = function(name, constructor, conversion) {
   assertFunction(constructor)
   assertFunction(conversion, nargs=1)
   
@@ -41,7 +41,7 @@ wrapper = function(name, constructor, conversion) {
 
 #' @export
 print.Autolearner = function(x, ...) {
-  cat(sprintf("<automlr learner '%s'>\n", ifelse(is.character(x$learner), x$learner, x$learner$id)))
+  cat(sprintf("<automlr learner '%s'>\n", ifelse(is.character(x$learner), x$learner, coalesce(x$learner$id, x$learner$name))))
 }
 
 
@@ -69,7 +69,7 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
 
   if (type %in% c("real", "int")) {
     assertNumeric(values, any.missing=FALSE, len=2)
-    assert(values[2] > values[1])
+    assert(values[2] >= values[1])
     if (type == "int") {
       assert(all(as.integer(values) == values))
       values = as.integer(values)
@@ -112,7 +112,7 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
 
 makeNamedAlList = function(...) {  # make a named list, more convenient to use
   l = list(...)
-  n = sapply(l, function(item) ifelse(is.character(item$learner), item$learner, item$learner$id))
+  n = sapply(l, function(item) ifelse(is.character(item$learner), item$learner, coalesce(item$learner$id, item$learner$name)))
   names(l) = n
   l
 }
