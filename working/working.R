@@ -193,9 +193,14 @@ smallAL = makeNamedAlList(
                 sp("center", "def", FALSE),
                 sp("trace", "def", FALSE))))
 
+devtools::load_all("..")  # this veritable package itself
 vse = buildLearners(smallAL, pid.task)
 as.list(environment(vse$searchspace$pars$classif.glmboost.nu$trafo))
+
 vse
+
+vse$searchspace
+
 getParamSet(vse)
 vse$staticParams
 getLearnerProperties(makeLearner("classif.probit"))

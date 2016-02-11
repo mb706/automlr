@@ -4,51 +4,93 @@
 #' @param modelmultiplexer a modelmultiplexer object that should have a $searchspace element
 #' @param wrappers a named list of wrappers that have a $required element;
 #'        names must not contain $-character. Also: $conversion, $searchspace, $constructor
-makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, properties, canHandleX) {
-  # Required parameters may have a dependency on special parameters:
-  # automlr.remove.missings, automlr.remove.factors, automlr.remove.ordered
-  # these are TRUE whenever the wrapper is expected to remove missings/factors/ordered.
-  # automlr.remove.factors also removes ordered variables. because.
-  # All wrappers may depend on
-  # - automlr.has.missings, automlr.has.factors, autmlr.has.ordered
-  wrapperSelectParam = if (length(wrappers)) makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
-            names(wrappers), unlist(extractSubList(wrappers, "required"))))
-  # wrappersetup has the format outermostWrapper$wrapper...$wrapper$innermostwrapper.
-  # step 0: introduce the outside parameters that control this.
+makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, properties, canHandleX, allLearners) {
+  # So what are we doing here?
+  # The AMExoWrapper mostly handles parameter space magic. Specifically, this is:
+  #  - introduce a parameter that chooses which wrapper is used, and in which sequence
+  #  - introduce parameters that control whether the wrapper(s) are used to facilitate compatibility of
+  #    learners with the data, i.e. remove missing values, remove or convert data types that are not supportet
+  #  - set some special variable values that the `requires`-expressions of other parameters can use to specify
+  #    that some parameters are only relevant in the presence of certain data types.
+  #  - remove parameters that always take on a single value (maybe dependent on a `requires` from the search space
+  #    and set them internally before calling the wrapped model.
+  #
+  # The parameters that are introduced and exposed to the outside are:
+  #  - automlr.wrappersetup: which wrapper is used. It has the format outermostWrapper$wrapper...$wrapper$innermostwrapper.
+  #  - automlr.remove.XXX where XXX is one of missings, factors, ordered. It controls whether one of the wrapper will
+  #    be set up to remove the property in question even if the underlying learner is able to use the data type. 
+  #    * NOTE: this may or may not be sensible for the data type in question and it is possible to set the respective value
+  #      to FALSE via setHyperPars() & exclude it from the search space. Who is AMExoWrapper to decide?
+  #    * NOTE2: Only wrappers marked as "requiredwrapper" can respond to this; This is because otherwise the search
+  #      space gets too confusing.
+  #  - automlr.wremoving.XXX where XXX is one of missings, factors, ordered. If more than one wrapper is present with the
+  #    capability of removing XXX from the data, this parameter chooses which one wrapper is responsible for removing it.
+  #
+  # The following parameters can be used by wrappers and learners in their $requires-parameter; they will be replaced here:
+  #  - automlr.remove.XXX: Only used by wrappers, may only be used if the respective $conversion() call with "XXX" as parameter
+  #    returns a vector containing at least "numerics" or "". It indicates that this wrapper is responsible for removing
+  #    the XXX type. If XXX does not occurr in the data, autmlr.remove.XXX is always FALSE.
+  #  - automlr.has.XXX: May be used by all wrappers and all learners: Indicates that the XXX type is present in the data.
+  #    Care is taken e.g. that when wrapperA comes before wrapperB which comes before wrapperC, and wrapperB removes missings, that inside
+  #    wrapperA (and wrapperB) the value of automlr.has.missings is TRUE, but for wrapperC (and all the learners) automlr.has.missings
+  #    evaluates to FALSE.
   # TODO: automlr.remove.xxx defaults to FALSE if xxx is not present.
-  allDelendum = c("missings", "factors", "ordered", "numerics")
-  deleters = list()
-  newparams = c(list(), wrapperSelectParam)
-  missingsVar = list(
-      missings=quote(!automlr.has.missings),
-      factors=quote(!automlr.has.factors),
-      ordered=quote(!automlr.has.ordered))
-  for (delendum in allDelendum) {
-    if (delendum %nin% properties) {
+  # TODO: set automlr.remove.xxx to false if all learners can handle xxx.
+
+  # Introduce `automlr.wrappersetup` (in case there are any wrappers present at all).
+  newparams = list()
+  if (length(wrappers)) {
+    wrapperSelectParam = makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
+            names(wrappers), unlist(extractSubList(wrappers, "required"))))
+    newparams = list(wrapperSelectParam)
+  }
+  
+  
+  allTypes = c("missings", "factors", "ordered", "numerics")
+  removers = list()  # maps type -> all wrappers that are able to remove the type
+  for (type in allTypes) {
+    if (type %nin% properties) {
       next
     }
     for (w in names(wrappers)[extractSubList(wrappers, "required")]) {
-      if (any(c("numerics", "") %in% wrappers[[w]]$conversion(delendum))) {
+      if (any(c("numerics", "") %in% wrappers[[w]]$conversion(type))) {
         # the wrapper can delete the covariate in question
-        deleters[[delendum]] = c(deleters[[delendum]], w)
+        removers[[type]] = c(removers[[type]], w)
       }
     }
-    if (length(deleters[[delendum]]) == 0) {
-      next  # we can't do anything here
+    if (length(removers[[type]]) == 0) {
+      next  # we can't remove the type at all
     }
-    amlrRemoveName = paste0("automlr.remove.", delendum)
-    newparams = c(newparams, list(
-            makeLogicalParam(amlrRemoveName,
-                req=substitute(selected.learner %in% canHandleDelendum,
-                    list(canHandleDelendum=canHandleX[[delendum]])))))  # it's almost lisp
-    if (length(deleters[[delendum]]) == 1) {
+    
+    # if there is at least one remover, we introduce the external parameter telling whether to remove.
+    # The requirement is that the active learner actually leaves a choice -- if it cannot handle the type
+    #   to begin with, then the wrapper is obligated to remove the type anyways.
+    amlrRemoveName = paste0("automlr.remove.", type)
+    if (length(canHandleX[[type]]) > 0) {
+      if (setequal(allLearners, canHandleX[[type]])) {
+        requires = NULL  # if all learners can handle the type, the variable is always valid.
+      } else {
+        requires = substitute(selected.learner %in% x, list(x=canHandleX[[type]]))
+      }
+      newparams = c(newparams, list(makeLogicalParam(amlrRemoveName, req=requires)))
+    }
+
+    if (length(removers[[type]]) == 1) {
       next  # we don't need another 'choosing' parameter.
     }
-    newparams = c(newparams, list(
-            makeDiscreteParam(paste0("automlr.wremoving.", delendum), deleters[[delendum]],
-                req=substitute(selected.learner %nin% canHandleDelendum || amlrRemove,
-                    list(canHandleDelendum=canHandleX[[delendum]],
-                        amlrRemove=asQuoted(amlrRemoveName))))))
+    # if there are at least two removers, we need to introduce another external parameter telling which
+    # wrapper should do the removing.
+    if (setequal(allLearners, canHandleX[[type]])) {
+      requires = asQuoted(paste(amlrRemoveName, "== TRUE"))  # need to do the silly ==TRUE thing bc the result isn't "call" class otherwise
+    } else if (length(canHandleX[[type]] == 0)) {
+      requires = NULL
+    } else {
+      requires = substitute(selected.learner %nin% x || amlrRemove,
+          list(x=canHandleX[[type]],
+              amlrRemove=asQuoted(amlrRemoveName)))
+    }
+    removingWrapperName = paste0("automlr.wremoving.", type)
+    newparams = c(newparams, list(makeDiscreteParam(removingWrapperName, removers[[type]], req=requires)))
   }
   
   # step 1: replace the special variables with our complicated computation.
@@ -59,38 +101,38 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
         next
       }
       replaceList = list()
-      for (delendum in allDelendum) {
-        if (delendum %nin% properties) {
+      for (type in allTypes) {
+        if (type %nin% properties) {
           next
         }
-        if (length(deleters[[delendum]]) == 0)  {# can not be deleted, therefore always present
-          replaceList[[paste0("automlr.has.", delendum)]] = TRUE
+        if (length(removers[[type]]) == 0)  {# can not be deleted, therefore always present
+          replaceList[[paste0("automlr.has.", type)]] = TRUE
           next
         }
-        amlrRemoveName = paste0("automlr.remove.", delendum)
+        amlrRemoveName = paste0("automlr.remove.", type)
         replaceQuote = substitute((!(selected.learner %nin% canHandleDelendum || amlrRemove)) ||
                 which(unlist(strsplit(automlr.wrappersetup, "$")) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup, "$")) == removingWrapper),
-            list(canHandleDelendum=canHandleX[[delendum]],
+            list(canHandleDelendum=canHandleX[[type]],
                 amlrRemove=asQuoted(amlrRemoveName),
                 thisWrapper=w,
-                removingWrapper=if(length(deleters[[delendum]]) > 1) asQuoted(paste0("automlr.wremoving.", delendum)) else deleters[[delendum]]))
-        replaceList[[paste0("automlr.has.", delendum)]] = replaceQuote
+                removingWrapper=if(length(removers[[type]]) > 1) asQuoted(paste0("automlr.wremoving.", type)) else removers[[type]]))
+        replaceList[[paste0("automlr.has.", type)]] = replaceQuote
         if (wrappers[[w]]$required) {  # this wrapper is allowed to use 'automlr.remove.xxx'
-          if (w %in% deleters[[delendum]]) {
+          if (w %in% removers[[type]]) {
             replaceQuote = substitute(selected.learner %nin% canHandleDelendum || amlrRemove,
-                list(canHandleDelendum=canHandleX[[delendum]],
+                list(canHandleDelendum=canHandleX[[type]],
                     amlrRemove=asQuoted(amlrRemoveName)))
-            if (length(deleters[[delendum]]) > 1) {
+            if (length(removers[[type]]) > 1) {
               replaceQuote = substitute(simpleQuote && wremoving == wname,
                   list(simpleQuote=replaceQuote,
-                      wremoving=asQuoted(paste0("automlr.wremoving.", delendum)),
+                      wremoving=asQuoted(paste0("automlr.wremoving.", type)),
                       wname=w))
             }
-            replaceList[[paste0("automlr.remove.", delendum)]] = replaceQuote
+            replaceList[[paste0("automlr.remove.", type)]] = replaceQuote
           }
         }
       }
-      print(replaceList)
+#      print(replaceList)
       req = replaceRequires(req, replaceList)
       if (!wrappers[[w]]$required) {
         # Remember: also need to add "wrapper is actually used"
@@ -191,10 +233,13 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
 }
 
 #' @export
-trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL, ...) {
+trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL, automlr.wrappersetup, ...) {
   # train selected learner model and remove prefix from its param settings
   learner = .learner$learner
   if (length(.learner$wrappers) > 0) {
+    if (length(.learner$wrappers) == 1) {  # in this case automlr.wrappersetup will be *missing*.
+      automlr.wrappersetup = names(.learner$wrappers)
+    }
     for (w in rev(unlist(strsplit(automlr.wrappersetup, "$")))) {
       learner = .learner$wrappers[[w]](learner)
     }
