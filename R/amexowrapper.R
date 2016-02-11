@@ -39,6 +39,9 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   #    evaluates to FALSE.
   
   covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0], if (taskdesc$has.missings) "missings")
+  properties = c(
+      c("oneclass", "twoclass", "multiclass")[min(3, length(taskdesc$class.levels))],
+      covtypes)
 
   completeSearchSpace = c(
       buildSearchSpace(wrappers, covtypes, canHandleX, allLearners),
@@ -297,6 +300,7 @@ makeLearnerPars = function(learnerPars) {
       } 
     }
   }
+  learnerPars
 }
 
 extractStaticParams = function(completeSearchSpace) {
