@@ -166,10 +166,93 @@ canHandleX = list(
 
 devtools::load_all("..")  # this veritable package itself
 res = automlr:::makeAMExoWrapper(NULL, wrappers, taskdesc, idRef, c("missings", "factors", "ordered", "numerics"), canHandleX)
-res
+names(res)
 
 res$wrappers$a$searchspace$pars$a1$requires
+res$newparams
 
 debugger()
+0
+
+smallAL = makeNamedAlList(
+  autolearner("classif.probit"),
+  autolearner("classif.rotationForest",
+              list(
+                sp("K", "real", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
+                sp("L", "int", c(25, 100)))),
+  autolearner("classif.glmboost",
+              list(
+                sp("family", "cat", c("AdaExp", "Binomial")),
+                sp("mstop", "int", c(25, 400), "exp", req=quote(m == "mstop")),
+                sp("mstop.AMLRFIX1", "cat", c(400), dummy=TRUE, req=quote(m != "mstop")),
+                sp("nu", "real", c(.001, .3), "exp"),
+                sp("risk", "cat", c("inbag", "oobag", "none")),
+                sp("stopintern", "bool"),
+                sp("m", "cat", c("mstop", "cv")),
+                sp("center", "def", FALSE),
+                sp("trace", "def", FALSE))))
+
+vse = buildLearners(smallAL, pid.task)
+as.list(environment(vse$searchspace$pars$classif.glmboost.nu$trafo))
+vse
+getParamSet(vse)
+vse$staticParams
+getLearnerProperties(makeLearner("classif.probit"))
+
+getParamSet(vse)
+
+t = train(vse, bc.task)
+names(t)
+predict(t$learner.model$learner.model$next.model, bc.task)
+predict(t, pid.task)
+predict(t$learner.model, bc.task)
+names(x)
+t$learner$fix.factors.prediction
+
+t$learner.model$learner$fix.factors.prediction
 
 
+getParamSet(vse)$pars$classif.rotationForest.K$trafo(5)
+
+vsx = setHyperPars(vse,
+  selected.learner="classif.glmboost",
+  classif.glmboost.family=getParamSet(vse)$pars$classif.glmboost.family$values[[1]],
+#  classif.glmboost.mstop=1,
+  classif.glmboost.nu=0.1,
+  classif.glmboost.risk="inbag",
+  classif.glmboost.stopintern=FALSE,
+  classif.glmboost.m="cv")
+
+vsx
+t = train(vsx, pid.task)
+
+getHyperPars(t$learner.model$learner)
+
+
+isFeasible(getParamSet(vse)$pars$classif.glmboost.family, getParamSet(vse)$pars$classif.glmboost.family$values[[1]])
+
+getParamSet(vse)$pars$classif.glmboost.family$values
+
+filterX = function(x, ps) {
+  r = lapply(names(x), function(n) if (is.factor(x[[n]])) ps$pars[[n]]$values[[as.character(x[[n]])]] else x[[n]])
+  names(r) = names(x)
+  r
+}
+
+tbl = generateRandomDesign(100, vse$searchspace, trafo=TRUE)
+
+tbl
+lapply(seq(nrows(tbl)), function(x) { vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[x, ])), vse$searchspace)); print(x) ; holdout(vsx, pid.task)  })
+
+pv = filterX(removeMissingValues(as.list(tbl[4, ])), vse$searchspace)
+
+holdout(setHyperPars(vse, par.vals=pv), pid.task)
+
+pv
+
+
+xx = removeMissingValues(as.list(generateRandomDesign(1, vse$searchspace, trafo=TRUE)[1, ]))
+xx
+setHyperPars(vse, par.vals=filterX(xx))
+
+getLearnerOptions(vse$learner, c("on.learner.error"))

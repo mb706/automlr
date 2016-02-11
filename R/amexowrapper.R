@@ -11,13 +11,13 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
   # automlr.remove.factors also removes ordered variables. because.
   # All wrappers may depend on
   # - automlr.has.missings, automlr.has.factors, autmlr.has.ordered
-  wrapperSelectParam = makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
-          names(wrappers), extractSubList(wrappers, "required")))
+  wrapperSelectParam = if (length(wrappers)) makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
+            names(wrappers), extractSubList(wrappers, "required")))
   # wrappersetup has the format outermostWrapper$wrapper...$wrapper$innermostwrapper.
   # step 0: introduce the outside parameters that control this.
   allDelendum = c("missings", "factors", "ordered")
   deleters = list()
-  newparams = list()
+  newparams = c(list(), wrapperSelectParam)
   missingsVar = list(
       missings=quote(!automlr.has.missings),
       factors=quote(!automlr.has.factors),
@@ -68,7 +68,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
         }
         amlrRemoveName = paste0("automlr.remove.", delendum)
         replaceQuote = substitute(((!(selected.learner %nin% canHandleDelendum || amlrRemove)) ||
-                which(unlist(strsplit(automlr.wrappersetup)) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup)) == removingWrapper)),
+                which(unlist(strsplit(automlr.wrappersetup, "$")) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup, "$")) == removingWrapper)),
             list(canHandleDelendum=canHandleX[[delendum]],
                 amlrRemove=asQuoted(amlrRemoveName),
                 thisWrapper=w,
@@ -93,14 +93,14 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
       req = replaceRequires(req, replaceList)
       if (!wrappers[[w]]$required) {
         # Remember: also need to add "wrapper is actually used"
-        req = substitute((thisWrapper %in% unlist(strsplit(automlr.wrappersetup))) && eval(req),
+        req = substitute((thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$"))) && eval(req),
             list(thisWrapper=w, restReq=req))
       }
       wrappers[[w]]$searchspace$pars[[parname]]$requires = req
     }
   }
   
-  completeSearchSpace = do.call(base::c, extractSubList(wrappers, "searchspace"))
+  completeSearchSpace = makeParamSet(params=do.call(base::c, extractSubList(wrappers, "searchspace")))
   completeSearchSpace = c(completeSearchSpace, makeParamSet(params=newparams), modelmultiplexer$searchspace)
   
   # what's missing is removing the singleton parameters and replacing them with direct setting of parameter values internally
@@ -110,29 +110,60 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
     if ((curpar$type == "discrete" && length(curpar$values) == 1) ||  # this is a 'fixed' value
-        (curpar$type %in% c("numeric", "integer") && curpar$values[1] == curpar$values[2])) {  # singular valid region
+        (curpar$type %in% c("numeric", "integer") && curpar$lower == curpar$upper)) {  # singular valid region
+      fixvalue = ifelse(curpar$type == "discrete", curpar$values[[1]], curpar$lower)
       completeSearchSpace$pars[[param]] = NULL
       parid = sub("\\.AMLRFIX[0-9]+$", "", curpar$id)
       if (!is.null(curpar$requires)) {
-        subst = substitute((if (eval(a)) value else original), list(a=as.expression(curpar$requires), value=curpar$values[1], original=asQuoted(parid)))
+        subst = substitute((if (eval(a)) value else original), list(a=as.expression(curpar$requires), value=curpar$values[[1]], original=asQuoted(parid)))
       } else {
-        subst = curpar$values[1]
+        subst = fixvalue
       }
-      staticParams = c(staticParams, list(id=parid, value=curpar$values[1], requires=curpar$requires))
-      substitutions[parid] = subst
+      staticParams = c(staticParams, list(list(id=parid, value=fixvalue, requires=curpar$requires)))
+      substitutions[[parid]] = subst
     }
   }
   
   for (i in seq_len(3)) {  # go 3 steps deep...
     for (param in getParamIds(completeSearchSpace)) {
-      if (!is.null(comleteSearchSpace$pars[[param]]$requires)) {
-        comleteSearchSpace$pars[[param]]$requires = replaceRequires(comleteSearchSpace$pars[[param]]$requires, substitutions)
+      if (!is.null(completeSearchSpace$pars[[param]]$requires)) {
+        completeSearchSpace$pars[[param]]$requires = replaceRequires(completeSearchSpace$pars[[param]]$requires, substitutions)
       }
     }
     for (paridx in seq_along(staticParams)) {
       if (!is.null(staticParams[[paridx]]$requires)) {
         staticParams[[paridx]]$requires = replaceRequires(staticParams[[paridx]]$requires, substitutions)
       }
+    }
+  }
+  learnerPars = completeSearchSpace
+  for (p in getParamIds(learnerPars)) {
+    if (!is.null(learnerPars$pars[[p]]$trafo) &&
+        learnerPars$pars[[p]]$type %in% c("numeric", "numericvector", "integer", "integervector")) {
+      if (is.null(learnerPars$pars[[p]]$origValues)) {
+        learnerPars$pars[[p]]$lower = -Inf
+        learnerPars$pars[[p]]$upper = Inf
+      } else {
+        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$origValues[1]
+        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$origValues[2]
+      }
+      learnerPars$pars[[p]]$type = switch(learnerPars$pars[[p]]$type,
+          integer="numeric",
+          integervector="numericvector",
+          learnerPars$pars[[p]]$type)
+    }
+    learnerPars$pars[[p]]$trafo = NULL
+    # this is dumb but necessary:
+    learnerPars$pars[[p]]$when = "train"
+    class(learnerPars$pars[[p]]) = c("LearnerParam", class(learnerPars$pars[[p]]))
+    # now this is very dumb and completely unnecessary:
+    req = learnerPars$pars[[p]]$requires
+    if (!is.null(req) && is.expression(req)) {
+      if (length(req) == 1) {
+        learnerPars$pars[[p]]$requires = req[[1]]
+      } else {
+        learnerPars$pars[[p]]$requires = substitute(eval(x), list(x=req))
+      } 
     }
   }
 
@@ -144,26 +175,57 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
       short.name="amlr",
       name="automlrlearner",
       properties=properties,
-      par.set=completeSearchSpace,
+      par.set=learnerPars,
       par.vals=getHyperPars(modelmultiplexer),
-      package=character(0))
+      package="automlr")
+  learner$learner = modelmultiplexer
   learner$staticParams = staticParams
+  learner$fixedParams = getHyperPars(modelmultiplexer)
+  learner$searchspace = completeSearchSpace  # is of type 'param', not 'learnerparam', since some optimizers get bitchy otherwise
+  learner$debug = list()
+  learner$debug$mm = modelmultiplexer
+  learner$fix.factors.prediction = TRUE  # TODO: it seems like it is a bug that this doesn't happen automatically.
+  learner$wrappers = extractSubList(wrappers, "constructor")
   learner
 }
 
 #' @export
 trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL, ...) {
   # train selected learner model and remove prefix from its param settings
-
+  learner = .learner$learner
+  if (length(.learner$wrappers) > 0) {
+    for (w in rev(unlist(strsplit(automlr.wrappersetup, "$")))) {
+      learner = .learner$wrappers[[w]](learner)
+    }
+  }
+  setupLearnerParams(learner, .learner$staticParams, list(...))
   train(learner, task = .task, subset = .subset, weights = .weights)
 }
 
 #' @export
 predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
-
-  predictLearner(learner, .model$learner.model$next.model, .newdata)
+  # we can't just call predictLearner() here, unless we also wrap the whole setHyperPars machinery, for which we would also need to 
+  # be more diligent setting the LearnerParam$when = train / test value.
+  getPredictionResponse(predict(.model$learner.model, newdata=.newdata))  # the learner.model we are given is just an mlr WrappedModel that we can use predict on.
 }
 
+setupLearnerParams = function(learner, staticParams, params) {
+  learner = removeHyperPars(learner, names(getHyperPars(learner)))
+  # learner = setHyperPars(learner, par.vals=dotLearner$fixedParams)  # TODO: do we need to do this?
+  learner = setHyperPars(learner, par.vals=params)
+  envir = getHyperPars(learner)
+  extraParams = list()
+  for (fp in staticParams) {
+    if (!is.null(fp$requires) && isTRUE(eval(fp$requires, envir=envir))) {
+      extraParams[[fp$id]] = fp$value
+      if (fp$id %in% names(envir)) {
+        stopf("Parameter '%s' is a static (internal) parameter but was also given externally.",
+            fp$id)
+      }
+    }
+  }
+  setHyperPars(learner, par.vals=extraParams)
+}
 
 listWrapperCombinations = function(ids, required) {
   combineNames = function(x) {
