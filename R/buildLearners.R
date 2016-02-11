@@ -31,9 +31,9 @@ buildLearners = function(searchspace, task) {
   #       - this cannot work because there may be circular dependencies.
   #       - so we need to somehow wrap classif.pamr to make threshold.predict = max(thresholds) * threshold.predict.fraction i guess
   #   [ ] i think i have to reimplement classif.LiblineaRXXX myself to get the broken parameter space back together.
-  #   [ ] wrappers have to be able to give some information about transformations they make
-  #     [ ] removing factors / removing numerics; respecting that factors/numerics might not be present to begin with.
-  #     [ ] removing / not removing NAs (in factors/numerics); respecting that NAs might not be present to begin with.
+  #   [x] wrappers have to be able to give some information about transformations they make
+  #     [x] removing factors / removing numerics; respecting that factors/numerics might not be present to begin with.
+  #     [x] removing / not removing NAs (in factors/numerics); respecting that NAs might not be present to begin with.
   #   [x] parameter dependency on number of columns etc. is easy by injecting an environment into the trafo function.
   # [ ] somehow link the same-id parameters
   #   [x] warning if id happens only once.
@@ -80,21 +80,20 @@ buildLearners = function(searchspace, task) {
   #  $conversion: function taking one of "factors", "ordered", "numerics", "missings" and returning a subset of these
   #   (the empty string if the input type can be removed).
 
-  allcovtypes = c("factors", "ordered", "numerics")
-  covtypes = allcovtypes[taskdesc$n.feat[allcovtypes] > 0]
-  allcovtypes = c(allcovtypes, "missings")
-  if (taskdesc$has.missings) {
-    covtypes = c(covtypes, "missings")
-  }
+  allcovtypes = c("factors", "ordered", "numerics", "missings")
+  covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0], if (taskdesc$has.missings) "missings")
+
   requiredClassProperty = c("oneclass", "twoclass", "multiclass")[min(3, length(taskdesc$class.levels))]
   mincovtypes = covtypes
   maxcovtypes = c(covtypes, "missings")  # absence of missings is never a problem
-  canRemoveType = FALSE
   wrapperList = list()
   handlerList = list()
   for (w in wrappers) {
+    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env))
+    wrapperList[[w$learner$name]] = w$learner
+    wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
     if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
-      break
+      next
     }
     for (t in covtypes) {
       conv = w$learner$conversion(t)
@@ -103,11 +102,7 @@ buildLearners = function(searchspace, task) {
       }
       maxcovtypes = union(maxcovtypes, setdiff(t, ""))
     }
-    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env))
-    wrapperList[[w$learner$name]] = w$learner
-    wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
   }
-
 
   for (i in seq_along(learners)) {
     l = myCheckLearner(learners[[i]]$learner)
@@ -159,24 +154,8 @@ buildLearners = function(searchspace, task) {
   }
   tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets)
   multiplexer$searchspace = tuneParamSet
-  makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, c(covtypes, requiredClassProperty), handlerList)
-  # TODO: the plan to resolve the conversion of data into other forms by the wrapper (e.g. ordered->factor, factor->numeric):
-  # I write an exo-wrapper that introduces a few hyperparameters:
-  # automlr.has.{numerics,ordered,factors,missings}. Some of them are clamped to one state (e.g. if there are no missings to begin with).
-  # Other parameters may depend on this, e.g. if a settings only affects NA-handling, req=quote(automlr.has.missings==TRUE) is appropriate.
-  # - The program must check that automlr.has.missings is only referenced by learners that can handle missings. similar with others.
-  # These parameters themselves have requirements in the form of:
-  #   automlr.has.missings req=quote(selected.learner %in% c(... all learners that can handle missings ...).
-  # 
-  # The wrappers also have dependencies of the form automlr.has.missings. They refer, however, to the presence/absence of missings in the
-  # task and are replaced with TRUE or FALSE accordingly.
-  #
-  # The wrappers may depend on automlr.remove.missings, which is not exposed to the searchspace but insted is set by the exowrapper according to
-  # automlr.has.missings or selected.learner being one of the learners that can't handle missings.
-  # 
-  # The searchspace builder should respect IDs when changing dependencies: the required dependencies have to be the id if present. The exowrapper
-  # will have hyperparameters corresponding to the IDs that have a requirement for any of the learners using that id to be active, as well as
-  # the disjunction of the local requirements. The exowrapper will set the multiplexer's hyperparameter accordingly in setHyperParams phase.
+  allLearners = unlist(tuneParamSet$pars$selected.learner$values)
+  makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, handlerList, allLearners)
 }
 
 checkParamIds = function(idRef) {
