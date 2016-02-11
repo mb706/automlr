@@ -1,6 +1,6 @@
 
 preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor=0, univariate.trafo="off",
-    impute.numeric="remove.na", impute.factor="remove.na", multivariate.trafo="off", feature.filter="off",
+    impute.numeric="off", impute.factor="off", multivariate.trafo="off", feature.filter="off",
     feature.filter.thresh = 0, keep.data=FALSE) {
   # TODO: handle ordered factors
   # TODO: /maybe/ add a "ignore these columns" parameter
@@ -10,8 +10,8 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
   assertNumber(nzv.cutoff.numeric, lower=0)
   assertPercentage(nzv.cutoff.factor)
   assertChoice(univariate.trafo, c("off", "center", "scale", "centerscale", "range"))
-  assertChoice(impute.numeric, c("remove.na", "mean", "median", "hist"))
-  assertChoice(impute.factor, c("remove.na", "distinct", "mode", "hist"))
+  assertChoice(impute.numeric, c("off", "remove.na", "mean", "median", "hist"))
+  assertChoice(impute.factor, c("off", "remove.na", "distinct", "mode", "hist"))
   assertChoice(multivariate.trafo, c("off", "pca", "ica"))
   assertChoice(feature.filter, c("off", "info.gain", "chi.squared", "rf.importance"))
   if (feature.filter != "off") {
@@ -76,7 +76,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
     data[cols.numeric] = ndata
   }
 
-  if (length(cols.numeric) > 0) {
+  if (length(cols.numeric) > 0 && impute.numeric != "off") {
     if (impute.numeric == "remove.na") {
       delendum = naRows(data, cols.numeric)
       data = data[!delendum, ]
@@ -94,7 +94,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
     }
   }
   
-  if (length(cols.factor) > 0) {
+  if (length(cols.factor) > 0 && impute.factor != "off") {
     if (impute.factor == "remove.na") {
       delendum = naRows(data, cols.factor)
       data = data[!delendum, ]
@@ -226,16 +226,16 @@ makePreprocWrapperAm = function (learner, ...) {
   #  and how many there are.
   # setting ppa.nzv.cutoff.* to their maximum values would effectively remove all numeric / factor columns, therefore allowing 
   # conversion for learners that don't support some types.
-  # TODO: maybe a "off" for imputation should also be given, in case some learners can handle NAs according to their properties.
   par.set = makeParamSet(
     makeNumericLearnerParam("ppa.nzv.cutoff.numeric", lower=0, default=0),
     makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower=0, upper=1, default=0),
     makeDiscreteLearnerParam("ppa.univariate.trafo", c("off", "center", "scale", "centerscale", "range"), default="off"),
-    makeDiscreteLearnerParam("ppa.impute.numeric", c("remove.na", "mean", "median", "hist"), default="hist"),
-    makeDiscreteLearnerParam("ppa.impute.factor", c("remove.na", "distinct", "mode", "hist"), default="distinct"),
+    makeDiscreteLearnerParam("ppa.impute.numeric", c("remove.na", "mean", "median", "hist", "off"), default="off"),
+    makeDiscreteLearnerParam("ppa.impute.factor", c("remove.na", "distinct", "mode", "hist", "off"), default="off"),
     makeDiscreteLearnerParam("ppa.multivariate.trafo", c("off", "pca", "ica"), default="off"),
     makeDiscreteLearnerParam("ppa.feature.filter", c("off", "info.gain", "chi.squared", "rf.importance"), default="off"),
-    makeNumericLearnerParam("ppa.feature.filter.thresh", lower=0, requires=quote(ppa.feature.filter != "off"))
+    makeNumericLearnerParam("ppa.feature.filter.thresh", lower=0, requires=quote(ppa.feature.filter != "off")),
+    makeLogicalLearnerParam("keep.data", tunable=FALSE)
   )
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
@@ -259,7 +259,7 @@ makePreprocWrapperAm = function (learner, ...) {
 getLearnerProperties.PreprocWrapperAm = function(learner) {
   props = getLearnerProperties(learner$next.learner)
   par.vals = getHyperPars(learner)
-  props = union(props, "missings")
+  props = union(props, "missings")  # this is only half a lie
   props
 }
 
