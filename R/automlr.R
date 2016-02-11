@@ -68,7 +68,7 @@
 #' > MORE RESULTS, THE WORLD IS BEAUTIFUL
 #' }
 #' 
-#' @include autolearners.R lsambackends.R defaults.R
+#' @include mlrLearners.R lsambackends.R defaults.R
 #' @export
 automlr = function(task, ...) {
   UseMethod("automlr")
