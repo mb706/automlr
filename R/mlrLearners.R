@@ -1,5 +1,5 @@
 
-#' @include autolearner.R
+#' @include autolearner.R wrappers.R
 
 #' A list of learners with corresponding \code{par.set}s that can be searched over.
 #' 
@@ -33,7 +33,7 @@
 
 
 
-autolearners = makeNamedAlList(
+autolearners = c(autowrappers, makeNamedAlList(
     autolearner("classif.glmnet",
         list(
 # ** vp
@@ -841,4 +841,4 @@ autolearners = makeNamedAlList(
             sp("contin", "fix", FALSE),
 # ** dp
             sp("radius", "def", 0),
-            sp("toroidal", "def", TRUE))))
+            sp("toroidal", "def", TRUE)))))
