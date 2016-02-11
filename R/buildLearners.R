@@ -445,8 +445,10 @@ replaceRequires = function(cprequires, substitution) {
   # manually substitute all function calls with different names.
   #
   # the width.cutoff may be a problem? I wouldn't assume so if deparse keeps function name and opening parenthesis on the same line.
-  funcallmatch = "(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)((?:[^`\\\\]|\\\\.)+`))([[:blank:]]*\\()"
-  parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", deparse(as.expression(cprequires), control=c("keepInteger", "keepNA"), width.cutoff=500))
+  parsed = deparse(as.expression(cprequires), control=c("keepInteger", "keepNA"), width.cutoff=500)
+  funcallmatch = "(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)((?:[^`\\\\]|\\\\.)+`))(\\()"
+  
+  parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", parsed)
   #the following would be dumb: parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1], fixed=TRUE) # NO!
   cprequires = asQuoted(parsed)
   # the following line is a bit of R magic. Use do.call, so that cprequires, which is a
@@ -454,7 +456,7 @@ replaceRequires = function(cprequires, substitution) {
   # names of the old parameters to the new parameters.
   cprequires = do.call(substitute, list(cprequires, substitution))
   
-  funcallmatchReverse = "(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))([[:blank:]]*\\()"
+  funcallmatchReverse = "(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))(\\()"
   parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", deparse(cprequires, control=c("keepInteger", "keepNA"), width.cutoff=500))
   eval(asQuoted(parsed))
 }
