@@ -12,7 +12,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
   # All wrappers may depend on
   # - automlr.has.missings, automlr.has.factors, autmlr.has.ordered
   wrapperSelectParam = if (length(wrappers)) makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
-            names(wrappers), extractSubList(wrappers, "required")))
+            names(wrappers), unlist(extractSubList(wrappers, "required"))))
   # wrappersetup has the format outermostWrapper$wrapper...$wrapper$innermostwrapper.
   # step 0: introduce the outside parameters that control this.
   # TODO: automlr.remove.xxx defaults to FALSE if xxx is not present.
@@ -39,14 +39,14 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
     amlrRemoveName = paste0("automlr.remove.", delendum)
     newparams = c(newparams, list(
             makeLogicalParam(amlrRemoveName,
-                req=substitute((selected.learner %in% canHandleDelendum),
+                req=substitute(selected.learner %in% canHandleDelendum,
                     list(canHandleDelendum=canHandleX[[delendum]])))))  # it's almost lisp
     if (length(deleters[[delendum]]) == 1) {
       next  # we don't need another 'choosing' parameter.
     }
     newparams = c(newparams, list(
             makeDiscreteParam(paste0("automlr.wremoving.", delendum), deleters[[delendum]],
-                req=substitute((selected.learner %nin% canHandleDelendum || amlrRemove),
+                req=substitute(selected.learner %nin% canHandleDelendum || amlrRemove,
                     list(canHandleDelendum=canHandleX[[delendum]],
                         amlrRemove=asQuoted(amlrRemoveName))))))
   }
@@ -68,8 +68,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
           next
         }
         amlrRemoveName = paste0("automlr.remove.", delendum)
-        replaceQuote = substitute(((!(selected.learner %nin% canHandleDelendum || amlrRemove)) ||
-                which(unlist(strsplit(automlr.wrappersetup, "$")) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup, "$")) == removingWrapper)),
+        replaceQuote = substitute((!(selected.learner %nin% canHandleDelendum || amlrRemove)) ||
+                which(unlist(strsplit(automlr.wrappersetup, "$")) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup, "$")) == removingWrapper),
             list(canHandleDelendum=canHandleX[[delendum]],
                 amlrRemove=asQuoted(amlrRemoveName),
                 thisWrapper=w,
@@ -77,11 +77,11 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
         replaceList[[paste0("automlr.has.", delendum)]] = replaceQuote
         if (wrappers[[w]]$required) {  # this wrapper is allowed to use 'automlr.remove.xxx'
           if (w %in% deleters[[delendum]]) {
-            replaceQuote = substitute((selected.learner %nin% canHandleDelendum || amlrRemove),
+            replaceQuote = substitute(selected.learner %nin% canHandleDelendum || amlrRemove,
                 list(canHandleDelendum=canHandleX[[delendum]],
                     amlrRemove=asQuoted(amlrRemoveName)))
             if (length(deleters[[delendum]]) > 1) {
-              replaceQuote = substitute((simpleQuote && wremoving == wname),
+              replaceQuote = substitute(simpleQuote && wremoving == wname,
                   list(simpleQuote=replaceQuote,
                       wremoving=asQuoted(paste0("automlr.wremoving.", delendum)),
                       wname=w))
@@ -116,7 +116,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, propert
       completeSearchSpace$pars[[param]] = NULL
       parid = sub("\\.AMLRFIX[0-9]+$", "", curpar$id)
       if (!is.null(curpar$requires)) {
-        subst = substitute((if (eval(a)) value else original), list(a=as.expression(curpar$requires), value=curpar$values[[1]], original=asQuoted(parid)))
+        subst = substitute(if (eval(a)) value else original, list(a=as.expression(curpar$requires), value=curpar$values[[1]], original=asQuoted(parid)))
       } else {
         subst = fixvalue
       }

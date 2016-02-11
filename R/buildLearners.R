@@ -103,8 +103,9 @@ buildLearners = function(searchspace, task) {
       }
       maxcovtypes = union(maxcovtypes, setdiff(t, ""))
     }
-    w$learner$searchspace = makeParamSet(lapply(w$searchspace, createParameter, info.env=info.env))
+    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env))
     wrapperList[[w$learner$name]] = w$learner
+    wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
   }
 
 

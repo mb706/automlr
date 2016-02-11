@@ -175,6 +175,7 @@ debugger()
 0
 
 smallAL = makeNamedAlList(
+  automlr::autolearners$ampreproc,
   autolearner("classif.probit"),
   autolearner("classif.rotationForest",
               list(
@@ -239,16 +240,25 @@ filterX = function(x, ps) {
   r
 }
 
-tbl = generateRandomDesign(100, vse$searchspace, trafo=TRUE)
+tbl = generateRandomDesign(500, vse$searchspace, trafo=TRUE)
 
-tbl
-lapply(seq(nrows(tbl)), function(x) { vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[x, ])), vse$searchspace)); print(x) ; holdout(vsx, pid.task)  })
+tbl[c(12, 13), ]
+as.list(environment(vse$searchspace$pars$classif.glmboost.mstop$trafo))
 
+round(25 * sqrt(26/25) ^ seq(from=0, to=floor(log(400/25, base=sqrt(26/25)))))
+
+res = lapply(seq(nrow(tbl)), function(x) { vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[x, ])), vse$searchspace)); print(x) ; holdout(vsx, pid.task)  })
+
+tbl[order(BBmisc::extractSubList(res, "aggr"))[1:10], ]
+res[[9]]$aggr
+res[[47]]$aggr
+plot(sort(BBmisc::extractSubList(res, "aggr")))
 pv = filterX(removeMissingValues(as.list(tbl[4, ])), vse$searchspace)
 
 holdout(setHyperPars(vse, par.vals=pv), pid.task)
 
-pv
+res[[174]]
+res[[386]]
 
 
 xx = removeMissingValues(as.list(generateRandomDesign(1, vse$searchspace, trafo=TRUE)[1, ]))
@@ -256,3 +266,5 @@ xx
 setHyperPars(vse, par.vals=filterX(xx))
 
 getLearnerOptions(vse$learner, c("on.learner.error"))
+
+
