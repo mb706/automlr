@@ -139,7 +139,8 @@ buildLearners = function(searchspace, task) {
     return(NULL)
   }
 
-  multiplexer = makeModelMultiplexer(learnerObjects)
+  multiplexer = removeHyperPars(makeModelMultiplexer(learnerObjects), "selected.learner")
+  
   
   # TODO: it remains to be seen whether the following is necessary and / or a good thing to do.
   #  - in favour: maybe the learner objects don't remember the fixed hyperparameters that are given to them.
@@ -266,6 +267,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       warningf("Parameter '%s' for learner '%s' has a 'requires' argument but the one given in the search space has not.",
           param$name, l$id)
     }
+    
     if (param$type == "fix") {
       if (lptypes[[param$name]] == "discretevector") {
         assignment = list(rep(list(param$values), param$dim))
@@ -275,12 +277,17 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
 
       names(assignment) = param$name
       l = setHyperPars(l, par.vals=assignment)
-    } else if (param$type != "def") {  # variable parameter
-      newparam = createParameter(param, info.env)
-      if (!is.null(param$id)) {
-        idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
+    } else {
+      if (param$name %in% names(getHyperPars(l))) {  # make sure this is not set at a default.
+        l = removeHyperPars(l, param$name)
       }
-      tuneSearchSpace = c(tuneSearchSpace, list(newparam))
+      if (param$type != "def") {  # variable parameter
+        newparam = createParameter(param, info.env)
+        if (!is.null(param$id)) {
+          idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
+        }
+        tuneSearchSpace = c(tuneSearchSpace, list(newparam))
+      }
     }
   }
   list(tss=makeParamSet(params=tuneSearchSpace), l=l, idRef=idRef)
