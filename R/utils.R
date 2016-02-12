@@ -86,3 +86,11 @@ logFunTune = function(learner, task, resampling, measures, par.set, control, opt
 perfsToString = function(y) {
   paste(paste(names(y), "=", formatC(y, digits = 3L), sep = ""), collapse = ",")
 }
+
+extractSubList = function(xs, element, element.value, simplify = TRUE, use.names = TRUE) {
+  res = BBmisc::extractSubList(xs, element, element.value, simplify, use.names)
+  if (simplify && identical(res, list())) {  # don't return an empty list
+    return(logical(0))
+  }
+  res
+}
