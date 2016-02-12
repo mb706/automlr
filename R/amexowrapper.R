@@ -43,9 +43,10 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
       c("oneclass", "twoclass", "multiclass")[min(3, length(taskdesc$class.levels))],
       covtypes)
 
-  completeSearchSpace = c(
-      buildSearchSpace(wrappers, covtypes, canHandleX, allLearners),
-      modelmultiplexer$searchspace)
+  aux = buildSearchSpace(wrappers, covtypes, canHandleX, allLearners)
+  completeSearchSpace = c(modelmultiplexer$searchspace,
+      aux$completeSearchSpace)
+  shadowparams = aux$shadowparams  # the parameters that are external-only.
   
   # what's missing is removing the singleton parameters from the search space and replacing them with 
   #   direct setting of parameter values internally.
@@ -53,12 +54,14 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   staticParams = aux$staticParams
   substitutions = aux$substitutions
   finalSubstitutions = aux$finalSubstitutions
+  completeSearchSpace = aux$completeSearchSpace
   
   # replace the singleton values inside the requirements of other parameters.
   completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars, substitutions, 3)
   completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars, finalSubstitutions)
   staticParams = substituteParamList(staticParams, substitutions, 3)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
+  staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
   
   # transform into "LearnerParam" types. This is mostly dumb relabeling, except for one thing: The
   # limits / values of the parameters with "trafo" have to be reverse-transformed.
@@ -83,6 +86,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   learner$searchspace = completeSearchSpace
   learner$fix.factors.prediction = TRUE  # TODO: it seems like it is a bug that this doesn't happen automatically.
   learner$wrappers = extractSubList(wrappers, "constructor")
+  learner$shadowparams = shadowparams
   learner
 }
 
@@ -98,7 +102,7 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL, 
       learner = .learner$wrappers[[w]](learner)
     }
   }
-  setupLearnerParams(learner, .learner$staticParams, list(...))
+  learner = setupLearnerParams(learner, .learner$staticParams, .learner$shadowparams, list(...))
   train(learner, task = .task, subset = .subset, weights = .weights)
 }
 
@@ -109,10 +113,11 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   getPredictionResponse(predict(.model$learner.model, newdata=.newdata))  # the learner.model we are given is just an mlr WrappedModel that we can use predict on.
 }
 
-setupLearnerParams = function(learner, staticParams, params) {
+setupLearnerParams = function(learner, staticParams, shadowparams, params) {
   learner = removeHyperPars(learner, names(getHyperPars(learner)))
-  # learner = setHyperPars(learner, par.vals=dotLearner$fixedParams)  # TODO: do we need to do this?
-  learner = setHyperPars(learner, par.vals=params)
+  paramscpy = params
+  paramscpy[shadowparams] = NULL
+  learner = setHyperPars(learner, par.vals=paramscpy)
   envir = getHyperPars(learner)
   extraParams = list()
   for (fp in staticParams) {
@@ -130,11 +135,6 @@ setupLearnerParams = function(learner, staticParams, params) {
 buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
   # Introduce `automlr.wrappersetup` (in case there are any wrappers present at all).
   newparams = list()
-  if (length(wrappers)) {
-    wrapperSelectParam = makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
-            names(wrappers), unlist(extractSubList(wrappers, "required"))))
-    newparams = list(wrapperSelectParam)
-  }
   
   # Introduce other external parameters: automlr.remove.XXX and automlr.wremoving.XXX
   allTypes = c("missings", "factors", "ordered", "numerics")
@@ -144,7 +144,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
       next
     }
     for (w in names(wrappers)[extractSubList(wrappers, "required")]) {
-      if (any(c("numerics", "") %in% wrappers[[w]]$conversion(type))) {
+      if (type != "numerics" && any(c("numerics", "") %in% wrappers[[w]]$conversion(type))) {
         # the wrapper can delete the covariate in question
         removers[[type]] = c(removers[[type]], w)
       }
@@ -236,9 +236,21 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
     }
   }
   
+  shadowparams = extractSubList(newparams, "id")
+  
+  if (length(wrappers)) {
+    wrapperSelectParam = makeDiscreteParam("automlr.wrappersetup", listWrapperCombinations(
+            names(wrappers), unlist(extractSubList(wrappers, "required"))))
+    newparams = c(newparams, list(wrapperSelectParam))
+  }
+  
   # combine all the ParamSets we have seen now
-  c(makeParamSet(params=do.call(base::c, extractSubList(wrappers, "searchspace"))),
+  completeSearchSpace = c(
+      makeParamSet(params=do.call(base::c, extractSubList(wrappers, "searchspace"))),
       makeParamSet(params=newparams))
+
+  list(shadowparams=shadowparams,
+      completeSearchSpace=completeSearchSpace)
 }
 
 listWrapperCombinations = function(ids, required) {
@@ -289,7 +301,7 @@ makeLearnerPars = function(learnerPars) {
     # of predict(), and we wrap setHyperPars() also) we need to copy the $when property of the
     # corresponding LearnerParam inside the modelmultiplexer object.
     learnerPars$pars[[p]]$when = "train"
-    class(learnerPars$pars[[p]]) = c("LearnerParam", class(learnerPars$pars[[p]]))
+    learnerPars$pars[[p]] = addClasses(learnerPars$pars[[p]], "LearnerParam")
     # satisfying a weird constraint of mlr:
     req = learnerPars$pars[[p]]$requires
     if (!is.null(req) && is.expression(req)) {
@@ -340,5 +352,8 @@ extractStaticParams = function(completeSearchSpace) {
       }
     }
   }
-  list(staticParams=staticParams, substitutions=substitutions, finalSubstitutions=finalSubstitutions)
+  list(completeSearchSpace=completeSearchSpace,
+      staticParams=staticParams,
+      substitutions=substitutions,
+      finalSubstitutions=finalSubstitutions)
 }
