@@ -14,7 +14,7 @@ autowrappers = makeNamedAlList(
             sp("ppa.impute.factor", "cat", c("remove.na", "distinct", "mode", "hist"), req=quote(automlr.has.factors && (!automlr.remove.factors) && automlr.remove.missings)),
 #            sp("ppa.impute.factor.AMLRFIX1", "cat", c("off"), req=quote(!automlr.has.factors || automlr.remove.factors || !automlr.remove.missings)),
             sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"), req=quote(automlr.has.numerics == TRUE)),
-            sp("ppa.feature.filter", "cat", c("off", "info.gain", "chi.squared", "rf.importance")),
+            sp("ppa.feature.filter", "cat", c("off", "information.gain", "chi.squared")),  # TODO: why does rf.importance crash? , "rf.importance")),
             sp("ppa.feature.filter.thresh", "real", c(.Machine$double.eps, 1), trafo=function(x) -log(x), req=quote(ppa.feature.filter != "off"))),
         learner=autoWrapper(
             name="ampreproc",

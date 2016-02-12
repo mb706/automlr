@@ -196,10 +196,10 @@ smallAL = makeNamedAlList(
 devtools::load_all("..")  # this veritable package itself
 vse = buildLearners(smallAL, pid.task)
 as.list(environment(vse$searchspace$pars$classif.glmboost.nu$trafo))
+vse$fixedParams
+vse$shadowparams
 
-vse
-
-vse$searchspace
+sapply(vse$searchspace$pars, function(x) x$requires)
 
 getParamSet(vse)
 vse$staticParams
@@ -247,12 +247,32 @@ filterX = function(x, ps) {
 
 tbl = generateRandomDesign(500, vse$searchspace, trafo=TRUE)
 
+removeMissingValues(tbl[1, ])
+removeMissingValues(tbl[2, ])
+
+vse$searchspace$pars$automlr.remove.numerics
+
 tbl[c(12, 13), ]
 as.list(environment(vse$searchspace$pars$classif.glmboost.mstop$trafo))
 
 round(25 * sqrt(26/25) ^ seq(from=0, to=floor(log(400/25, base=sqrt(26/25)))))
 
-res = lapply(seq(nrow(tbl)), function(x) { vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[x, ])), vse$searchspace)); print(x) ; holdout(vsx, pid.task)  })
+res = lapply(seq(nrow(tbl)), function(x) {
+  vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[x, ])), vse$searchspace)); print(x) ; print(getHyperPars(vsx)) ; holdout(vsx, pid.task)  })
+
+removeMissingValues(tbl[1, ])
+vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[1, ])), vse$searchspace))
+
+debugonce(automlr:::preProcess)
+
+ho = makeResampleDesc("Holdout")
+resample(vsx, pid.task, ho)
+
+holdout(vsx, pid.task)
+pv = filterX(removeMissingValues(as.list(tbl[1, ])), vse$searchspace)
+vse$fixedParams
+
+train(vsx, pid.task)
 
 tbl[order(BBmisc::extractSubList(res, "aggr"))[1:10], ]
 res[[9]]$aggr
@@ -272,4 +292,70 @@ setHyperPars(vse, par.vals=filterX(xx))
 
 getLearnerOptions(vse$learner, c("on.learner.error"))
 
+devtools::load_all("..")  # this veritable package itself
+smallAL = makeNamedAlList(
+  automlr::autolearners$ampreproc,
+  autolearner("classif.probit"),
+  autolearner("classif.rotationForest",
+              list(
+                sp("K", "real", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
+                sp("L", "int", c(25, 100)))),
+  autolearner("classif.glmboost",
+              list(
+                sp("family", "cat", c("AdaExp", "Binomial")),
+                sp("mstop", "int", c(25, 400), "exp", req=quote(m == "mstop")),
+                sp("mstop.AMLRFIX1", "cat", c(400), dummy=TRUE, req=quote(m != "mstop")),
+                sp("nu", "real", c(.001, .3), "exp"),
+                sp("risk", "cat", c("inbag", "oobag", "none")),
+                sp("stopintern", "bool"),
+                sp("m", "cat", c("mstop", "cv")),
+                sp("center", "def", FALSE),
+                sp("trace", "def", FALSE))))
+vse = buildLearners(smallAL, pid.task)
+tbl = generateRandomDesign(500, vse$searchspace, trafo=TRUE)
+vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[1, ])), vse$searchspace))
+vse$learner$base.learners$classif.rotationForest$config$on.learner.error="warn"
 
+
+res = lapply(seq(nrow(tbl)), function(x) {
+  vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[x, ])), vse$searchspace))
+  print(x)
+  print(getHyperPars(vsx))
+  ho = makeResampleDesc("Holdout")
+  resample(vsx, pid.task, ho)
+})
+
+vsx = setHyperPars(vse, par.vals=filterX(removeMissingValues(as.list(tbl[28, ])), vse$searchspace))
+getHyperPars(vsx)
+resample(vsx, pid.task, ho)
+
+
+vsx
+holdout(vsx, pid.task)
+getHyperPars(vsx)
+
+head(tbl)
+getHyperPars(vsx)
+debugonce(automlr:::trainLearner.AMExoWrapper)
+
+debugonce(mlr:::trainLearner.ModelMultiplexer)
+
+
+emptyTask = makeClassifTask("emptyTask", data.frame(x=factor(c("a", "a", "b"))), target='x')
+ml = makeModelMultiplexer(list(makeLearner("classif.probit")))
+tml = train(ml, emptyTask)
+predict(tml, emptyTask)
+class(tml)
+class(tml)
+names(tml)
+class(tml$learner.model)
+debugonce(mlr:::trainLearner.ModelMultiplexer)
+
+class(ml)
+tml$learner.model
+mlr::predictLearner
+getLearnerModel(tml)
+ pregnant      glucose    pressure     triceps      insulin        mass          age diabetes
+filterFeatures(iris.task, method="rf.importance", abs=3)
+
+debugonce(randomForestSRC::rfsrc)

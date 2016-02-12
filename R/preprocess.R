@@ -13,7 +13,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
   assertChoice(impute.numeric, c("off", "remove.na", "mean", "median", "hist"))
   assertChoice(impute.factor, c("off", "remove.na", "distinct", "mode", "hist"))
   assertChoice(multivariate.trafo, c("off", "pca", "ica"))
-  assertChoice(feature.filter, c("off", "info.gain", "chi.squared", "rf.importance"))
+  assertChoice(feature.filter, c("off", "information.gain", "chi.squared", "rf.importance"))
   if (feature.filter != "off") {
     assertNumber(feature.filter.thresh)
   }
@@ -46,7 +46,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
   nzv.drop.factor = ndsplit$`TRUE`
   cols.factor = ndsplit$`FALSE`
   
-  ppobject$dropcols = c(nzv.drop.factor, nzv.drop.numeric)
+  ppobject$dropcols = c(character(0), nzv.drop.factor, nzv.drop.numeric)  # need to prevent this from being NULL!
   ppobject$cols.factor = cols.factor
   ppobject$cols.numeric = cols.numeric
   
@@ -161,7 +161,8 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
 
     oldcols = colnames(data)
     data = getTaskData(filteredTask)
-    ppobject$dropcols = c(ppobject$dropcols, setdiff(oldcols, colnames(data)))
+    # now we populate 'dropcols2': the columns that get dropped *after* rotation etc.
+    ppobject$dropcols2 = c(ppobject$dropcols, setdiff(oldcols, colnames(data)))
   }
 
   if (keep.data) {
@@ -186,7 +187,7 @@ predict.ampreproc = function(object, newdata, ...) {
 
     if (object$impute.numeric == "remove.na") {
       newdata = removeNa(newdata, object$cols.numeric)
-    } else {
+    } else if (object$impute.numeric != "off") {
       newdata[object$cols.numeric] = mapply(imputeRandom, newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY=FALSE)
     }
 
@@ -198,14 +199,14 @@ predict.ampreproc = function(object, newdata, ...) {
   if (length(object$cols.factor) > 0) {
     if (object$impute.factor == "remove.na") {
       newdata = removeNa(newdata, object$cols.factor)
-    } else if (impute.factor == "distinct") {
+    } else if (object$impute.factor == "distinct") {
       newdata[object$cols.factor] = lapply(newdata[object$cols.factor], addNA, ifany=FALSE)
-    } else {
+    } else if (object$impute.factor != "off"){
       newdata[object$cols.factor] = mapply(imputeRandom, newdata[object$cols.factor], object$pop.factor, SIMPLIFY=FALSE)
     }
   }
 
-  newdata
+  newdata[names(newdata) %nin% object$dropcols2]
 }
 
 naRows = function(data, cols) {
@@ -233,14 +234,15 @@ makePreprocWrapperAm = function (learner, ...) {
     makeDiscreteLearnerParam("ppa.impute.numeric", c("remove.na", "mean", "median", "hist", "off"), default="off"),
     makeDiscreteLearnerParam("ppa.impute.factor", c("remove.na", "distinct", "mode", "hist", "off"), default="off"),
     makeDiscreteLearnerParam("ppa.multivariate.trafo", c("off", "pca", "ica"), default="off"),
-    makeDiscreteLearnerParam("ppa.feature.filter", c("off", "info.gain", "chi.squared", "rf.importance"), default="off"),
-    makeNumericLearnerParam("ppa.feature.filter.thresh", lower=0, requires=quote(ppa.feature.filter != "off")),
-    makeLogicalLearnerParam("keep.data", tunable=FALSE)
+    makeDiscreteLearnerParam("ppa.feature.filter", c("off", "information.gain", "chi.squared", "rf.importance"), default="off"),
+    makeNumericLearnerParam("ppa.feature.filter.thresh", lower=0, default=0, requires=quote(ppa.feature.filter != "off"))
+    #makeLogicalLearnerParam("keep.data", tunable=FALSE)
   )
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
   
   trainfun = function(data, target, args) {
+    names(args) = sub("ppa.", "", names(args), fixed=TRUE)
     ppobject = do.call(preProcess, c(list(data=data, target=target, keep.data=TRUE), args))
     data = ppobject$data
     ppobject$data = NULL
