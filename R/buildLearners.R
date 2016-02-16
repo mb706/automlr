@@ -89,7 +89,7 @@ buildLearners = function(searchspace, task) {
   wrapperList = list()
   handlerList = list()
   for (w in wrappers) {
-    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env))
+    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env, learnerid=w$learner$name))
     wrapperList[[w$learner$name]] = w$learner
     wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
     if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
@@ -205,7 +205,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
             param$name, l$id)
       }
-      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, do.trafo=FALSE)))
+      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid=l$id, do.trafo=FALSE)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
       lptypes = getParamTypes(lp)  # recreate lptypes here, since it may have changed 
@@ -226,9 +226,8 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
             param$name, paste(param$values, collapse=" "), l$id)
         }
       }
-      if ((lptypes[[param$name]] != "untyped") &&
-          (param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) &&
-          (param$type %in% c("int", "real") && lptypes[[param$name]] %nin% c("numeric", "numericvector"))) {
+      if ((lptypes[[param$name]] %nin% c("numeric", "numericvector", "untyped")) &&
+          (param$type == "real" || (param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")))) {
         stopf("Parameter '%s' as listed in search space has wrong type '%s' for learner '%s'",
             param$name, param$type, l$id)
       }
@@ -282,7 +281,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         l = removeHyperPars(l, param$name)
       }
       if (param$type != "def") {  # variable parameter
-        newparam = createParameter(param, info.env)
+        newparam = createParameter(param, info.env, learnerid=l$id)
         if (!is.null(param$id)) {
           idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
         }
@@ -305,7 +304,7 @@ allfeasible = function(ps, totest, name, dimension) {
   TRUE
 }
 
-createParameter = function(param, info.env, do.trafo=TRUE) {
+createParameter = function(param, info.env, learnerid, do.trafo=TRUE) {
   if (param$type %in% c("int", "real")) {
     pmin = param$values[1]
     pmax = param$values[2]
@@ -360,12 +359,12 @@ createParameter = function(param, info.env, do.trafo=TRUE) {
       bool=list(),
       fix={
         warningf("Parameter '%s' for learner '%s is marked dummy and has type 'fix'; This usually does not make sense.",
-            param$name, l$id)
+            param$name, learnerid)
         list(values=param$values)
       },
       def=stopf("Parameter '%s' for learner '%s' is marked as dummy must not have type 'def'.",
-          param$name, l$id),
-      stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, l$id)))
+          param$name, learnerid),
+      stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))
   pobject = do.call(constructor, paramlist, quote=TRUE)
   if (!is.null(pobject$trafo)) {
     environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names=TRUE), parent=info.env)

@@ -75,7 +75,9 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
       values = as.integer(values)
     }
   } else if (type %in% c("fix", "def")) {
-    is.null(values) || assertVector(values, strict=TRUE, len=1)
+    if (!is.null(values)) {
+      assertVector(values, strict=TRUE, len=1)
+    }
   } else if (type == "cat"){
     assertVector(values, strict=TRUE, min.len=1)
   } else {  # type == "bool"
