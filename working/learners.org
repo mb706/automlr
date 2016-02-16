@@ -275,7 +275,7 @@
    - mincriterio :: 0..2.3: value of test statistics that must be exceeded to implement split. DUMMY req: testtype == "Teststatistic"
    - maxsurrogate :: int 0..5: number of surrogate splits to evaluate. NEEDS ORDERED COVARIABLES
    - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
-   - mtry :: 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
+   - mtry :: int 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
    - minbucket :: int 1..32 exp: {tree.m} minimum weight in terminal node
    - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
    - stump :: TRUE, FALSE
@@ -486,22 +486,22 @@
    - iter :: int 25..400 exponential: {boostree.iter} number of boosting iterations. Range seems sensible in paper
    - nu :: 0.001..0.3 exponential: {boostree.nu} shrinkage parameter
    - model.coef :: TRUE, FALSE: use stageweights in boosting
-   - minsplit :: int 2..64 exp: {boostree.minsplit} minimum sum of weights to be considered for splitting
-   - minbucket :: int 1..32 exp: {boostree.minbucket} minimum weight in terminal node
-   - cp :: 1e-4..0.5 exp: {boostree.cp} complexity parameter
-   - usesurrogate :: 0, 1, 2: {boostree.usersur} ONNA how to use surrogate in splitting process
-   - surrogatestyle :: 0, 1: {boostree.surstyle} ONNA how to use surrogate
-   - maxdepth :: int 1..30 exp: {boostree.maxdepth} maximum depth of any node
 **** Default Parameters:
+   - minsplit :: 20: bug in ada...
+   - minbucket :: NULL: bug in ada...
+   - cp :: 0.01: bug in ada...
+   - usesurrogate :: 2: bug in ada...
+   - surrogatestyle :: 0: bug in ada...
+   - maxdepth :: 30: bug in ada...
    - bag.frac :: 0.5
    - bag.shift :: FALSE: only makes sense if bag.frac is small according to manual
    - delta :: 1e-10: tolerance for convergence
    - maxcompete :: 4: only affects output
    - maxsurrogate :: 5: only affects output
    - verbose :: FALSE: little output
+   - xval :: 10: bug in ada...
 **** Changed (fixed) Parameters:
    - max.iter :: 40: newton steps. Conservatively chosen for large data sets; this might be relevant when we start optimizing runtime
-   - xval :: 0: no crossvalidation
 *** classif.blackboost
 - gradient boosting using regression trees as base-learners
 **** Variable Parameters:
@@ -557,8 +557,6 @@
    - cv.folds :: 0: no cross validation
    - train.fraction :: 1
    - verbose :: FALSE
-**** Changed (fixed) Parameters:
-   - keep.data :: FALSE
 *** classif.glmboost
 **** Variable Parameters:
    - family :: AdaExp, Binomial
@@ -695,8 +693,7 @@
    - tol :: .0001: termination criterion
 **** Changed (fixed) Parameters:
    - scaled :: FALSE: we do that ourselves
-   - fitted :: FALSE: TODO is named 'fitted' in mlr, which is a BUG
-   - fit :: 0: DUMMY
+   - fitted :: FALSE: TODO is named 'fitted' in mlr, which is a BUG?
 *** classif.svm
 **** Variable Parameters:
    - type :: C-classification, nu-classification
@@ -742,6 +739,7 @@
    - xxx :: MANUAL Skipping this for now since we have a few NNs already
 *** classif.multinom
 - multinomial log-linear models via neural nets
+- TODO: what about MaxNWts : 100000: maximum number of weights. Maybe change this to abort slow runs prematurely. DUMMY since mlr doesn't know about it.
 **** Variable Parameters:
    - decay :: 0.0001..0.3 exponential: {nn.shallowdecay} weight decay
    - maxit :: int 50..400 exponential: {nn.shallowmaxit} number of iterations
@@ -754,8 +752,6 @@
    - trace :: TRUE: Tracing optimization
    - abstoll :: 0.0001
    - reltoll :: 1e-8
-**** Changed (fixed) Parameters:
-   - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely. DUMMY since mlr doesn't know about it.
 *** classif.nnet
 - Single-hidden-layer neural network with multinomial log-linear models and possible skip-layer connections
 **** Variable Parameters:
@@ -848,7 +844,6 @@
    - radius :: NULL: neighbourhood radius; not going to touch this for now
 **** Changed (fixed) Parameters:
    - contin :: FALSE: indicate that we are dealing with categories
-   - keep.data :: FALSE
 *** classif.lvq1
 - "Learning Vector Quantization 1"
 *** classif.naiveBayes

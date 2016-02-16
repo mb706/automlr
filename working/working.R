@@ -418,6 +418,9 @@ resample(vsx, pid.task, ho)
 #  - rotationForest, if n(covariates) == 1
 #  - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!
 #  - classif.ranger, if n(covariates) < mtry
+#  - classif.lssvm sometimes has singular matrix
+#  - classif.plsdaCaret breaks if ncomp is < min(nrow, ncol-1)
+#  - classif.randomForestSRC crashes sometimes, not others?
 fails <- which(is.na(extractSubList(res3, "aggr")))
 failedResult <- res3[fails]
 failedTbl <- tbl[fails]
@@ -426,7 +429,7 @@ plotDist(failedTbl, failedResult, "runtime", "selected.learner", mean)
 
 configureMlr(on.learner.error="stop")
 
-i = 6
+i = 11
 vsx = setHyperPars(vse, par.vals=removeMissingValues(failedTbl[[i]]))
 removeMissingValues(failedTbl[[i]])
 failedResult[[i]]

@@ -239,7 +239,7 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("mincriterio", "real", c(0, 2.3), dummy=TRUE, req=quote(testtype == "Teststatistic")),
             sp("maxsurrogate", "int", c(0, 5)),
             sp("limitmtry", "bool", dummy=TRUE),
-            sp("mtry", "real", c(3, 20), req=quote(limitmtry == TRUE)),
+            sp("mtry", "int", c(3, 20), req=quote(limitmtry == TRUE)),
             sp("minbucket", "int", c(1, 32), "exp", id="tree.m"),
             sp("minsplit", "int", c(2, 64), "exp"),
             sp("stump", "bool"),
@@ -420,7 +420,7 @@ autolearners = c(autowrappers, makeNamedAlList(
     autolearner("classif.rotationForest",
         list(
 # ** vp
-            sp("K", "real", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
+            sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
             sp("L", "int", c(25, 100)))),
     autolearner("classif.ada",
         list(
@@ -430,22 +430,22 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("iter", "int", c(25, 400), "exp", id="boostree.iter"),
             sp("nu", "real", c(0.001, 0.3), "exp", id="boostree.nu"),
             sp("model.coef", "bool"),
-            sp("minsplit", "int", c(2, 64), "exp", id="boostree.minsplit"),
-            sp("minbucket", "int", c(1, 32), "exp", id="boostree.minbucket"),
-            sp("cp", "real", c(1e-4, 0.5), "exp", id="boostree.cp"),
-            sp("usesurrogate", "cat", c(0, 1, 2), id="boostree.usersur"),
-            sp("surrogatestyle", "cat", c(0, 1), id="boostree.surstyle"),
-            sp("maxdepth", "int", c(1, 30), "exp", id="boostree.maxdepth"),
 # ** cp
             sp("max.iter", "fix", 40),
-            sp("xval", "fix", 0),
 # ** dp
+            sp("minsplit", "def", 20),
+            sp("minbucket", "def", NULL),
+            sp("cp", "def", 0.01),
+            sp("usesurrogate", "def", 2),
+            sp("surrogatestyle", "def", 0),
+            sp("maxdepth", "def", 30),
             sp("bag.frac", "def", 0.5),
             sp("bag.shift", "def", FALSE),
             sp("delta", "def", 1e-10),
             sp("maxcompete", "def", 4),
             sp("maxsurrogate", "def", 5),
-            sp("verbose", "def", FALSE))),
+            sp("verbose", "def", FALSE),
+            sp("xval", "def", 10))),
     autolearner("classif.blackboost",
         list(
 # ** vp
@@ -494,8 +494,6 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("n.minobsinnode", "int", c(1, 32), "exp"),
             sp("shrinkage", "real", c(0.0001, 0.3), "exp"),
             sp("bag.fraction", "real", c(.1, .9)),
-# ** cp
-            sp("keep.data", "fix", FALSE),
 # ** dp
             sp("cv.folds", "def", 0),
             sp("train.fraction", "def", 1),
@@ -777,7 +775,6 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("n.hood", "cat", c("circular", "square"), id="koho.shape"),
 # ** cp
             sp("contin", "fix", FALSE),
-            sp("keep.data", "fix", FALSE),
 # ** dp
             sp("radius", "def", NULL),
             sp("toroidal", "def", TRUE))),
