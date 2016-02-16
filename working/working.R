@@ -426,9 +426,11 @@ plotDist(failedTbl, failedResult, "runtime", "selected.learner", mean)
 
 configureMlr(on.learner.error="stop")
 
-i = 5
+i = 6
 vsx = setHyperPars(vse, par.vals=removeMissingValues(failedTbl[[i]]))
 removeMissingValues(failedTbl[[i]])
+failedResult[[i]]
+
 resample(vsx, pid.task, ho)
 
 
@@ -437,6 +439,8 @@ buildLearners(list(automlr::autolearners$classif.dbnDNN), pid.task)
 a <- matrix(1:100, 20)
 
 a
+
+dcSVM, gaterSVM: both have problems with .model$factor.levels$Class?
 
 ##### fast learning
 devtools::load_all("..")  # this veritable package itself
@@ -523,7 +527,8 @@ plot(dtc$y, pch=as.numeric(dtc$ppa.feature.filter)+1)
 
 ##### Testing
 library('testthat')
-devtools::test(pkg="../../mlr", filter="ModelMultiplexer")
+devtools::test(pkg="../../mlr", filter="classif_gaterSVM")
+devtools::test(pkg="../../mlr", filter="classif_dcSVM")
 
 
   base.learners = list(
@@ -563,3 +568,46 @@ predictfun = function(data, target, args, control) NULL
 badPreprocLrn = makePreprocWrapper(lrn2, train = trainfun, predict = predictfun)
 x = train(badPreprocLrn, pid.task)
 str(x)
+
+##### classif.gaterSVM, classif.dcSVM debug
+devtools::load_all("../../mlr")
+
+holdout(makeLearner("classif.gaterSVM"), pid.task)
+
+holdout(makeLearner("classif.dcSVM"), pid.task)
+
+traintask = makeClassifTask('train', data.frame(a=c(1, 2), b=c("a", "b")), 'b')
+testtask = makeClusterTask('test', data.frame(a=c(1, 1)))
+
+tt2 = makeClassifTask('train', data.frame(a=c(rnorm(100), (1+rnorm(100))), b=rep(c("a", "b"), each=100), c=rnorm(200)), 'b')
+
+x = train(makeLearner("classif.dcSVM", m=100,k=10,max.levels=1,early=0, seed=0), tt2)
+
+x = train(makeLearner("classif.dcSVM", m=100,k=10,max.levels=1,early=1, seed=0), traintask)
+
+is.factor(predict(x$learner.model, newdata=data.frame(a=c(1, 1), c=c(0, 0))))
+
+
+predict(x, testtask)
+
+traintask = makeClassifTask('train', data.frame(a=c(1, 2, 1, 2), b=c(1, 1, 2, 2), c=c("a", "b", "a", "b")), 'c')
+testtask = makeClusterTask('test', data.frame(a=c(1, 1), b=c(1, 1)))
+x = train(makeLearner("classif.gaterSVM", m=2), traintask)
+predict(x, testtask)
+
+predict(x$learner.model, newdata=data.frame(a=c(1, 1), b=c(1, 1)))
+
+debugonce(predictLearner.classif.gaterSVM)
+
+
+  data = data.frame(a=c(1, 2, 1, 2), b=c(1, 1, 2, 2), c=c("a", "b", "a", "b"))
+  traintask = makeClassifTask("train", data, "c")
+  testtask = makeClusterTask("test", data.frame(a=c(1, 1), b=c(1, 1)))
+  x = train(makeLearner("classif.dcSVM"), traintask)
+predict(x, testtask)$data$response
+
+  data = data.frame(a = c(1, 2, 1, 2), b = c(1, 1, 2, 2), c = c("a", "b", "a", "b"))
+  traintask = makeClassifTask("train", data, "c")
+  testtask = makeClusterTask("test", data.frame(a = c(1, 1), b = c(1, 1)))
+  x = train(makeLearner("classif.gaterSVM", seed = 0), traintask)
+  predict(x, testtask)

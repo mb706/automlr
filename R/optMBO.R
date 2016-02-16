@@ -11,7 +11,7 @@ amgetprior.ammbo = function(env) {
 }
 
 # no bells and whistles here either
-amsetup.ammbo = function(env, prior, learner, task) {
+amsetup.ammbo = function(env, prior, learner, task, measure) {
   env$learner = learner
   env$tc = NULL  # TODO makeTuneControlRandom()  # TODO: how do we set a time constraint?
   invisible()

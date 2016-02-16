@@ -12,7 +12,7 @@ amgetprior.amrandom = function(env) {
 }
 
 # no bells and whistles here either
-amsetup.amrandom = function(env, prior, learner, task) {
+amsetup.amrandom = function(env, prior, learner, task, measure) {
   class(learner) = c("amrandomWrapped", class(learner))
   env$learner = learner
   env$rdesc = do.call(makeResampleDesc, resampleOptions)

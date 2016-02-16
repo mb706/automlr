@@ -1,6 +1,6 @@
 # the interface between frontend ('automlr()') and backend (inside the optXXX.R files)
 
-aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL,
+aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
                        save.interval=default.save.interval, new.seed=FALSE, ...) {
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
@@ -15,7 +15,7 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   
   assert(!anyNA(amstate$spent))  # if amstate$spent contains NAs everything breaks...
   
-  if (is.null(savefile)) {
+  if (is.null(savefile) || save.interval == 0) {
     save.interval = Inf
   } else {
     savefile = gsub('(\\.rds|)$', '.rds', savefile)
@@ -25,20 +25,19 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
   
   # optional TODO:
   # check for all backend-function presence
-  # check for budget vector validity
   
   # update the amstate object
-  allpriors = filterNull(list(amstate$prior, prior))
-  priorcombiner = ifelse(length(allpriors) == 2, paste0("combinepriors.", amstate$backend), "coalesce")
-  amstate$prior = do.call(priorcombiner, allpriors)
-  
-  if (!is.null(searchspace)) {
-    amstate$searchspace = searchspace
-  }
-  
+
   # a deep copy of backendprivatedata is necessary so that an AMState object always refers to a well defined
   # optimizer state, even after it was used as an argument of an automlr() call.
   amstate$backendprivatedata = deepcopy(amstate$backendprivatedata)
+  
+  allpriors = filterNull(list(amstate$prior, prior))
+  if (length(allpriors > 1)) {
+    amstate$prior = combinepriors(amstate$backendprivatedata, amstate$prior, prior)
+  } else {
+    amstate$prior = coalesce(amstate$prior, prior)
+  }
   
   # check if budget is already exceeded. in this case we return the (updated) amstate object
   if (!is.null(budget)) {
@@ -53,12 +52,9 @@ aminterface = function(amstate, budget=NULL, searchspace=NULL, prior=NULL, savef
     .Random.seed = amstate$seed
   }
   
-  ## So how do we go about this?
-  ## I'ts probably a good idae to build a model-multiplexer out of the searchspace
-  ## Mabe with some information about the dependencies of the model parameters.
   ## TODO How does autoWEKA remember info about similar parameters? The answer might be 'not at all'.
   
-  objectiveLearner = buildLearners(amstate$searchspace)
+  objectiveLearner = buildLearners(amstate$searchspace, amstate$task)
   
   # set up or change backendprivatedata. This gets called once whenever some part of the AMState object
   # may have changed.

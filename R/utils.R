@@ -94,3 +94,11 @@ extractSubList = function(xs, element, element.value, simplify = TRUE, use.names
   }
   res
 }
+
+checkBudgetParam = function(budget) {
+  if (!identical(budget, 0) && !identical(budget, 0L)) {
+    assertNamed(budget)
+    assertNumeric(budget, lower=0, min.len=1, max.len=4)
+    assert(all(names(budget) %in% c("walltime", "cputime", "evals", "modeltime")))
+  }
+}

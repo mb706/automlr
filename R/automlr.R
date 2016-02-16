@@ -46,7 +46,8 @@
 #'        optimization runs.
 #' @param backend A character(1) referring to the back end used for optimization. Must be one of \code{\link{lsambackends}}
 #'        results.
-#' @param save.interval the inteval, in seconds, in between which to save the intermediate result to \code{savefile}.
+#' @param save.interval the inteval, in seconds, in between which to save the intermediate result to \code{savefile}. Ignored
+#'        if savefile is NULL; set to 0 to only save at end of optimization run.
 #' @param new.seed if TRUE, the random seed saved in the AMState object will not be used; instead the rng state at time
 #'        of the invocation will be used. The default behaviour (FALSE) is to use the saved rng state so that invocations
 #'        with the same AMState object give a more deterministic result (insofar as execution time does not influence
@@ -81,6 +82,20 @@ automlr = function(task, ...) {
 automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, prior=NULL, savefile=NULL,
                         save.interval=default.save.interval, backend, ...) {
   # Note: This is the 'canonical' function signature.
+  assertClass(task, "Task")
+  if (is.null(measure)) {
+    measure = getDefaultMeasure(task)
+  } else {
+    assertClass(measure, "Measure")
+  }
+  checkBudgetParam(budget)
+  assertList(searchspace, types="Autolearner", min.len=1)
+  assert(any(extractSubList(searchspace, "stacktype") == "learner"))  # need at least one learner
+  if (!is.null(savefile)) {
+    assertString(savefile)
+    assertNumber(save.interval, lower=0)
+  }
+  assert(identical(list(...), list()))
   automlr(makeS3Obj(c("AMState", "AMObject"),
                     task=task,
                     measure=coalesce(measure, getDefaultMeasure(task)),
@@ -101,13 +116,22 @@ automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, 
 #' 
 #' @rdname automlr
 #' @export
-automlr.character = function(task, budget=NULL, searchspace=NULL, prior=NULL, savefile=task,
+automlr.character = function(task, budget=NULL, prior=NULL, savefile=task,
                              save.interval=default.save.interval, new.seed=FALSE, ...) {
+  assertString(task)
   truefilename = gsub('(\\.rds|)$', '.rds', task)
+  if (!is.null(budget)) {
+    checkBudgetParam(budget)
+  }
+  if (!is.null(savefile)) {
+    assertString(savefile)
+    assertNumber(save.interval, lower=0)
+  }
+  assertFlag(new.seed)
+  assert(identical(list(...), list()))
   # yes, one could load an RDS file that contains a character(1) referring to another RDS file...
   automlr(readRDS(truefilename),
           budget=budget,
-          searchspace=searchspace,
           prior=prior,
           savefile=savefile,
           save.interval=save.interval,
@@ -118,10 +142,19 @@ automlr.character = function(task, budget=NULL, searchspace=NULL, prior=NULL, sa
 #' 
 #' @rdname automlr
 #' @export
-automlr.AMState = function(task, budget=NULL, searchspace=NULL, prior=NULL, savefile=NULL,
+automlr.AMState = function(task, budget=NULL, prior=NULL, savefile=NULL,
                            save.interval=default.save.interval, new.seed=FALSE, ...) {
   # TODO: maybe check there's nothing in the '...'.
-  aminterface(task, budget, searchspace, prior, savefile, save.interval, new.seed)
+  if (!is.null(budget)) {
+    checkBudgetParam(budget)
+  }
+  if (!is.null(savefile)) {
+    assertString(savefile)
+    assertNumber(save.interval, lower=0)
+  }
+  assertFlag(new.seed)
+  assert(identical(list(...), list()))
+  aminterface(task, budget, prior, savefile, save.interval, new.seed)
 }
 
 #' Extract a prior from an AMState or AMResult object

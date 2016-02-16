@@ -11,7 +11,7 @@ amgetprior.amirace = function(env) {
 }
 
 # no bells and whistles here either
-amsetup.amirace = function(env, prior, learner, task) {
+amsetup.amirace = function(env, prior, learner, task, measure) {
   env$learner = learner
   env$task = task
   env$rdesc = do.call(makeResampleDesc, resampleOptions)
@@ -19,7 +19,7 @@ amsetup.amirace = function(env, prior, learner, task) {
   
   ## we do the following to imitade mlr::tuneParams()
   env$ctrl = makeTuneControlIrace(maxExperiments = 1)  # maxExperiments will be overridden by our wrapper
-  env$ctrl = setDefaultImputeVal(env$ctrl, measure)
+  env$ctrl = setDefaultImputeVal(env$ctrl, measure)  # TODO ?????????
   env$measures = list(getDefaultMeasure(env$task))
   env$opt.path = makeOptPathDFFromMeasures(env$learner$searchspace, env$measures, include.extra = (env$ctrl$tune.threshold))
   ## end of imitation

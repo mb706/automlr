@@ -27,7 +27,8 @@ amgetprior.amdummy = function(env) {
 #' @param prior The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner the learner object that was built from the declared search space.
 #' @param task the task
-amsetup.amdummy = function(env, prior, learner, task) {
+#' @param measure the measure to optimize
+amsetup.amdummy = function(env, prior, learner, task, measure) {
   cat("Called 'setup'\n")
   env$prior = coalesce(prior, 1)
   env$learner = learner
