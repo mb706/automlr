@@ -8,7 +8,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
   assertClass(data, classes = "data.frame")
 
   assertNumber(nzv.cutoff.numeric, lower=0)
-  assertPercentage(nzv.cutoff.factor)
+  assertNumber(nzv.cutoff.factor, lower=0, upper=1)
   assertChoice(univariate.trafo, c("off", "center", "scale", "centerscale", "range"))
   assertChoice(impute.numeric, c("off", "remove.na", "mean", "median", "hist"))
   assertChoice(impute.factor, c("off", "remove.na", "distinct", "mode", "hist"))
