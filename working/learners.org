@@ -514,7 +514,7 @@
    - mincriterio :: 0..2.3: value of test statistics that must be exceeded to implement split. DUMMY req: testtype == "Teststatistic"
    - maxsurrogate :: int 0..5: number of surrogate splits to evaluate. NEEDS ORDERED COVARIABLES
    - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
-   - mtry :: 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
+   - mtry :: int 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
    - minbucket :: int 1..32 exp: minimum weight in terminal node
    - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
    - stump :: TRUE, FALSE
@@ -547,7 +547,7 @@
 *** classif.gbm
 - "Generalized Boosted Regression Modeling"
 **** Variable Parameters:
-   - distribution :: bernoulli, adaboost, gaussian, laplace, huberized, multinomial, poisson, pairwise
+   - distribution :: bernoulli, adaboost, huberized, multinomial
    - n.trees :: int 100..4000 exp
    - interaction.depth :: int 1..3: max order of interactions
    - n.minobsinnode :: int 1..32 exp
@@ -706,7 +706,6 @@
    - degree :: int 1..10 exp: {svm.degree} [this is classif.ksvm's 'degree' parameter] req: kernel == "polynomial"
    - coef0 :: 0..4: {svm.offset} [this is classif.ksvm's 'offset' parameter] req: kernel == "polynomial" || kernel == "sigmoid"
    - gamma :: .001..100 exp: {svm.scale} [this is classif.ksvm's 'scale' parameter] req: kernel != "linear"
-   - epsilon :: .001...5 exp: {svm.epsilon} 'insensitive loss epsilon'
    - shrinking :: TRUE, FALSE: {svm.shrink} use shrinking heuristic
 **** Default Parameters:
    - class.weights :: NULL: use 1 weights
@@ -723,9 +722,9 @@
 *** classif.dbnDNN
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
-   - hidden :: 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
+   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.01..2 exp: {nn.lrate}
    - momentum :: 0..0.8: {nn.momentum}
@@ -734,7 +733,7 @@
    - batchsize :: int 5..500 exp: {nn.bs}
    - hidden_dropout :: 0.5..1: {nn.dropout}
    - output :: sigm, linear, softmax: {nn.output}
-   - cd :: 1..5: boltzmann machine init rounds
+   - cd :: int 1..5: boltzmann machine init rounds
 **** Default Parameters:
    - visible_dropout :: 0
 *** classif.mlp
@@ -776,9 +775,9 @@
 - choo choo, motherfucker
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
-   - hidden :: 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
+   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.01..2 exp: {nn.lrate}
    - momentum :: 0..0.8: {nn.momentum}
@@ -795,9 +794,9 @@
 - neural nets using backpropagation
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
-   - hidden :: 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
+   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
    - threshold :: .0001...1 exp: stopping criterion
    - stepmax :: int 50..400 exponential: number of iterations
    - rep :: int 1..16 exp: repetitions of fitting
@@ -819,9 +818,9 @@
 - deep neural net initialized by stacked autoencoder
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
-   - hidden :: 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
+   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.01..2 exp: {nn.lrate}
    - momentum :: 0..0.8: {nn.momentum}

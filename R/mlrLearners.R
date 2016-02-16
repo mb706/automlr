@@ -442,7 +442,7 @@ autolearners = c(autowrappers, makeNamedAlList(
     autolearner("classif.rotationForest",
         list(
 # ** vp
-            sp("K", "real", c(2, 40), trafo=function(x) round(sum(info$n.feat) / x)),
+            sp("K", "real", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
             sp("L", "int", c(25, 100)))),
     autolearner("classif.ada",
         list(
@@ -480,7 +480,7 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("mincriterio", "real", c(0, 2.3), dummy=TRUE, req=quote(testtype == "Teststatistic")),
             sp("maxsurrogate", "int", c(0, 5)),
             sp("limitmtry", "bool", dummy=TRUE),
-            sp("mtry", "real", c(3, 20), req=quote(limitmtry == TRUE)),
+            sp("mtry", "int", c(3, 20), req=quote(limitmtry == TRUE)),
             sp("minbucket", "int", c(1, 32), "exp"),
             sp("minsplit", "int", c(2, 64), "exp"),
             sp("stump", "bool"),
@@ -510,7 +510,7 @@ autolearners = c(autowrappers, makeNamedAlList(
     autolearner("classif.gbm",
         list(
 # ** vp
-            sp("distribution", "cat", c("bernoulli", "adaboost", "gaussian", "laplace", "huberized", "multinomial", "poisson", "pairwise")),
+            sp("distribution", "cat", c("bernoulli", "adaboost", "huberized", "multinomial")),
             sp("n.trees", "int", c(100, 4000), "exp"),
             sp("interaction.depth", "int", c(1, 3)),
             sp("n.minobsinnode", "int", c(1, 32), "exp"),
@@ -668,7 +668,6 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("degree", "int", c(1, 10), "exp", id="svm.degree", req=quote(kernel == "polynomial")),
             sp("coef0", "real", c(0, 4), id="svm.offset", req=quote(kernel == "polynomial" || kernel == "sigmoid")),
             sp("gamma", "real", c(.001, 100), "exp", id="svm.scale", req=quote(kernel != "linear")),
-            sp("epsilon", "real", c(.001, .5), "exp", id="svm.epsilon"),
             sp("shrinking", "bool", id="svm.shrink"),
 # ** cp
             sp("cachesize", "fix", 400),
@@ -682,9 +681,9 @@ autolearners = c(autowrappers, makeNamedAlList(
         list(
 # ** vp
             sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", dummy=TRUE),
-            sp("hidden", "real", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidde", "real", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
-            sp("hidd", "real", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
+            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
+            sp("hidde", "int", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
+            sp("hidd", "int", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
             sp("activationfun", "cat", c("sigm", "linear", "tanh"), id="nn.afun"),
             sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate"),
             sp("momentum", "real", c(0, 0.8), id="nn.momentum"),
@@ -693,7 +692,7 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("batchsize", "int", c(5, 500), "exp", id="nn.bs"),
             sp("hidden_dropout", "real", c(0.5, 1), id="nn.dropout"),
             sp("output", "cat", c("sigm", "linear", "softmax"), id="nn.output"),
-            sp("cd", "real", c(1, 5)),
+            sp("cd", "int", c(1, 5)),
 # ** dp
             sp("visible_dropout", "def", 0))),
     autolearner("classif.multinom",
@@ -731,9 +730,9 @@ autolearners = c(autowrappers, makeNamedAlList(
         list(
 # ** vp
             sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", dummy=TRUE),
-            sp("hidden", "real", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidde", "real", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
-            sp("hidd", "real", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
+            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
+            sp("hidde", "int", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
+            sp("hidd", "int", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
             sp("activationfun", "cat", c("sigm", "linear", "tanh"), id="nn.afun"),
             sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate"),
             sp("momentum", "real", c(0, 0.8), id="nn.momentum"),
@@ -750,9 +749,9 @@ autolearners = c(autowrappers, makeNamedAlList(
         list(
 # ** vp
             sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", dummy=TRUE),
-            sp("hidden", "real", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidde", "real", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
-            sp("hidd", "real", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
+            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
+            sp("hidde", "int", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
+            sp("hidd", "int", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
             sp("threshold", "real", c(.0001, .1), "exp"),
             sp("stepmax", "int", c(50, 400), "exp"),
             sp("rep", "int", c(1, 16), "exp"),
@@ -774,9 +773,9 @@ autolearners = c(autowrappers, makeNamedAlList(
         list(
 # ** vp
             sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", dummy=TRUE),
-            sp("hidden", "real", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidde", "real", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
-            sp("hidd", "real", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
+            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
+            sp("hidde", "int", c(3, 100), "exp", id="nn.h5", dummy=TRUE, req=quote(numlayers==5), dim=5),
+            sp("hidd", "int", c(3, 100), "exp", id="nn.h7", dummy=TRUE, req=quote(numlayers==7), dim=7),
             sp("activationfun", "cat", c("sigm", "linear", "tanh"), id="nn.afun"),
             sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate"),
             sp("momentum", "real", c(0, 0.8), id="nn.momentum"),
