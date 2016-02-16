@@ -34,7 +34,7 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   
   allpriors = filterNull(list(amstate$prior, prior))
   if (length(allpriors > 1)) {
-    amstate$prior = combinepriors(amstate$backendprivatedata, amstate$prior, prior)
+    amstate$prior = amcombinepriors(amstate$backendprivatedata, amstate$prior, prior)
   } else {
     amstate$prior = coalesce(amstate$prior, prior)
   }

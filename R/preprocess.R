@@ -1,4 +1,30 @@
 
+#' preprocess the given data set
+#' 
+#' Do a set of transformation on the dataset depending on given parameters.
+#' 
+#' @param data The dataset, must be a data.frame
+#' @param target the name of the target column of the dataset; may be NULL if there is no data column.
+#' @param nzv.cutoff.numeric exclude numeric columns if their variance goes below this threshold
+#' @param nzv.cutoff.factor exclude factorial columns if the frequency of its most frequent level is
+#'        above 1-\code{nzv.cutoff.factor}.
+#' @param univariate.trafo The transformation to perform on numeric columns. Must be one of \code{"off"} (no trafo),
+#'        \code{"center"}, \code{"scale"}, \code{"centerscale"}, \code{"range"} (scaling so that all values lie
+#'        between 0 and 1.
+#' @param impute.numeric If and how to impute numeric missing values. Must be one of \code{"off"}, \code{"remove.na"}
+#'        (deleting rows with NAs), \code{"mean"}, \code{"median"}, \code{"hist"}.
+#' @param impute.factor If and how to impute factorial missing values. Must be one of \code{"off"}, \code{"remove.na"},
+#'        \code{"distinct"} (introduce new factor level), \code{"mode"}, \code{"hist"}.
+#' @param multivariate.trafo The multivariate transformation of numeric parameters to perform. Must be one
+#'        of \code{"off"}, \code{"pca"}, \code{"ica"}.
+#' @param feature.filter How to do feature filtering. Must be one of \code{"off"}, \code{"information.gain"},
+#'        \code{"chi.squared"}, \code{"rf.importance"}.
+#' @param feature.filter.thresh The threshold at which to exclude features when performing feature filtering.
+#'        Has no effect if \code{feature.filter} is set to \code{"off"}.
+#' @param keep.data Whether to include the transformed data in the returned object.
+#' 
+#' @return An object that can be used with \code{predict} to transform new data. If \code{keep.data} is \code{TRUE},
+#'         the slot \code{$data} will contain the transformed data.
 preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor=0, univariate.trafo="off",
     impute.numeric="off", impute.factor="off", multivariate.trafo="off", feature.filter="off",
     feature.filter.thresh = 0, keep.data=FALSE) {
@@ -148,7 +174,7 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
       # two target columns, first numeric, second numeric or logical -> survival task
       if (length(target) == 2 && is.numeric(targetData[[1]]) &&
           (is.numeric(targetData[[2]]) || is.logical(targetData[[2]]))) {
-        dummyTask = makeSurvTask("dummy", data, target, ifelse(is.numeric(targetData[[2]], "icens", "rcens")))
+        dummyTask = makeSurvTask("dummy", data, target, ifelse(is.numeric(targetData[[2]]), "icens", "rcens"))
       } else {
         # last default: multilabel. If target is not logical, this will throw an error.
         dummyTask = makeMultilabelTask("dummy", data, target)
@@ -186,7 +212,7 @@ predict.ampreproc = function(object, newdata, ...) {
     }
 
     if (object$impute.numeric == "remove.na") {
-      newdata = removeNa(newdata, object$cols.numeric)
+      newdata = newdata[!naRows(newdata, object$cols.numeric), ]
     } else if (object$impute.numeric != "off") {
       newdata[object$cols.numeric] = mapply(imputeRandom, newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY=FALSE)
     }
@@ -198,7 +224,7 @@ predict.ampreproc = function(object, newdata, ...) {
 
   if (length(object$cols.factor) > 0) {
     if (object$impute.factor == "remove.na") {
-      newdata = removeNa(newdata, object$cols.factor)
+      newdata = newdata[!naRows(newdata, object$cols.factor), ]
     } else if (object$impute.factor == "distinct") {
       newdata[object$cols.factor] = lapply(newdata[object$cols.factor], addNA, ifany=FALSE)
     } else if (object$impute.factor != "off"){
@@ -219,14 +245,22 @@ imputeRandom = function(x, pop) {
 }
 
 #' @title Wrap learner with preProcess function
-#'
+#' 
+#' @description Fuse the learner with the automlr preProcess function.
+#' 
+#' NOTE 1:\cr
+#' some of these arguments are useless dependent on the format of the data: If there are no numeric columns, the \code{*numeric-arguments} 
+#' have no effect etc.
+#' 
+#' Note 2:\cr
+#' setting \code{ppa.nzv.cutoff.*} to their maximum values would effectively remove all numeric / factor columns, therefore allowing 
+#' conversion for learners that don't support some types.
+#' 
+#' @param learner the mlr learner object
+#' @param ... Additional parameters passed to \code{\link{preProcess}}.
+#' 
 #' @export
 makePreprocWrapperAm = function (learner, ...) {
-  # NOTE:
-  # some of these arguments are useless dependent on the format of the data: whether there are numeric / factorial columns,
-  #  and how many there are.
-  # setting ppa.nzv.cutoff.* to their maximum values would effectively remove all numeric / factor columns, therefore allowing 
-  # conversion for learners that don't support some types.
   par.set = makeParamSet(
     makeNumericLearnerParam("ppa.nzv.cutoff.numeric", lower=0, default=0),
     makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower=0, upper=1, default=0),

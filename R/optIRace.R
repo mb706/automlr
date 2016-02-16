@@ -19,9 +19,9 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   
   ## we do the following to imitade mlr::tuneParams()
   env$ctrl = makeTuneControlIrace(maxExperiments = 1)  # maxExperiments will be overridden by our wrapper
-  env$ctrl = setDefaultImputeVal(env$ctrl, measure)  # TODO ?????????
+  env$ctrl = mlr:::setDefaultImputeVal(env$ctrl, measure)  # TODO: check this...
   env$measures = list(getDefaultMeasure(env$task))
-  env$opt.path = makeOptPathDFFromMeasures(env$learner$searchspace, env$measures, include.extra = (env$ctrl$tune.threshold))
+  env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace, env$measures, include.extra = (env$ctrl$tune.threshold))
   ## end of imitation
   
   ## the following generates the wrapper around irace::irace that checks our budget constraints and ensures continuation
@@ -49,7 +49,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       env$usedbudget['evals'] = tunerResults$experimentsUsedSoFar - evals.zero
       env$usedbudget['modeltime'] = tunerResults$timeUsedSoFar - modeltime.zero
       env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
-      env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpu
+      env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpus
       if (stopcondition(env$stepbudget, env$usedbudget)) {
         return(res)  # TODO tuneIrace is too smart for its own good; make sure even with an empty result, something gets returned that doesn't trigger the `stop()`.
       }
@@ -82,6 +82,6 @@ amoptimize.amirace = function(env, stepbudget) {
   assignInNamespace("irace", env$iraceWrapper, ns="irace")
 
   mlr:::tuneIrace(env$learner, env$task, env$rinst, env$measures, env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
-  env$tuneresult = tuneParams(learner, env$task, env$rdesc, par.set=learner$searchspace, control=env$ctrl)
+  env$tuneresult = tuneParams(env$learner, env$task, env$rdesc, par.set=env$learner$searchspace, control=env$ctrl)
   env$usedbudget
 }

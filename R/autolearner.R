@@ -25,8 +25,25 @@ autolearner = function(learner, searchspace=list(), stacktype="learner") {
             stacktype=stacktype)
 }
 
+#' Create a wrapper object for \code{\link{autolearner}}.
+#' 
+#' Build a wrapper object that can be plugged into \code{\link{autolearner}} to
+#' give wrapper functions to \code{\link{buildLearners}}.
+#' @param name the name of the wrapper. Must not contain a \code{$} character.
+#' @param constructor The function that will be called with the learner as a single
+#'        argument and construct another learner.
+#' @param conversion A function giving information about the data conversion this
+#'        wrapper performs. Takes one of \code{"factors"}, \code{"ordered"},
+#'        \code{"numerics"}, \code{"missing"} as an argument and returns a character
+#'        vector containing a subset of these and optionally the empty string \code{""}.
+#'        A function returning a set B when giving the argument A indicates that the
+#'        wrapper is able to convert data from format A to any of the format B. The
+#'        wrappers parameter set must then adhere to automlr.removes.XXX (for XXX being
+#'        each element of B) pseudo parameters in their parameter requirements.
 #' @export
 autoWrapper = function(name, constructor, conversion) {
+  assertString(name)
+  assert(identical(grep("$", name, fixed=TRUE), integer(0)))
   assertFunction(constructor)
   assertFunction(conversion, nargs=1)
   
