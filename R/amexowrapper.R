@@ -262,7 +262,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
   
   # combine all the ParamSets we have seen now
   completeSearchSpace = c(
-      makeParamSet(params=do.call(base::c, extractSubList(wrappers, "searchspace", simplify=FALSE))),
+      do.call(base::c, extractSubList(wrappers, "searchspace", simplify=FALSE)),
       makeParamSet(params=newparams))
 
   list(shadowparams=shadowparams,
