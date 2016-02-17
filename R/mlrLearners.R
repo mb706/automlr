@@ -529,7 +529,7 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("nrounds", "int", c(1, 16), "exp"),
 # ** cp
             sp("nthread", "fix", 1),
-            sp("verbose", "fix", 0),
+            sp("verbose", "fix", 1),
             sp("print.every.n", "fix", 1000000000),
             sp("early.stop.round", "fix", 1000000000),
             sp("missing", "fix", 2147359313),

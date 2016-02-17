@@ -280,6 +280,9 @@ makePreprocWrapperAm = function (learner, ...) {
     ppobject = do.call(preProcess, c(list(data=data, target=target, keep.data=TRUE), args))
     data = ppobject$data
     ppobject$data = NULL
+    if (ncol(data) == 1) {
+      warn("preprocess returned only one column.")
+    }
     list(data=data, control=ppobject)
   }
   

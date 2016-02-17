@@ -416,44 +416,52 @@ resample(vsx, pid.task, ho)
 ##### Failed Learners
 options(error=dump.frames)
 # learners that sometimes fail:
-#  - rotationForest, if n(covariates) == 1
-#  - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!. kernkmeans is unstable and fails randomly.
-#  - classif.ranger, if n(covariates) < mtry
-#  - classif.lssvm sometimes has singular matrix
-#  - classif.plsdaCaret breaks if ncomp is > min(ncol, nrow-1)
-#  - classif.randomForestSRC crashes sometimes, not others?
+#  - Things that break when ncol = 1
+#    - rotationForest, if n(covariates) == 1.
+#    - classif.hdrda fails when ncol == 1
+#    - classif.qda: fails when ncol == 1
+#    - classif.glmnet: fails if n(covariates) == 1
+#    - classif.quaDA: doesn't work with n(covariates) == 1
+#  - Things that break when n(covariates) determines the range of a param
+#    - classif.ranger, if n(covariates) < mtry
+#    - rotationForest:  when round(ncol(x) / K) == 1
+#    - classif.plsdaCaret breaks if ncomp is > min(ncol, nrow-1)
+#    - classif.rknn: fails if mtry > ncol(data)
+#  - Things that break when number of data too small:
+#    - classif.xyf fails when gridsize is larger than number of data point (listed again here)
+#    - classif.plsdaCaret breaks if ncomp is > min(ncol, nrow-1)
+#  - Things that seem generally unstable
+#    - classif.dcSVM: kernkmeans is unstable and fails randomly.
+#    - classif.dcSVM: length(ind) < min.cluster: need to set min.cluster to max(min.cluster, k)!! In SwarmSVM::dcSVM
+#    - classif.lssvm sometimes has singular matrix
+#    - classif.randomForestSRC crashes sometimes, not others?
+#    - classif.gaterSVM fails just like that, depending on "groups with zero length" or parameter c
+#    - classif.rknn: seems to be a bit unstable generally
+#    - classif.mda failed once in "df.inv" function (tbl[[325]])
+#    - classif.gaterSVM has its times, see below
+
+#  - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!
 #  - classif.nnTrain: 'numlayers' breaks it. Need new type 'HIDDEN'.
-#  - classif.dcSVM: fails when `kernel` given sometimes, because different functions are being called.
-#  - classif.glmnet: fails if n(covariates) == 1
 #  - classif.extraTrees: subsetSizeIsNull must be HIDDEN
-#  - classif.glmboost: m == "aic" --> classif.glmboost.risk = "inbag"
-#  - classif.quaDA: doesn't work with n(covariates) == 1
 #  - classif.saeDNN: numlayers must be HIDDEN
-#  - classif.PART: errors thrown if: -R && C, C not between 0 and 1, N && NOT-R
-#  - classif.J48: errors thrown if: -U && -S, -U && -R, -C && -U, -C && -R; C not between 0 and 1. -N && NOT-R
-#  - classif.geoDA:  validation == "learntest" is broken, but from geoDAs side
-#  - classif.quaDA: "learntest" also broken...
-#  - classif.neuralnet: linear.output does not work.
-#  - classif.gaterSVM fails just like that, depending on "groups with zero length" or parameter c
-#  - classif.ksvm: kernel == "stringdot" not actually supported; instead use "matrix".
+
+#  [x] classif.glmboost: m == "aic" --> classif.glmboost.risk = "inbag"
+#  [x] classif.PART: errors thrown if: -R && C, C not between 0 and 1, N && NOT-R
+#  [x] classif.J48: errors thrown if: -U && -S, -U && -R, -C && -U, -C && -R; C not between 0 and 1. -N && NOT-R
+#  [x] classif.geoDA:  validation == "learntest" is broken, but from geoDAs side
+#  [x] classif.quaDA: "learntest" also broken...
+#  [x] classif.neuralnet: linear.output does not work.
+#  [x] classif.ksvm: kernel == "stringdot" not actually supported; instead use "matrix".
+#  [x] classif.rda: fails when crossval==TRUE, fold == 1
+
 
 # gaterSVM fails with:
-# list(selected.learner = "classif.gaterSVM", classif.gaterSVM.m = 25,      classif.gaterSVM.max.iter = 71, classif.gaterSVM.hidden = 3,      classif.gaterSVM.learningrate = 0.423925815119678, classif.gaterSVM.threshold = 0.000000497414795165264,      classif.gaterSVM.stepmax = 74, classif.gaterSVM.c = 100,      ppa.nzv.cutoff.numeric = 0.159084632935392, ppa.univariate.trafo = "centerscale",      ppa.multivariate.trafo = "ica", ppa.feature.filter = "off"
+vsx = setHyperPars(vse, par.vals=list(selected.learner = "classif.gaterSVM", classif.gaterSVM.m = 25,      classif.gaterSVM.max.iter = 71, classif.gaterSVM.hidden = 3,      classif.gaterSVM.learningrate = 0.423925815119678, classif.gaterSVM.threshold = 0.000000497414795165264,      classif.gaterSVM.stepmax = 74, classif.gaterSVM.c = 100,      ppa.nzv.cutoff.numeric = 0.159084632935392, ppa.univariate.trafo = "centerscale",      ppa.multivariate.trafo = "ica", ppa.feature.filter = "off"))
 
 # interesting fails:
 # 325
-# 347 -- binomial
-# 351 -- hdrda
-# 392 -- xyf, this one looks easy
-# 433 -- classif.dcSVM, new bug
-# 512 -- classif.qda
-# 598 -- classif.rda
-# 732 -- classif.rotationForest
-# 744 -- classif.xgboost
-# 773 -- classif.rknn
-# 861 -- old bug?
-# 985 -- dito?
-
+# 347 -- binomial -- i guess completely random
+Q
 i
 length(f2)
      
@@ -473,11 +481,13 @@ f2[i]
 f2[49]
 removeMissingValues(failedTbl[[i-1]])
 f2
-i = 29
+i = which(f2 == 325)
+i
 
 (i = i + 1)
+
 vsx = setHyperPars(vse, par.vals=removeMissingValues(failedTbl[[i]]))
-# removeMissingValues(failedTbl[[i]])
+removeMissingValues(failedTbl[[i]])
 # failedResult[[i]]
 resample(vsx, pid.task, ho)
 print(failedTbl[[i]]$selected.learner)
