@@ -737,7 +737,7 @@ autolearners = c(autowrappers, makeNamedAlList(
             sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate", req=quote(algorithm == "backprop")),
             sp("err.fct", "cat", c("sse", "ce")),
             sp("act.fct", "cat", c("logistic", "tanh")),
-            sp("linear.output", "bool"),
+            sp("linear.output", "def", TRUE),
 # ** dp
             sp("startweights", "def", NULL),
             sp("lifesign", "def", "none"),

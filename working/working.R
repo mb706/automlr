@@ -331,6 +331,7 @@ smallAL = makeNamedAlList(
 
 devtools::load_all("..")  # this veritable package itself
 vse2 = buildLearners(automlr::autolearners, pid.task)
+
 vse = buildLearners(automlr::autolearners, pid.task)
 tbl = sampleValues(vse$searchspace, 1000, trafo=TRUE)
 vse$learner$base.learners$classif.rotationForest$config$on.learner.error="warn"
@@ -413,29 +414,81 @@ resample(vsx, pid.task, ho)
 
 
 ##### Failed Learners
-
+options(error=dump.frames)
 # learners that sometimes fail:
 #  - rotationForest, if n(covariates) == 1
-#  - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!
+#  - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!. kernkmeans is unstable and fails randomly.
 #  - classif.ranger, if n(covariates) < mtry
 #  - classif.lssvm sometimes has singular matrix
-#  - classif.plsdaCaret breaks if ncomp is < min(nrow, ncol-1)
+#  - classif.plsdaCaret breaks if ncomp is > min(ncol, nrow-1)
 #  - classif.randomForestSRC crashes sometimes, not others?
+#  - classif.nnTrain: 'numlayers' breaks it. Need new type 'HIDDEN'.
+#  - classif.dcSVM: fails when `kernel` given sometimes, because different functions are being called.
+#  - classif.glmnet: fails if n(covariates) == 1
+#  - classif.extraTrees: subsetSizeIsNull must be HIDDEN
+#  - classif.glmboost: m == "aic" --> classif.glmboost.risk = "inbag"
+#  - classif.quaDA: doesn't work with n(covariates) == 1
+#  - classif.saeDNN: numlayers must be HIDDEN
+#  - classif.PART: errors thrown if: -R && C, C not between 0 and 1, N && NOT-R
+#  - classif.J48: errors thrown if: -U && -S, -U && -R, -C && -U, -C && -R; C not between 0 and 1. -N && NOT-R
+#  - classif.geoDA:  validation == "learntest" is broken, but from geoDAs side
+#  - classif.quaDA: "learntest" also broken...
+#  - classif.neuralnet: linear.output does not work.
+#  - classif.gaterSVM fails just like that, depending on "groups with zero length" or parameter c
+#  - classif.ksvm: kernel == "stringdot" not actually supported; instead use "matrix".
+
+# gaterSVM fails with:
+# list(selected.learner = "classif.gaterSVM", classif.gaterSVM.m = 25,      classif.gaterSVM.max.iter = 71, classif.gaterSVM.hidden = 3,      classif.gaterSVM.learningrate = 0.423925815119678, classif.gaterSVM.threshold = 0.000000497414795165264,      classif.gaterSVM.stepmax = 74, classif.gaterSVM.c = 100,      ppa.nzv.cutoff.numeric = 0.159084632935392, ppa.univariate.trafo = "centerscale",      ppa.multivariate.trafo = "ica", ppa.feature.filter = "off"
+
+# interesting fails:
+# 325
+# 347 -- binomial
+# 351 -- hdrda
+# 392 -- xyf, this one looks easy
+# 433 -- classif.dcSVM, new bug
+# 512 -- classif.qda
+# 598 -- classif.rda
+# 732 -- classif.rotationForest
+# 744 -- classif.xgboost
+# 773 -- classif.rknn
+# 861 -- old bug?
+# 985 -- dito?
+
+i
+length(f2)
+     
 fails <- which(is.na(extractSubList(res3, "aggr")))
-failedResult <- res3[fails]
-failedTbl <- tbl[fails]
+f2 <- fails[intersect(55:length(fails), which(extractSubList(tbl[fails], "selected.learner") %nin% c("classif.neuralnet", "classif.geoDA", "classif.saeDNN", "classif.extraTrees", "classif.nnTrain" , "classif.gbm", "classif.bdk", "classif.dbnDNN", "classif.ada", "classif.ctree", "classif.blackboost")))]
+f2
+fails
+
+failedResult <- res3[f2]
+failedTbl <- tbl[f2]
 
 plotDist(failedTbl, failedResult, "runtime", "selected.learner", mean)
 
 configureMlr(on.learner.error="stop")
+i-6
+f2[i]
+f2[49]
+removeMissingValues(failedTbl[[i-1]])
+f2
+i = 29
 
-i = 11
+(i = i + 1)
 vsx = setHyperPars(vse, par.vals=removeMissingValues(failedTbl[[i]]))
-removeMissingValues(failedTbl[[i]])
-failedResult[[i]]
-
+# removeMissingValues(failedTbl[[i]])
+# failedResult[[i]]
 resample(vsx, pid.task, ho)
+print(failedTbl[[i]]$selected.learner)
 
+removeMissingValues(failedTbl[[i]])
+
+debugonce(mlr:::trainLearner.classif.saeDNN)
+
+getHyperPars(vsx)$
+print()
+cat(deparse(removeMissingValues(failedTbl[[i]]), control=list()))
 
 buildLearners(list(automlr::autolearners$classif.dbnDNN), pid.task)
 
@@ -614,3 +667,34 @@ predict(x, testtask)$data$response
   testtask = makeClusterTask("test", data.frame(a = c(1, 1), b = c(1, 1)))
   x = train(makeLearner("classif.gaterSVM", seed = 0), traintask)
   predict(x, testtask)
+
+
+x = matrix(c(
+  -0.0579049224306274, 1.00516616975178,  0.418984059437141, 0.804358348244999, 1.22299378460262, -0.0681603440346371,  0.676985389705721,
+  1.56008796296189, 1.02436587954592, 1.81105582121434,  0.627961070792271, 0.977704132291529, 0.719160397917624, 0.975428687276605,
+  1.17156255214052, 0.473509846619958, 1.25558128690508, 1.88003466789258,  -0.0214571970730996, -0.231525725027871, -0.506551479512185,
+  0.182355440425921, -0.432214282809464, -0.438108498310288, -0.310841316754162,  -0.0653533854965769, -0.624947955596895, -0.484539358723184,
+  -0.182586118381738, -0.722164175184012, 0.0800340678458996, -0.0321743672609238,  -0.405937312016915, -0.343843459458522, -0.137867070894641,
+  -0.566686259554594,  -0.11371837606192, -0.558140234390195, 2.25504301037202, 1.88742772396292,  1.67044559546668, 1.58943745553616,
+  1.23785589841201, 2.14827236914216,  1.94488972734457, 0.99335453521417, 1.19882226022849, 1.12006172306959,  1.95014378343019,
+  1.53653888509545, 1.52268138869386, 1.60751591235831,  1.25876181616502, 1.69361849057563, 1.47858817475208, 1.05185104851319,
+  2.37091109724582, 0.0237604601797854, -0.053886299562887, 0.0604365901259318,  -0.826475021104859, -0.194966572933609, -0.814129148853346,
+  0.261093918305815,  -0.181622846849615, -0.779321290085687, 0.819110569455364, -0.515414062712161,  1.07487047641155, 0.123152057908705,
+  0.286392630864587, -0.0423487167533624,  0.302752112505672, -0.184781920271067, 1.08447165496384, -0.538007211629324,  0.500543762952515,
+  1.73853372325441, -0.791089702388143, 1.26374142602086,  -1.74607587081893, -0.509424814917579, 0.277030808683005, 0.124972622597836,
+  -1.78148854895652, -0.909603187072895, -0.875679611333982, -0.935051899674395,  0.567851804064621, 0.135950465089575, 1.28462503580773,
+  0.472479005919984,  0.663306948219522, -0.0284579592907923, -0.295667842684, 0.30613172133055,  0.295315344162428, 0.390008907128904,
+  0.291186403449642, 0.380653920729877,  0.359954425046099, 0.375325308823369, 0.277160822633114, 0.372317709549438,  0.391980575110528,
+  0.354600602019738, 0.379496754784887, 0.311928115455958,  0.310550301877922, 0.258102041747073, 0.285720733675813, 0.303401096577156,
+  0.350386696724582, 0.340694450780792, -0.054311582247365, -0.158151471049343,  -0.808683313203137, -0.0542069129023475, -0.190481602144457,
+  -0.815710324225835, -0.953574205193643, 1.00910291201536, -0.199061837855707,  -0.33024331445543, -0.402390318594414, -0.215355811516023,
+  0.121997536554817,  0.338596359733725, 0.849870268287867, 0.589097957217166, 0.19583609400354,  0.164437143610763, -0.549557209895514), ncol=7)
+kernlab::kkmeans(x = x, centers=6)
+
+
+
+#fails because
+#https://github.com/cran/kernlab/blob/master/R/kkmeans.R
+#line 168
+#lower[compin,u] <- dismat[compin,u] <- - 2 * affinMult(kernel,x[compin,],x[vgr[[u]],,drop=FALSE], w[vgr[[u]]], p , D, D1)/sum(w[vgr[[u]]]) + secsum[u] + kdiag[compin]
+#is missing a drop=FALSE at x[compin, ]?
