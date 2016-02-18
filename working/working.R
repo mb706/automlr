@@ -5,7 +5,7 @@ devtools::load_all("../../ParamHelpers")
 devtools::load_all("../../mlr")
 library(roxygen2)
 roxygenise('..')
-devtools::load_all("..")  # this veritable package itself
+devtools::load_all("..")
 options(error=dump.frames)
 
 ##### preProcess
@@ -135,7 +135,7 @@ lbig$searchspace$pars$classif.svm.nu$requires
 
 automlr:::allfeasible(getParamSet(makeLearner("classif.bdk")), c(0, 1), "alpha", 2)
 
-devtools::load_all("..")  # this veritable package itself
+devtools::load_all("..")
 lbig = buildLearners(automlr:::autolearners, iris.task)
 
 ##### small buildLearners
@@ -177,7 +177,7 @@ canHandleX = list(
 
 ##### makeAMExoWrapper
 
-devtools::load_all("..")  # this veritable package itself
+devtools::load_all("..")
 res = automlr:::makeAMExoWrapper(NULL, wrappers, taskdesc, idRef, c("missings", "factors", "ordered", "numerics"), canHandleX)
 names(res)
 
@@ -207,7 +207,7 @@ smallAL = makeNamedAlList(
                 sp("center", "def", FALSE),
                 sp("trace", "def", FALSE))))
 
-devtools::load_all("..")  # this veritable package itself
+devtools::load_all("..")
 vse = buildLearners(smallAL, pid.task)
 as.list(environment(vse$searchspace$pars$classif.glmboost.nu$trafo))
 vse$fixedParams
@@ -329,7 +329,7 @@ smallAL = makeNamedAlList(
                 sp("center", "def", FALSE),
                 sp("trace", "def", FALSE))))
 
-devtools::load_all("..")  # this veritable package itself
+devtools::load_all("..")
 vse2 = buildLearners(automlr::autolearners, pid.task)
 
 vse = buildLearners(automlr::autolearners, pid.task)
@@ -340,12 +340,12 @@ configureMlr(on.learner.error="warn")
 # ho = makeResampleDesc("CV", iters=5)
 ho = makeResampleDesc("Holdout")
 
-res3 = lapply(seq(length(tbl)), function(x) {
-  vsx = setHyperPars(vse, par.vals=removeMissingValues(as.list(tbl[[x]])))
-  print(x)
-  print(getHyperPars(vsx))
-  resample(vsx, pid.task, ho)
-})
+#res3 = lapply(seq(length(tbl)), function(x) {
+#  vsx = setHyperPars(vse, par.vals=removeMissingValues(as.list(tbl[[x]])))
+#  print(x)
+#  print(getHyperPars(vsx))
+#  resample(vsx, pid.task, ho)
+#})
 
 res3
 
@@ -400,8 +400,10 @@ plotDist <- function(tbl, res3, xitem, aggregate, aggfn=min) {
 # ppa.impute.numeric, ppa.impute.factor
 # ppa.feature.filter, ppa.feature.filter.thresh
 
-plotDist(tbl, res3, "aggr", "selected.learner", function(x, ...) mean(is.na(x), ...))
-abline(c(1, 0))
+nas = sapply(res3, function(x) is.na(x$aggr))
+
+plotDist(tbl[!nas], res3[!nas], "runtime", "selected.learner", mean)
+abline(c(.5, 0))
 
 sum(extractSubList(res3, "runtime"))
 which(extractSubList(res3, "runtime") > 10)
@@ -440,10 +442,10 @@ options(error=dump.frames)
 #    - classif.mda failed once in "df.inv" function (tbl[[325]])
 #    - classif.gaterSVM has its times, see below
 
-#  - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!
-#  - classif.nnTrain: 'numlayers' breaks it. Need new type 'HIDDEN'.
-#  - classif.extraTrees: subsetSizeIsNull must be HIDDEN
-#  - classif.saeDNN: numlayers must be HIDDEN
+#    - classif.dcSVM: need to make "kmeans" method to mean kmeans(x, y, algorithm=c("MacQueen"))!
+#  [x] classif.nnTrain: 'numlayers' breaks it. Need new type 'HIDDEN'.
+#  [x] classif.extraTrees: subsetSizeIsNull must be HIDDEN
+#  [x] classif.saeDNN: numlayers must be HIDDEN
 
 #  [x] classif.glmboost: m == "aic" --> classif.glmboost.risk = "inbag"
 #  [x] classif.PART: errors thrown if: -R && C, C not between 0 and 1, N && NOT-R
@@ -509,7 +511,7 @@ a
 dcSVM, gaterSVM: both have problems with .model$factor.levels$Class?
 
 ##### fast learning
-devtools::load_all("..")  # this veritable package itself
+devtools::load_all("..")
 
 slowLearners <- c('classif.xyf', 'classif.lda', 'classif.mda', 'classif.rrlda', 'classif.dcSVM',
                   'classif.rda', 'classif.bartMachine', 'classif.boosting', 'classif.nodeHarvest')
@@ -708,3 +710,36 @@ kernlab::kkmeans(x = x, centers=6)
 #line 168
 #lower[compin,u] <- dismat[compin,u] <- - 2 * affinMult(kernel,x[compin,],x[vgr[[u]],,drop=FALSE], w[vgr[[u]]], p , D, D1)/sum(w[vgr[[u]]]) + secsum[u] + kdiag[compin]
 #is missing a drop=FALSE at x[compin, ]?
+
+
+##### quick tests for dependencies
+
+
+
+slowLearners <- c('classif.xyf', 'classif.glmboost', 'classif.rotationForest', 'classif.lda', 'classif.mda', 'classif.rrlda', 'classif.dcSVM',
+                  'classif.rda', 'classif.bartMachine', 'classif.boosting', 'classif.nodeHarvest', 'classif.randomForest', 'classif.nnet', 'classif.svm',
+                  'classif.lssvm', 'classif.clusterSVM', 'classif.ksvm', 'classif.geoDA', 'classif.nnTrain', 'classif.IBk')
+
+
+
+devtools::load_all("..")
+vse = buildLearners(c(Filter(function(x) x$learner %nin% slowLearners, automlr::autolearners), automlr:::autowrappers), pid.task)
+tbl2 = sampleValues(vse$searchspace, 200, trafo=TRUE)
+
+configureMlr(on.learner.error="warn")
+
+# ho = makeResampleDesc("CV", iters=5)
+ho2 = makeResampleDesc("Holdout")
+x <- 1
+removeMissingValues(tbl2[[1]])
+
+res4 = lapply(seq(length(tbl2)), function(x) {
+  vsx = setHyperPars(vse, par.vals=removeMissingValues(as.list(tbl2[[x]])))
+  print(x)
+  print(getHyperPars(vsx))
+  resample(vsx, pid.task, ho2)
+})
+
+Filter(function(x) is.na(x$aggr), res4)
+
+res2

@@ -16,7 +16,7 @@
 - MANUAL{text}: give `text` instead of parsed info
 - TODO: should be changed
 - DUMMY: this is a dummy variable
-- ONNA: requires NA to be present
+- INJECT: this is a variable that needs to be added to the learner
 - {common id}
 - [int] x..y [exp]: for numeric ranges
 - x..y: numeric range with additional end 
@@ -25,7 +25,8 @@
 * TODO:
 - [X] respect MANUAL
 - [X] respect DUMMY
-- [ ] respect ONNA
+- [X] respect INJECT
+- [ ] remove ONNA
 - [X] parse ID
 - [X] multidim
 - [X] requirements
@@ -157,7 +158,8 @@
 - Regularized discriminant analysis
 **** Variable Parameters:
    - kernel :: rectangular, triangular, epanechnikov, biweight, triweight, cos, inv, gaussian
-   - crossval :: TRUE, FALSE
+   - crossval :: TRUE, FALSE: req: fold > 1
+   - crossval.AMLRFIX1 :: FALSE: req: fold == 1
    - train.fraction :: 0.1..0.9: the fraction of the data used for training
    - fold :: int 1..32 exp: number of crossval- or bootstrap samples
    - K :: int 30..3000 exp: steps until temp == 0; req: SimAnn == TRUE && schedule == 1
@@ -218,10 +220,12 @@
 *** classif.quaDA
 - Another quadratic discriminant analysis
 **** Variable Parameters:
-   - validation :: crossval, learntest: {da.val} type of validation
+   - do.validation :: TRUE, FALSE: DUMMY whether to do validation {da.val}
+   - validation :: crossval: ('learntest' would also be an option, but is broken) req: do.validation == TRUE
 *** classif.geoDA
 **** Variable Parameters:
-   - validation :: crossval, learntest: {da.val}
+   - do.validation :: TRUE, FALSE: DUMMY whether to do validation {da.val}
+   - validation :: crossval: ('learntest' would also be an option, but is broken) req: do.validation == TRUE
 ** KNN
 *** classif.kknn
 **** Variable Parameters:
@@ -272,7 +276,7 @@
    - teststat :: quad, max: type of test statistic  I WANT TO KNOW IF THIS IS RELEVANT IF TESTTYPE IS NOT 'Teststatistic'
    - testtype :: Bonferroni, MonteCarlo, Univariate, Teststatistic
    - mincriterion :: 0.5..0.99: value of 1-p value that must be exceeded to implement split. req: testtype != "Teststatistic"
-   - mincriterio :: 0..2.3: value of test statistics that must be exceeded to implement split. DUMMY req: testtype == "Teststatistic"
+   - mincriterion.AMLRFIX1 :: 0.1..1: value of test statistics that must be exceeded to implement split. req: testtype == "Teststatistic"
    - maxsurrogate :: int 0..5: number of surrogate splits to evaluate. NEEDS ORDERED COVARIABLES
    - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
    - mtry :: int 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
@@ -289,12 +293,12 @@
 **** Variable Parameters:
    - U :: TRUE, FALSE: {tree.u} no pruning y/n
    - O :: TRUE, FALSE: no collapsing y/n
-   - C :: 0.1...9: {tree.c} pruning confidence
+   - C :: 0.1...9: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
    - M :: int 1..32 exp: {tree.m} minimum instances per leaf
-   - R :: TRUE, FALSE: {tree.r} reduced error pruning
-   - N :: int 2..8: {tree.n} req: R == TRUE
+   - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
+   - N :: int 2..8: {tree.n} req: U == FALSE && R == TRUE
    - B :: TRUE, FALSE: {tree.b} only binary splits
-   - S :: TRUE, FALSE: no subtree raising y/n
+   - S :: TRUE, FALSE: no subtree raising y/n req: U == FALSE
    - J :: TRUE, FALSE: {tree.j} MDL correction for info gain on numeric attributes
 **** Default Parameters:
    - Q :: NULL: no seed
@@ -305,7 +309,7 @@
 *** classif.PART
 - WEKA PART decision list
 **** Variable Parameters:
-   - C :: 0.1..0.9: {tree.c} pruning confidence
+   - C :: 0.1..0.9: {tree.c} pruning confidence: req: R == FALSE
    - M :: int 1..32 exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning
    - N :: int 2..8: {tree.n} req: R == TRUE
@@ -384,7 +388,7 @@
    - teststat :: quad, max: test statistic to apply
    - testtype :: Univariate, Bonferroni, MonteCarlo, Teststatistic
    - mincriterion :: 0.5..0.99: value of 1-p value that must be exceeded to implement split. req: testtype != "Teststatistic"
-   - mincriterio :: 0..2.3: value of test statistics that must be exceeded to implement split. DUMMY req: testtype == "Teststatistic"
+   - mincriterion.AMLRFIX1 :: 0.1..1: value of test statistics that must be exceeded to implement split. req: testtype == "Teststatistic"
    - minprob :: 0..1: TODO this is where I gave up...
 **** Default Parameters:
    - trace :: FALSE
@@ -473,7 +477,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - K :: int 3..40: MANUAL{sp("K", "real", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x)))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
+   - K :: int 3..40: MANUAL{sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x)))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
    - L :: int 25..100: number of trees
 ** Boosting
 *** classif.ada
@@ -511,7 +515,7 @@
    - teststat :: quad, max: type of test statistic  I WANT TO KNOW IF THIS IS RELEVANT IF TESTTYPE IS NOT 'Teststatistic'
    - testtype :: Bonferroni, MonteCarlo, Univariate, Teststatistic
    - mincriterion :: 0.5..0.99: value of 1-p value that must be exceeded to implement split. req: testtype != "Teststatistic"
-   - mincriterio :: 0..2.3: value of test statistics that must be exceeded to implement split. DUMMY req: testtype == "Teststatistic"
+   - mincriterion.AMLRFIX1 :: 0.1..1: value of test statistics that must be exceeded to implement split. req: testtype == "Teststatistic"
    - maxsurrogate :: int 0..5: number of surrogate splits to evaluate. NEEDS ORDERED COVARIABLES
    - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
    - mtry :: int 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
@@ -528,14 +532,14 @@
 - AdaBoost.M1 and SAMME using classification trees
 **** Variable Parameters:
    - boos :: TRUE, FALSE: whether to adjust weights
-   - mfinal :: int 25..400 exp: {boostree.iter} number of boosting iterations
+   - mfinal :: int 25..400 exp: number of boosting iterations
    - coeflearn :: Breiman, Freund, Zhu: coefficient learning algorithm
-   - minsplit :: int 2..64 exp: {boostree.minsplit} minimum sum of weights to be considered for splitting
-   - minbucket :: int 1..32 exp: {boostree.minbucket} minimum weight in terminal node
-   - cp :: 1e-4..0.5 exp: {boostree.cp} complexity parameter
-   - usesurrogate :: 0, 1, 2: {boostree.usersur} ONNA how to use surrogate in splitting process
-   - surrogatestyle :: 0, 1: {boostree.surstyle} ONNA  how to use surrogate
-   - maxdepth :: int 1..30 exp: {boostree.maxdepth} maximum depth of any node
+   - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
+   - minbucket :: int 1..32 exp: minimum weight in terminal node
+   - cp :: 1e-4..0.5 exp: complexity parameter
+   - usesurrogate :: 0, 1, 2: ONNA how to use surrogate in splitting process
+   - surrogatestyle :: 0, 1: ONNA  how to use surrogate
+   - maxdepth :: int 1..30 exp: maximum depth of any node
 **** Default Parameters:
    - maxcompete :: 4: only affects output
    - maxsurrogate :: 5: only affects output
@@ -561,11 +565,11 @@
 **** Variable Parameters:
    - family :: AdaExp, Binomial
    - mstop :: int 25..400 exp: req: m == "mstop"
-   - msto :: 400: DUMMY req: m != "mstop"
+   - mstop.AMLRFIX1 :: 400: req: m != "mstop"
    - nu :: .001...3 exp
-   - risk :: inbag, oobag, none
+   - risk :: inbag, oobag, none: req: m != "aic"
    - stopintern :: TRUE, FALSE
-   - m :: mstop, cv: also option 'aic', but for some reason that doesn't work (BUG?)
+   - m :: mstop, cv, aic
 **** Default Parameters:
    - center :: FALSE
    - trace :: FALSE
@@ -589,11 +593,11 @@
    - silent :: 0: some output
    - eval_metric :: error: use default
    - maximize :: TRUE: does not matter since early.stop.round is NULL.
+   - early.stop.round :: 1: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
 **** Changed (fixed) Parameters:
    - nthread :: 1: only one thread
-   - verbose :: 0: stay silent
-   - print.every.n :: 1000000000: stay silent
-   - early.stop.round :: 1000000000: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
+   - verbose :: 1: stay almost silent -- setting this to 0 gives error!
+   - print.every.n :: 1000: stay silent
    - missing :: 2147359313: we don't have a missing indicator, but we can't give NULL here, so we take a number that is unlikely to be chosen.
    - objective :: NULL: we must set this to NULL so it gets chosen automatically.
 ** SVM
@@ -643,10 +647,10 @@
 - Support Vector Machine
 **** Variable Parameters:
    - type :: C-svc, nu-svc, C-bsvc, spoc-svc, kbb-svc: svm type
-   - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot, stringdot: {svm.kernel}
+   - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot: {svm.kernel} TODO: "matrix" is also available in principle
    - C :: .125..8 exp: {svm.c} constraint violation cost. req: type %in% c("C-svc", "C-bsvc", "spoc-svc", "kbb-svc")
    - nu :: .001...1 exp: {svm.nu} req: type == "nu-svc"
-   - epsilon :: .001...5 exp: {svm.epsilon} insensitive loss epsilon. req: type %in% c("eps-svr", "nu-svr", "eps-bsvm")
+   - epsilon :: .001...5 exp: insensitive loss epsilon. req: type %in% c("eps-svr", "nu-svr", "eps-bsvm")
    - sigma :: .001..100 exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
    - degree :: int 1..10 exp: {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
    - scale :: .001..100 exp: {svm.scale} req: kernel %in% c("polydot", "tanhdot")
@@ -681,7 +685,7 @@
 *** classif.lssvm
 - Least Squares Support Vector Machine
 **** Variable Parameters:
-   - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot, stringdot: {svm.kernel}
+   - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot: {svm.kernel} TODO: "matrix" would be available in principle.
    - tau :: .001...100 exp: regularization parameter
    - reduced :: TRUE, FALSE: solve full problem vs. reduced problem using csi
    - sigma :: .001..100 exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
@@ -720,8 +724,8 @@
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
    - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7} req: numlayers==7
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.01..2 exp: {nn.lrate}
    - momentum :: 0..0.8: {nn.momentum}
@@ -739,10 +743,11 @@
    - xxx :: MANUAL Skipping this for now since we have a few NNs already
 *** classif.multinom
 - multinomial log-linear models via neural nets
-- TODO: what about MaxNWts : 100000: maximum number of weights. Maybe change this to abort slow runs prematurely. DUMMY since mlr doesn't know about it.
+
 **** Variable Parameters:
    - decay :: 0.0001..0.3 exponential: {nn.shallowdecay} weight decay
    - maxit :: int 50..400 exponential: {nn.shallowmaxit} number of iterations
+   - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely. INJECT since mlr doesn't know about it.
 **** Default Parameters:
    - Hess :: FALSE: don't return hessian
    - summ :: 0: don't sum and change weights
@@ -772,8 +777,8 @@
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
    - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7} req: numlayers==7
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.01..2 exp: {nn.lrate}
    - momentum :: 0..0.8: {nn.momentum}
@@ -792,8 +797,8 @@
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
    - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7} req: numlayers==7
    - threshold :: .0001...1 exp: stopping criterion
    - stepmax :: int 50..400 exponential: number of iterations
    - rep :: int 1..16 exp: repetitions of fitting
@@ -816,8 +821,8 @@
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
    - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
-   - hidde :: int 3..100 exp: len(5) {nn.h5} DUMMY req: numlayers==5
-   - hidd :: int 3..100 exp: len(7) {nn.h7} DUMMY req: numlayers==7
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7}  req: numlayers==7
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.01..2 exp: {nn.lrate}
    - momentum :: 0..0.8: {nn.momentum}
@@ -837,7 +842,7 @@
    - ydim :: int 5..100 exp: {koho.y} grid Y size (I don't really know how this works..)
    - topo :: rectangular, hexagonal: {koho.topo} topology of the grid
    - rlen :: int 50..400 exp: {koho.rlen} idk lol
-   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x), dim=2} [0.1..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
+   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2)} [0.1..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
    - xweight :: 0.5..0.9: {koho.xweight} initial weight given to X map
    - n.hood :: circular, square: {koho.shape} shape of neighbourhood
    - toroidal :: TRUE, FALSE: {koho.toro} edges of map are joined
@@ -891,7 +896,7 @@
    - ydim :: int 5..100 exp: {koho.y} grid Y size (I don't really know how this works..)
    - topo :: rectangular, hexagonal: {koho.topo} topology of the grid
    - rlen :: int 50..400 exp: {koho.rlen} idk lol
-   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x), dim=2} [0.4..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
+   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2)} [0.4..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
    - xweight :: 0.5..0.9: {koho.xweight} initial weight given to X map
    - n.hood :: circular, square: {koho.shape} shape of neighbourhood
    - toroidal :: TRUE, FALSE: {koho.toro} edges of map are joined
