@@ -89,7 +89,7 @@ perfsToString = function(y) {
 
 extractSubList = function(xs, element, element.value, simplify = TRUE, use.names = TRUE) {
   res = BBmisc::extractSubList(xs, element, element.value, simplify, use.names)
-  if (simplify && identical(res, list())) {  # don't return an empty list
+  if (simplify && is.list(res) && length(res) == 0) {  # don't return an empty list
     return(logical(0))
   }
   res

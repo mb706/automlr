@@ -78,7 +78,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   staticParams = substituteParamList(staticParams, substitutions)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
   staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
-  
+
   shadowparams = c(shadowparams,
       extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy), completeSearchSpace$pars), "id"))
 
@@ -148,15 +148,15 @@ setupLearnerParams = function(learner, staticParams, shadowparams, params) {
   }
   envir = insert(getHyperPars(learner), params)
   for (fp in staticParams) {
-    if (!is.null(fp$requires) && isTRUE(eval(fp$requires, envir=envir))) {
-      params[[fp$id]] = fp$value
-      if (fp$id %in% names(envir)) {
+    if (is.null(fp$requires) || isTRUE(eval(fp$requires, envir=envir))) {
+      if (fp$id %in% names(params)) {
         stopf("Parameter '%s' is a static (internal) parameter but was also given externally.",
             fp$id)
       }
+      params[[fp$id]] = fp$value
     }
   }
-  params[shadowparams] = NULL
+  params[c("automlr.wrappersetup", shadowparams)] = NULL
   setHyperPars(learner, par.vals=params)
 }
 
