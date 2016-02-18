@@ -60,11 +60,13 @@ autoWrapper = function(name, constructor, conversion) {
 print.Autolearner = function(x, ...) {
   cat(sprintf("<automlr learner '%s'>\n", ifelse(is.character(x$learner), x$learner, coalesce(x$learner$id, x$learner$name))))
 }
-
+# TODO: check that the AMLRFIX apparatus never overwrites things
 
 #' Define the searchspace parameter in a short form
 #' 
 #' @param name the name of the parameter, must match the id of the \code{Param} it refers to.
+#'        May be suffixed with \code{.AMLRFIX#}, where \code{#} is a number, to expose one varible
+#'        to the outside with different search space depending on requirements. 
 #' @param values if \code{type} is \code{real} or \code{int}, it gives the lower and upper bound.
 #'        if \code{type} is \code{cat}, it is a character vector of possible values. If \code{type}
 #'        is \code{fix}, only one value (the one to be fixed) must be given. If \code{type} is
@@ -75,10 +77,13 @@ print.Autolearner = function(x, ...) {
 #' @param trafo may be "exp" for exponential transformation. Transforms integer parameters in a 
 #'        smart way. Only applies for \code{real} and \code{int} values. May also be an R function.
 #' @param id may be given to identify parameters of different learners having the same function.
-#' @param dummy this is a dummy variable that has no equivalent in the learners searchspace.
+#' @param special may be \code{NULL}, \code{"dummy"} or \code{"inject"}. set this to \code{"dummy"}
+#'        if this is a dummy variable that will be hidden from the learner itself but visible to the
+#'        outside. Set this to \code{"inject"} to create the parameter in the learners ParamSet if
+#'        it does not exist.
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
-sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, req=NULL, dim=1) {
+sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, special=NULL, req=NULL, dim=1) {
   assertChoice(type, c("real", "int", "cat", "bool", "fix", "def"))
 
   assertString(name)
@@ -115,7 +120,10 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
     assert(nchar(id) > 0)
   }
 
-  assertLogical(dummy, len=1)
+  if (!is.null(special)) {
+    assertChoice(special, c("dummy", "inject"))
+  }
+
   if (!is.null(req)) {
     assert(checkClass(req, "call"), checkClass(req, "expression"))
   }
@@ -125,7 +133,7 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, dummy=FALSE, 
 
   assertInteger(dim, lower=1, len=1)
 
-  makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo, id=id, dummy=dummy,
+  makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo, id=id, special=special,
       req=req, dim=dim)
 }
 

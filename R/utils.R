@@ -102,3 +102,7 @@ checkBudgetParam = function(budget) {
     assert(all(names(budget) %in% c("walltime", "cputime", "evals", "modeltime")))
   }
 }
+
+amlrTransformName = function(name) {
+  sub("\\.AMLRFIX[0-9]+$", "", name)
+}

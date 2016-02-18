@@ -73,12 +73,15 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   completeSearchSpace = aux$completeSearchSpace
   
   # replace the singleton values inside the requirements of other parameters.
-  completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars, substitutions, 3)
+  completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars, substitutions)
   completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars, finalSubstitutions)
-  staticParams = substituteParamList(staticParams, substitutions, 3)
+  staticParams = substituteParamList(staticParams, substitutions)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
   staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
   
+  shadowparams = c(shadowparams,
+      extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy), completeSearchSpace$pars), "id"))
+
   # transform into "LearnerParam" types. This is mostly dumb relabeling, except for one thing: The
   # limits / values of the parameters with "trafo" have to be reverse-transformed.
   learnerPars = makeLearnerPars(completeSearchSpace)
@@ -100,7 +103,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   learner$staticParams = staticParams
   learner$fixedParams = getHyperPars(modelmultiplexer)
   learner$searchspace = completeSearchSpace
-  learner$fix.factors.prediction = TRUE  # TODO: it seems like it is a bug that this doesn't happen automatically.
+  learner$fix.factors.prediction = TRUE
   learner$wrappers = extractSubList(wrappers, "constructor")
   learner$shadowparams = shadowparams
   learner
@@ -131,21 +134,30 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {
   learner = removeHyperPars(learner, names(getHyperPars(learner)))
-  paramscpy = params
-  paramscpy[shadowparams] = NULL
-  learner = setHyperPars(learner, par.vals=paramscpy)
-  envir = getHyperPars(learner)
-  extraParams = list()
+  pnames = names(params)
+  for (p in pnames) {
+    tp = amlrTransformName(p)
+    if (tp != p) {
+      if (tp %in% names(params)) {
+        stopf("Parameter '%s' and '%s' both given although they should be exclusive.",
+            tp, p)
+      }
+      params[[tp]] = params[[p]]
+      params[[p]] = NULL
+    }
+  }
+  envir = insert(getHyperPars(learner), params)
   for (fp in staticParams) {
     if (!is.null(fp$requires) && isTRUE(eval(fp$requires, envir=envir))) {
-      extraParams[[fp$id]] = fp$value
+      params[[fp$id]] = fp$value
       if (fp$id %in% names(envir)) {
         stopf("Parameter '%s' is a static (internal) parameter but was also given externally.",
             fp$id)
       }
     }
   }
-  setHyperPars(learner, par.vals=extraParams)
+  params[shadowparams] = NULL
+  setHyperPars(learner, par.vals=params)
 }
 
 buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
@@ -261,6 +273,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
   }
   
   # combine all the ParamSets we have seen now
+
   completeSearchSpace = c(
       do.call(base::c, extractSubList(wrappers, "searchspace", simplify=FALSE)),
       makeParamSet(params=newparams))
@@ -282,28 +295,36 @@ listWrapperCombinations = function(ids, required) {
   unlist(result)
 }
 
-substituteParamList = function(paramList, substitutions, cycles=1) {
-  for (i in seq_len(cycles)) { # go `cycles` steps deep, in case one of the substituted variables itself requires another variable.
+substituteParamList = function(paramList, substitutions, maxCycles=32) {
+  for (dummy in seq_len(maxCycles)) { # go `cycles` steps deep, in case one of the substituted variables itself requires another variable.
+    dirty = FALSE
     for (pid in seq_along(paramList)) {
       req = paramList[[pid]]$requires
       if (!is.null(req)) {
+        preReplace = as.expression(req)
         paramList[[pid]]$requires = replaceRequires(req, substitutions)
+        if (!identical(paramList[[pid]]$requires, preReplace)) {
+          dirty = TRUE
+        }
       }
     }
+    if (!dirty) {
+      return(paramList)
+    }
   }
-  paramList
+  stop("Too much recursion when replacing requirements")
 }
 
 makeLearnerPars = function(learnerPars) {
   for (p in getParamIds(learnerPars)) {
     if (!is.null(learnerPars$pars[[p]]$trafo) &&  # there is a trafo --> need to change limits
         learnerPars$pars[[p]]$type %in% c("numeric", "numericvector", "integer", "integervector")) {
-      if (is.null(learnerPars$pars[[p]]$origValues)) {
+      if (is.null(learnerPars$pars[[p]]$amlr.origValues)) {
         learnerPars$pars[[p]]$lower = -Inf
         learnerPars$pars[[p]]$upper = Inf
       } else {
-        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$origValues[1]
-        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$origValues[2]
+        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$amlr.origValues[1]
+        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$amlr.origValues[2]
       }
       # convert type to "numeric(vector)", since after trafo we are not sure it is still an int
       learnerPars$pars[[p]]$type = switch(learnerPars$pars[[p]]$type,
@@ -332,25 +353,52 @@ makeLearnerPars = function(learnerPars) {
 }
 
 extractStaticParams = function(completeSearchSpace) {
+  # How the substitution mechanism works:
+  # There are two distinct problems that this is supposed to solve:
+  # 1) Some parameters have different feasible regions depending on other variables.
+  # 2) Singleton parameters that only take on one value should not be visible outside
+  #
+  # The first problem is solved by letting different external parameters with name
+  # `varname.AMLRFIX#` refer to the same parameter `varname` of the actual learner.
+  # These different external parameters should all have mutually exclusive requirements.
+  # The parameters have to be substituted at two places: when setting the hyperparameters
+  # of the actual learners, and inside the requirement definitions of the individual
+  # parameters. This way, one parameter can refer to `varname` without needing to worry
+  # about different .AMLRFIXes.
+  #
+  # The second problem is solved using a similar mechanism, since it follows the same
+  # principle: We want to have different parameters visible to the outside than the
+  # parameters we present to the learners.
+  #
+  # We have the following datastructures:
+  # staticParams :: lists information about all the parameters that are set on the inside
+  #                 but not visible to the public.
+  # substitutions :: substitutions that will be performed inside the requirements of other
+  #                  parameters, as well as recursively on the substitutions themselves
+  # finalSubstitutions :: Substitutions that will be performed once after the other substitutions
+  #                       were done. This is to prevent endless recursion.
+  # completeSearchSpace :: The search space that will be given externally.
+  #   
   staticParams = list()  # all parameters that have only a single value
   substitutions = list()  # substitution that will be used instead of the param inside of other parameter's $requires.
   finalSubstitutions = list()
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
+    parid = amlrTransformName(curpar$id)
+    leaf = paste0(parid, ".AMLRFINAL")
     if ((curpar$type == "discrete" && length(curpar$values) == 1) ||  # this is a 'fixed' value
         (curpar$type %in% c("numeric", "integer") && curpar$lower == curpar$upper)) {  # valid interval is a point
       fixvalue = ifelse(curpar$type == "discrete", curpar$values[[1]], curpar$lower)
       completeSearchSpace$pars[[param]] = NULL
-      parid = sub("\\.AMLRFIX[0-9]+$", "", curpar$id)
       if (!is.null(curpar$requires)) {
         # the following is a bit unfortunate, because it introduces a kind of recursive dependence. I don't see
         # a better way, however. The problem is that if we have a variable xyz, and a variable xyz.AMLRFIX1, then
         # we want to remove the xyz.AMLRFIX1 and replace it with its fixed value given the requirement. However,
         # if the requirement is not given, the parameter space given value must be used.
         # SOLUTION: append a suffix that prevents cycling in on itself.
-        original = paste0(parid, ".AMLRFINAL")
-        subst = substitute(if (eval(req)) value else original, list(req=as.expression(curpar$requires), value=fixvalue, original=asQuoted(original)))
-        finalSubstitutions[[original]] = parid
+        
+        subst = substitute(if (eval(req)) value else original, list(req=as.expression(curpar$requires), value=fixvalue, original=asQuoted(leaf)))
+        finalSubstitutions[[leaf]] = parid
       } else {
         subst = fixvalue
       }
@@ -361,10 +409,20 @@ extractStaticParams = function(completeSearchSpace) {
         # so we are able to substitute the substitutions inside each other.
         assert(!is.null(curpar$requires))
         sl = list()
-        sl[[original]] = substitutions[[parid]]
+        sl[[leaf]] = substitutions[[parid]]
         substitutions[[parid]] = substitute(subst, sl)  # yo dawg, I heard you like substitutions...
       } else {
         substitutions[[parid]] = subst
+      }
+    } else {  # the following is half a copy of the code above. maybe it is possible to clean it up at some point.
+      if (parid != curpar$id) {  # substituting .AMLRFIX
+        assert(!is.null(curpar$requires))
+        subst = substitute(if (eval(req)) thisfix else original, list(req=as.expression(curpar$requires), thisfix=asQuoted(curpar$id), original=asQuoted(leaf)))
+        if (parid %in% names(substitutions)) {
+          sl = list()
+          sl[[leaf]] = substitutions[[parid]]
+          substitutions[[parid]] = substitute(subst, sl)
+        }
       }
     }
   }

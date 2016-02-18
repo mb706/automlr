@@ -11,9 +11,9 @@
 buildLearners = function(searchspace, task) {
   # ok, this will be a big project. what do we need?
   # [x] load the mlr learners if an id is given. I think mlr has an aux function for that? Yes, but it is private :-/
-  # [ ] filter out learners by what is needed, e.g.
-  #   [ ] check if the learner can handle the input data format (numeric, factorial)
-  #   [ ] check if there is a wrapper that turns the input data into appropriate format (e.g. removes factors)
+  # [x] filter out learners by what is needed, e.g.
+  #   [x] check if the learner can handle the input data format (numeric, factorial)
+  #   [x] check if there is a wrapper that turns the input data into appropriate format (e.g. removes factors)
   #   [x] (advanced) filter out classif/reg by task type
   # [x] create the appropriate search space
   #   [x] for default, check if the given defaults are actually the builtin defaults; warn if not and add "our" default as fixed value
@@ -195,55 +195,88 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         l$id, paste(untouchedParams, collapse=", "))
   }
   tuneSearchSpace = list()
+  canNotBeAMLRFIX = character(0)
+  areAlreadyAMLRFIX = character(0)
   for (param in sslist) {
     if (param$type == "bool") {
       # useful since now we can automatically check for feasibility by checking whether everything in param$values is feasible.
       param$values = c(TRUE, FALSE)
     }
-    if (param$dummy) {  # dummy --> is not in the learner
-      if (param$name %in% getParamIds(getParamSet(l))) {
-        stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
+    origParamName = amlrTransformName(param$name)
+    if (param$name != origParamName) {
+      if (is.null(param$req)) {
+        stopf("Parameter '%s' for learner '%s' has an .AMLRFIX suffix but no requirements",
             param$name, l$id)
       }
-      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid=l$id, do.trafo=FALSE)))
+      if (param$type %in% c("fix", "def")) {
+        stopf("Parameter '%s' for learner '%s' is of type '%s' but has an .AMLRFIX suffix.",
+            param$name, l$id, param$type)
+      }
+      if (identical(param$special, "dummy")) {
+        stopf("Parameter '%s' for learner '%s' has an .AMLRFIX suffix but is also a DUMMY parameter.",
+            param$name, l$id, param$type)
+      }
+      if (origParamName %in% canNotBeAMLRFIX) {
+        stopf("Parameter '%s' for learner '%s' cannot have an .AMLRFIX suffix. Possible Reasons:
+ another parameter with that name has type 'def' or 'fix', has no requirements or is a 'dummy'.",
+            param$name, l$id)
+      }
+      areAlreadyAMLRFIX = union(areAlreadyAMLRFIX, origParamName)
+    }
+    if (is.null(param$req) || identical(param$special, "dummy") || param$type %in% c("def", "fix")) {
+      canNotBeAMLRFIX = union(canNotBeAMLRFIX, origParamName)
+    }
+    # inject --> is not in the learner already unless this is an AMLRPREFIX case
+    if (identical(param$special, "inject") && (origParamName %nin% areAlreadyAMLRFIX)) {
+      if (origParamName %in% getParamIds(getParamSet(l))) {
+        stopf("Parameter '%s' is present in learner '%s' but is marked as `inject` in search space.",
+            param$name, l$id)
+      }
+      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid=l$id, do.trafo=FALSE, facingOutside=FALSE)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
       lptypes = getParamTypes(lp)  # recreate lptypes here, since it may have changed 
       names(lptypes) = lpids
+    } else if (identical(param$special, "dummy")) {
+      if (origParamName %in% getParamIds(getParamSet(l))) {
+        stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
+            param$name, l$id)
+      }
     } else {
-      if (param$name %nin% lpids) {
+      if (origParamName %nin% lpids) {
         stopf("Parameter '%s' as listed in search space is not available for learner '%s'.",
             param$name, l$id)
       }
-      if (!allfeasible(lp, param$values, param$name, param$dim)) {
+      if (!allfeasible(lp, param$values, origParamName, param$dim)) {
         # there is one 'special case': param$values might be names that index into lp$pars[[param$name]]$values.
-        vals = getValues(lp)[[param$name]]
+        vals = getValues(lp)[[origParamName]]
         if (isSubset(param$values, names(vals))) {
           param$values = vals[param$values]
-          assert(allfeasible(lp, param$values, param$name, param$dim))
+          assert(allfeasible(lp, param$values, origParamName, param$dim))
         } else {
           stopf("Parameter '%s' as listed in search space has infeasible bounds '%s' for learner '%s'.",
-            param$name, paste(param$values, collapse=" "), l$id)
+            param$name, paste(param$values, collapse="', '"), l$id)
         }
       }
-      if ((lptypes[[param$name]] %nin% c("numeric", "numericvector", "untyped")) &&
-          (param$type == "real" || (param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")))) {
+      partype = lptypes[[origParamName]]
+      if ((partype %nin% c("numeric", "numericvector", "untyped")) &&
+          (param$type == "real" || (param$type == "int" && partype %nin% c("integer", "integervector")))) {
         stopf("Parameter '%s' as listed in search space has wrong type '%s' for learner '%s'",
             param$name, param$type, l$id)
       }
-      if ((lptypes[[param$name]] != "untyped") &&
-          ((param$type == "int" && lptypes[[param$name]] %nin% c("integer", "integervector")) ||
-           (param$type == "bool" && lptypes[[param$name]] %nin% c("logical", "logicalvector")) ||
+      if ((partype != "untyped") &&
+          ((param$type == "int" && partype %nin% c("integer", "integervector")) ||
+           (param$type == "bool" && partype %nin% c("logical", "logicalvector")) ||
            (param$type == "cat" &&
-             lptypes[[param$name]] %nin% c("discrete", "discretevector", "character", "charactervector")))) {
+             partype %nin% c("discrete", "discretevector", "character", "charactervector")))) {
         warningf("Parameter '%s' for learner '%s' is of type '%s' and has different (but feasible) type '%s' listed in search space.",
-            param$name, l$id, lptypes[[param$name]], param$type)
+            param$name, l$id, partype, param$type)
       }
     }
     if (param$type == "def") {
       # check whether this is /actually/ the default
-      truedefault = getDefaults(getParamSet(l))[[param$name]]
-      defaultcandidate = getHyperPars(l)[[param$name]]
+      truedefault = getDefaults(getParamSet(l))[[origParamName]]
+      defaultcandidate = getHyperPars(l)[[origParamName]]
       if (!is.null(defaultcandidate)) {
         # we try to use the default, but apparently the value is already set in the learner object.
         if (is.null(truedefault) || truedefault != defaultcandidate) {
@@ -262,22 +295,22 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         param$type = "fix"
       }
     }
-    if (!param$dummy && param$type !="def" && hasRequires(lp$pars[[param$name]]) && is.null(param$req)) {
+    if (is.null(param$special) && param$type !="def" && hasRequires(lp$pars[[origParamName]]) && is.null(param$req)) {
       warningf("Parameter '%s' for learner '%s' has a 'requires' argument but the one given in the search space has not.",
           param$name, l$id)
     }
     
     if (param$type == "fix") {
-      if (lptypes[[param$name]] == "discretevector") {
+      if (lptypes[[origParamName]] == "discretevector") {
         assignment = list(rep(list(param$values), param$dim))
       } else {
         assignment = list(if (param$dim > 1) rep(param$values, param$dim) else param$values)
       }
 
-      names(assignment) = param$name
+      names(assignment) = origParamName
       l = setHyperPars(l, par.vals=assignment)
     } else {
-      if (param$name %in% names(getHyperPars(l))) {  # make sure this is not set at a default.
+      if (origParamName %in% names(getHyperPars(l))) {  # make sure this is not set at a default.
         l = removeHyperPars(l, param$name)
       }
       if (param$type != "def") {  # variable parameter
@@ -285,6 +318,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         if (!is.null(param$id)) {
           idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
         }
+        newparam$amlr.isDummy = identical(param$special, "dummy")
         tuneSearchSpace = c(tuneSearchSpace, list(newparam))
       }
     }
@@ -304,10 +338,16 @@ allfeasible = function(ps, totest, name, dimension) {
   TRUE
 }
 
-createParameter = function(param, info.env, learnerid, do.trafo=TRUE) {
+createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOutside=TRUE) {
+  # facingOutside == FALSE means
+  # 1) create LearnerParam instead of Param
+  # 2) remove .AMLRFIX# suffix
   if (param$type %in% c("int", "real")) {
     pmin = param$values[1]
     pmax = param$values[2]
+  }
+  if (!facingOutside) {
+    param$name = amlrTransformName(param$name)
   }
   if (!do.trafo) {
     if (!is.null(param$trafo)) {
@@ -334,22 +374,42 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE) {
     ptrafo = param$trafo  # will either be a function or NULL
   }
   if (param$dim > 1) {
-    constructor = switch(param$type,
-        real=makeNumericVectorParam,
-        int=makeIntegerVectorParam,
-        cat=makeDiscreteVectorParam,
-        bool=makeLogicalVectorParam,
-        fix=makeDiscreteVectorParam,
-        NULL)
+    if (!facingOutside) {
+      constructor = switch(param$type,
+          real=makeNumericVectorLearnerParam,
+          int=makeIntegerVectorLearnerParam,
+          cat=makeDiscreteVectorLearnerParam,
+          bool=makeLogicalVectorLearnerParam,
+          fix=makeDiscreteVectorLearnerParam,
+          NULL)
+    } else {
+      constructor = switch(param$type,
+          real=makeNumericVectorParam,
+          int=makeIntegerVectorParam,
+          cat=makeDiscreteVectorParam,
+          bool=makeLogicalVectorParam,
+          fix=makeDiscreteVectorParam,
+          NULL)
+    }
     paramlist = list(id=param$name, len=param$dim, requires=param$req)
   } else {
-    constructor = switch(param$type,
-        real=makeNumericParam,
-        int=makeIntegerParam,
-        cat=makeDiscreteParam,
-        bool=makeLogicalParam,
-        fix=makeDiscreteParam,
-        NULL)
+    if (!facingOutside) {
+      constructor = switch(param$type,
+          real=makeNumericLearnerParam,
+          int=makeIntegerLearnerParam,
+          cat=makeDiscreteLearnerParam,
+          bool=makeLogicalLearnerParam,
+          fix=makeDiscreteLearnerParam,
+          NULL)
+    } else {
+      constructor = switch(param$type,
+              real=makeNumericParam,
+              int=makeIntegerParam,
+              cat=makeDiscreteParam,
+              bool=makeLogicalParam,
+              fix=makeDiscreteParam,
+              NULL)
+    }
     paramlist = list(id=param$name, requires=param$req)
   }
   paramlist = c(paramlist, switch(param$type,
@@ -362,14 +422,14 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE) {
             param$name, learnerid)
         list(values=param$values)
       },
-      def=stopf("Parameter '%s' for learner '%s' is marked as dummy must not have type 'def'.",
+      def=stopf("Parameter '%s' for learner '%s' is marked as dummy or inject must not have type 'def'.",
           param$name, learnerid),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))
   pobject = do.call(constructor, paramlist, quote=TRUE)
   if (!is.null(pobject$trafo)) {
     environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names=TRUE), parent=info.env)
     if (identical(param$trafo, "exp")) {
-      pobject$origValues = param$values
+      pobject$amlr.origValues = param$values
     }
   }
   pobject
@@ -412,7 +472,8 @@ createTrafo = function(min, max, isint) {
 #' @param multiplexer the model multiplexer to use to create the ParamSet
 #' @param modelParsets the list of param sets that are used to create the mmps.
 makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
-  searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets))
+  
+  searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets, .check=FALSE))
   # now we need to deal with the bug that makeModelMultiplexer overrides requirements
   for (modeliter in seq_along(modelParsets)) {
     origpars = modelParsets[[modeliter]]$pars
