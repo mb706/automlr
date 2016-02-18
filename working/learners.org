@@ -467,7 +467,7 @@
 *** classif.rFerns
 - random ferns
 **** Variable Parameters:
-   - depth :: int 1..16 exp: depth of ferns
+   - depth :: int 1..14 exp: depth of ferns. actually up to 16 is possible but puts lots of strain on memory.
    - ferns :: int 100..4000 exp: number of ferns to grow
 **** Default Parameters:
    - importance :: FALSE: don't calculate importance

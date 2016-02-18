@@ -413,7 +413,7 @@ autolearners = makeNamedAlList(
     autolearner("classif.rFerns",
         list(
 # ** vp
-            sp("depth", "int", c(1, 16), "exp"),
+            sp("depth", "int", c(1, 14), "exp"),
             sp("ferns", "int", c(100, 4000), "exp"),
 # ** dp
             sp("importance", "def", FALSE),
@@ -533,14 +533,14 @@ autolearners = makeNamedAlList(
 # ** cp
             sp("nthread", "fix", 1),
             sp("verbose", "fix", 1),
-            sp("print.every.n", "fix", 1000000000),
-            sp("early.stop.round", "fix", 1000000000),
+            sp("print.every.n", "fix", 1000),
             sp("missing", "fix", 2147359313),
             sp("objective", "fix", NULL),
 # ** dp
             sp("silent", "def", 0),
             sp("eval_metric", "def", "error"),
-            sp("maximize", "def", TRUE))),
+            sp("maximize", "def", TRUE),
+            sp("early.stop.round", "def", 1))),
     autolearner("classif.dcSVM",
         list(
 # ** vp

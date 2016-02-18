@@ -724,7 +724,14 @@ slowLearners <- c('classif.xyf', 'classif.glmboost', 'classif.rotationForest', '
 
 devtools::load_all("..")
 vse = buildLearners(c(Filter(function(x) x$learner %nin% slowLearners, automlr::autolearners), automlr:::autowrappers), pid.task)
-tbl2 = sampleValues(vse$searchspace, 200, trafo=TRUE)
+vse = buildLearners(c(automlr::autolearners, automlr:::autowrappers), pid.task)
+
+vse2 = buildLearners(c(list(automlr::autolearners$classif.rFerns), automlr:::autowrappers), pid.task)
+tbl2 = sampleValues(vse2$searchspace, 2000, trafo=TRUE)
+
+
+
+tbl2 = sampleValues(vse$searchspace, 2000, trafo=TRUE)
 
 configureMlr(on.learner.error="warn")
 
@@ -732,14 +739,24 @@ configureMlr(on.learner.error="warn")
 ho2 = makeResampleDesc("Holdout")
 x <- 1
 removeMissingValues(tbl2[[1]])
+sink()
+sink(type="message")
+x
+z <- file("output2.msg", open="wt")
+sink(z, type="message")
+sink("output2.run")
+1 + 1
 
 res4 = lapply(seq(length(tbl2)), function(x) {
-  vsx = setHyperPars(vse, par.vals=removeMissingValues(as.list(tbl2[[x]])))
+  vsx = setHyperPars(vse2, par.vals=removeMissingValues(as.list(tbl2[[x]])))
   print(x)
-  print(getHyperPars(vsx))
-  resample(vsx, pid.task, ho2)
+  print(removeMissingValues(tbl2[[x]]))
+  print(resample(vsx, pid.task, ho2))
 })
 
 Filter(function(x) is.na(x$aggr), res4)
 
 res2
+
+repeat holdout(setHyperPars(vse, ppa.feature.filter="off", ppa.multivariate.trafo="ica", ppa.univariate.trafo="scale", ppa.nzv.cutoff.numeric=0.2396230602,
+                     classif.rFerns.ferns=128, classif.rFerns.depth=16, selected.learner="classif.rFerns"), pid.task)
