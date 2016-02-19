@@ -415,7 +415,7 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
   paramlist = c(paramlist, switch(param$type,
       int=list(lower=pmin, upper=pmax, trafo=ptrafo),
       real=list(lower=pmin, upper=pmax, trafo=ptrafo),
-      cat=list(values=param$values),
+      cat=list(values={x = param$values; names(x) = param$values; x}),
       bool=list(),
       fix={
         warningf("Parameter '%s' for learner '%s is marked dummy and has type 'fix'; This usually does not make sense.",

@@ -298,7 +298,7 @@ makePreprocWrapperAm = function (learner, ...) {
 getLearnerProperties.PreprocWrapperAm = function(learner) {
   props = getLearnerProperties(learner$next.learner)
   par.vals = getHyperPars(learner)
-  props = union(props, "missings")  # this is only half a lie
+  props = union(props, c("missings", "factors", "ordered", "numerics"))  # this is only half a lie
   props
 }
 
