@@ -79,6 +79,21 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   staticParams = substituteParamList(staticParams, finalSubstitutions)
   staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
 
+  # Now after all the replacing going on, there might be parameters that have a `requires` always TRUE or always FALSE.
+  for (param in getParamIds(completeSearchSpace)) {
+    curpar = completeSearchSpace$pars[[param]]
+    # we test whether the requires is trivially TRUE or FALSE by evaluating it in an empty environment.
+    if (!is.null(curpar$requires) && !is.error(try(reqValue <- eval(req, envir=emptyenv()), silent=TRUE))) {
+      if (isTRUE(reqValue)) {
+        # always true -> remove requirement
+        completeSearchSpace$pars[[param]]$requires = NULL
+      } else {
+        # always false -> remove the parameter.
+        completeSearchSpace$pars[[param]] = NULL
+      }
+    }
+  }
+
   shadowparams = c(shadowparams,
       extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy), completeSearchSpace$pars), "id"))
 
