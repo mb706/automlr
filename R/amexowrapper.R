@@ -83,12 +83,25 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
     # we test whether the requires is trivially TRUE or FALSE by evaluating it in an empty environment.
-    if (!is.null(curpar$requires) && !is.error(try(reqValue <- eval(req, envir=emptyenv()), silent=TRUE))) {
+    if (is.null(curpar$requires)) {
+      next
+    }
+    if (!is.error(try(reqValue <- eval(req, envir=emptyenv()), silent=TRUE))) {
       if (isTRUE(reqValue)) {
         # always true -> remove requirement
         completeSearchSpace$pars[[param]]$requires = NULL
       } else {
         # always false -> remove the parameter.
+        completeSearchSpace$pars[[param]] = NULL
+      }
+    } else if (!is.null(curpar$amlr.learnerName)){
+      # maybe the requires is a mlr learner's requires that now only depends on selected.learner being something.
+      # if it is FALSE even if selected.learner equals the given learner, then we remove the parameter.
+      # This would be the case e.g. if the parameter is only sensible if there are NAs in the data and the current
+      # data set does not have NAs.
+      testenv = new.env(parent=emptyenv())
+      testenv$selected.learner = curpar$amlr.learnerName
+      if (!is.error(try(reqValue <- eval(req, envir=testenv), silent=TRUE)) && !isTRUE(reqValue)) {
         completeSearchSpace$pars[[param]] = NULL
       }
     }

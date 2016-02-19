@@ -602,8 +602,8 @@ plot(dtc$y, pch=as.numeric(dtc$ppa.feature.filter)+1)
 
 ##### Testing
 library('testthat')
-devtools::test(pkg="../../mlr", filter="classif_gaterSVM")
-devtools::test(pkg="../../mlr", filter="classif_dcSVM")
+devtools::test(pkg="../../mlr", filter="classif_PART")
+devtools::test(pkg="../../mlr", filter="classif_J48")
 
 
   base.learners = list(

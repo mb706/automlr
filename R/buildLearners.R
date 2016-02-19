@@ -472,7 +472,6 @@ createTrafo = function(min, max, isint) {
 #' @param multiplexer the model multiplexer to use to create the ParamSet
 #' @param modelParsets the list of param sets that are used to create the mmps.
 makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
-  
   searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets, .check=FALSE))
   # now we need to deal with the bug that makeModelMultiplexer overrides requirements
   for (modeliter in seq_along(modelParsets)) {
@@ -483,6 +482,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
     substitution = lapply(newnames, asQuoted)  # substitution is a list(oldname=quote(newname))
     names(substitution) = oldnames
     for (paramiter in seq_along(origpars)) {  # iterate over the parameters in each ParamSet
+      searchspace$pars[[newname]]$amlr.learnerName = modelid
       cp = origpars[[paramiter]]
       cpname = names(origpars)[paramiter]
       cprequires = cp$requires
