@@ -1,4 +1,11 @@
+##### Install
+install.packages("devtools")
+update.packages()
+install.packages(c("mlr", "ParamHelpers"), dependencies=c("Depends", "Imports", "LinkingTo", "Suggests"))
+
 ##### init
+
+
 
 options(width=150)
 devtools::load_all("../../ParamHelpers")
@@ -760,3 +767,118 @@ res2
 
 repeat holdout(setHyperPars(vse, ppa.feature.filter="off", ppa.multivariate.trafo="ica", ppa.univariate.trafo="scale", ppa.nzv.cutoff.numeric=0.2396230602,
                      classif.rFerns.ferns=128, classif.rFerns.depth=16, selected.learner="classif.rFerns"), pid.task)
+
+
+
+##### intensively testing parameter space stuff
+
+configureMlr(show.learner.output=TRUE)
+
+emptypredict = function(.learner, .model, .newdata, ...) {}
+
+l1 = makeRLearnerClassif("numhandler", character(0),
+  makeParamSet(makeDiscreteLearnerParam("a", values=c("x", "y", "z")),
+               makeDiscreteLearnerParam("b", values=c("1", "2", "3"), requires=quote(a == "x"))),
+  properties=c("twoclass", "multiclass", "numerics"))
+
+trainLearner.numhandler = function(.learner, .task, .subset, .weights=NULL, ...) {
+  pars = list(...)
+  cat("numhandler", pars$a, pars$b, "\n")
+  NULL
+}
+
+predictLearner.numhandler = emptypredict
+
+l2 = makeRLearnerClassif("facthandler", character(0),
+    makeParamSet(makeDiscreteLearnerParam("a", values=c("x", "y", "z")),
+                 makeDiscreteLearnerParam("b", values=c("1", "2", "3"), requires=quote(a == "x"))),
+    properties=c("twoclass", "multiclass", "factors", "numerics"))
+
+predictLearner.facthandler = emptypredict
+trainLearner.facthandler = function(.learner, .task, .subset, .weights=NULL, ...) {
+  pars = list(...)
+  cat(colnames(getTaskData(.task)), "\n")
+  cat("facthandler", pars$a, pars$b, "\n")
+  NULL
+}
+
+invisible(train(setHyperPars(l1, a="x"), pid.task))
+
+removeFactorsWrapper = function (learner, ...) {
+  par.set = makeParamSet(
+      makeLogicalLearnerParam("remove.factors", default=FALSE)
+  )
+  par.vals = getDefaults(par.set)
+  par.vals = insert(par.vals, list(...))
+  
+  trainfun = function(data, target, args) {
+    if (args$remove.factors) {
+      data = data[sapply(data, is.numeric) | colnames(data) == target]
+    }
+    list(data=data, control=list(args$remove.factors))
+  }
+  
+  predictfun = function(data, target, args, control) {
+    if (control[[1]]) {
+      data = data[sapply(data, is.numeric) | colnames(data) == target]
+    }
+    data
+  }
+  
+  x = makePreprocWrapper(learner, trainfun, predictfun, par.set, par.vals)
+  addClasses(x, "PreprocWrapperAm")
+}
+
+
+invisible(train(l2, pid.task))
+
+
+
+demodata = data.frame(
+    n1 = rnorm(10),
+    n2 = rnorm(10),
+    f1 = factor(sample(c("a", "b"), 10, TRUE)),
+    f2 = factor(sample(c("y", "z"), 10, TRUE)),
+    target=factor(sample(c("1", "2"), 10, TRUE)))
+dd = makeClassifTask("demo", demodata, "target")
+
+lx = removeFactorsWrapper(l2)
+invisible(train(setHyperPars(lx, remove.factors=TRUE), dd))
+
+
+wspace = automlr::makeNamedAlList(
+    autolearner(stacktype="requiredwrapper",
+                searchspace=list(
+                    sp("remove.factors", "cat", TRUE, req=quote(automlr.remove.factors == TRUE)),
+                    sp("remove.factors.AMLRFIX1", "cat", FALSE, req=quote(automlr.remove.factors == FALSE))),
+                learner=autoWrapper(
+                    name="removefactwrapper",
+                    constructor=removeFactorsWrapper,
+                    conversion=function(x) switch(x, factors=c("factors", ""), x))),
+    autolearner(l1,
+                list(sp("a", "cat", c("x", "y", "z")),
+                     sp("b", "cat", c("1", "2", "3"), req=quote(a == "x")))),
+    autolearner(l2,
+                list(sp("a", "cat", c("x", "y", "z")),
+                     sp("b", "cat", c("1", "2", "3"), req=quote(a == "x")))))
+
+
+bldemo = buildLearners(wspace, pid.task)
+
+rd = sampleValues(bldemo$searchspace, 10, TRUE)
+for (i in 1:10) {
+  train(setHyperPars(bldemo, par.vals=removeMissingValues(rd[[i]])), dd)
+}
+
+
+# Ok, what needs to be tested?
+# searchspace with regr, twoclass, multiclass learners --
+# twoclass classif: - all learners that can handle twoclass are present, no others
+# multiclass classif: all learners that can handle multiclass are present, no others
+#
+# 
+
+
+
+
+
