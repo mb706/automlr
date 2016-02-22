@@ -79,6 +79,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   staticParams = substituteParamList(staticParams, finalSubstitutions)
   staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
 
+  
+  
   # Now after all the replacing going on, there might be parameters that have a `requires` always TRUE or always FALSE.
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
@@ -86,6 +88,12 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
     if (is.null(curpar$requires)) {
       next
     }
+    # TODO: better method: take the environment that would usually be present, replace all values with 
+    # stop("EXPECTED STOP"), and check if the expected stop happened. Is it possible to stop on variable reference?
+    # apparently not, so we have to go the long replaceRequires route.
+    # This would have the advantage to not filter out trivial invocations of e.g. c(), and also that we 
+    # could check for the simplest of syntax errors by watching whether the error happening is actually the error
+    # we expect.
     if (!is.error(try(reqValue <- eval(req, envir=emptyenv()), silent=TRUE))) {
       if (isTRUE(reqValue)) {
         # always true -> remove requirement

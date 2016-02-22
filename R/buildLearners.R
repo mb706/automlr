@@ -95,6 +95,9 @@ buildLearners = function(searchspace, task) {
     if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
       next
     }
+    if (w$stacktype != "requiredwrapper") {
+      next
+    }
     for (t in covtypes) {
       conv = w$learner$conversion(t)
       if ("" %in% conv) {

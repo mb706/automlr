@@ -38,3 +38,4 @@ Collate:
     'optRandom.R'
     'utils.R'
     'zzz.R'
+Suggests: testthat

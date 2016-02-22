@@ -8,7 +8,8 @@ install.packages(c("mlr", "ParamHelpers"), dependencies=c("Depends", "Imports", 
 
 
 options(width=150)
-devtools::load_all("../../ParamHelpers")
+library("smoof")
+# devtools::load_all("../../ParamHelpers")
 devtools::load_all("../../mlr")
 library(roxygen2)
 roxygenise('..')
@@ -770,7 +771,9 @@ repeat holdout(setHyperPars(vse, ppa.feature.filter="off", ppa.multivariate.traf
 
 
 
-##### intensively testing parameter space stuff
+
+
+##### intensively testing parameter space stuff -- setup and ideas
 
 configureMlr(show.learner.output=TRUE)
 
@@ -876,9 +879,299 @@ for (i in 1:10) {
 # twoclass classif: - all learners that can handle twoclass are present, no others
 # multiclass classif: all learners that can handle multiclass are present, no others
 #
-# 
+
+# - error when task has weights
+# - there is a parameter letting one choose between wrappers, if n(requiredwrappers) > 1 or n(nonrequiredwrappers) >= 1
+# - learners that are selected depend on learner type and task type:
+#   - task is multiclass -- all the twoclass learners missing
+#   - task is class -- all regression learners missing
+#   - task is regression -- all the task learners missing
+#   - task has NAs -- all the learners that can't handle them missing
+#   - task has factors -- all the learners that can't handle them missing
+#   - task has ordereds -- all the learners that can't handle them missing
+#   - task has NAs, factors, ordereds, but a requiredwrapper that can convert them -- the learners are not missing
+#   - task has NAs, factors, ordereds, but a nonrequired wrapper that can handle them: ignored
+#   - task has no numerics but factors or ordereds: learners that can only handle numerics go out
+#   - task has no numerics but factors or ordereds, and requiredwrapper that can convert: learners that can only handle numerics stay in
+# - no valid learner found --> warning received, return NULL
+# - search space parameter behaviour
+#   - parameter has an id but is the only one -> warning, but nothing special
+#   - two parameters have same id but different type/length/feasible region -> error
+#   - learner has parameter that is not part of search space -> warning
+#   - .AMLRFIX without requirements -> error
+#   - .AMLRFIX, but other parameter has no requirements -> error
+#   - .AMLRFIX with "fix" or "def" type -> error
+#   - .AMLRFIX but other parameter has "fix" or "def" -> error
+#   - .AMLRFIX but itself / other parameter is 'dummy' -> error
+#   - .AMLRFIX and itself / other is 'inject' --> works
+#   - 'inject' but parameter exists really -> error
+#   - 'inject' otherwise: parameter is present during training (and testing?)
+#   - 'dummy' but parameter exists -> error
+#   - 'dummy', parameter not visible during either training or testing
+#   - parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
+#   - parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
+#   - parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
+#   - parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
+#   - parameter def unlike true def -> warning; learner then receives the given value
+#   - parameter def like true def but set hyperpar present -> warning, learner receives the given value or nothing (we don't care)
+#   - parameter def is null, true def is null -> learner receives no value
+#   - parameter fix -> learner receives this value
+#   - parameter fix/def -> not in searchspace
+#   - parameter not fix/def -> part of searchspace
+#   - parameter .AMLRFIX -> part of searchspace, but reaches learner as normal value
+#   - true param has requires, searchspace param does not -> warning
+#   - parameter is dummy and 'fix' -> warning (or error?)
+#   - parameter is dummy and 'def' -> error
+#   - parameter is inject and 'def' -> error
+#   - parameter is inject and 'fix' -> no warning, reaches learner like this
+#   - parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
+#   - parameter with trafo fn: trafo function 'works'
+#   - parameter with trafo 'exp': trafo is given. test trafo with known values
+#   - parameters with requirements: given requirements are respected, plus 'selected.learner'. (how to test this?) This even works if 'c()' is used an 'c' parameter exists.
+# - exowrapper
+#   - no wrappers given, or only one required wrapper given: no wrapper selector
+#     - one required wrapper: is always used
+#   - one nonrequired wrapper: is only used some of the time, with selector
+#   - two required wrappers: order can be selected; also changes in reallife
+#   - two optional wrappers: selector, which one is used and the order match
+#   - two optional, two requireds: selector, order and which one is used match
+# - has.X, removes.X
+#   - has.X:
+#     - parameters in learner can depend on 'has.X'. X may be missings, factors, ordered but not numerics. this is so for
+#       - .AMLRFIX
+#         - parameters with .AMLRFIX, fixed: value takes on this value in presence/absence of X
+#         - parameters with .AMLRFIX, variable: two external vars, each only valid some times, set the goal variable differently inside the learner.
+#       - how variable
+#         - is fixed to NO if the task doesn't have X to begin with
+#         - is fixed to YES if the task has it an nothing can convert
+#         - there is an external var determining this if X is in the task and a wrapper can remove it
+#         - there is another var only available if the above is TRUE, determining which wrapper removes it, if more than one wrapper are present
+#         - removes.X is set for the given wrapper. this has influence on .AMLRFIX for fixed and variable learners and changes the external search space accordingly, while setting internally the variable accordingly
+#         - has.X is true for all the wrappers before and including the one removing it, is false afterwards; .AMLRFIX etc. behaves accordingly
+# - fixed parameters never visible from the outside but on the inside
+# - fixed parameters with .AMLRFIX never visible from the outside but appear from the inside
+# - requirements satisfied: generate a random searchspace for a huge setting of wrappers & learners with entanglement of requirements; check internally that these requirements are always satisfied.
+# - requirements satisfied REVERSE: generate the same huge thing; generate variables from the inside and see they are feasible from the outside. THIS MIGHT BE HARD.
+
+
+# automlr.has.missings, etc. are true when they should be
+# automlr.remove.missings etc. are true when they should be
+# learner params that depend only on these and always happen to be false are removed
+# learners that need a certain conversion are present iff there is a wrapper that does this conversion
+# optional wrappers are sometimes there, sometimes not. required wrappers always there.
+
+# maybe work with a code coverage tool
 
 
 
+createTestData = function(nrow, nNumeric=0, nFactor=0, nOrdered=0) {
+  res = as.data.frame(c(
+                replicate(nNumeric, rnorm(nrow), FALSE),
+                replicate(nFactor, factor(sample(c("a", "b", "c"), nrow, TRUE), ordered=FALSE), FALSE),
+                replicate(nOrdered, factor(sample(c("a", "b", "c"), nrow, TRUE), ordered=TRUE), FALSE)))
+  names(res) = c(
+      if (nNumeric) paste0("num.", seq_len(nNumeric)),
+      if (nFactor) paste0("fac.", seq_len(nFactor)),
+      if (nOrdered) paste0("ord.", seq_len(nOrdered)))
+  res
+}
+
+changeColsWrapper  = function (learner, prefix, ...) {
+  par.set = makeParamSet(
+      makeLogicalLearnerParam(paste0(prefix, "remove.factors"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, "remove.ordered"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, "convert.fac2num"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, "convert.ord2fac"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, "convert.ord2num"), default=FALSE),
+  )
+  par.vals = getDefaults(par.set)
+  par.vals = insert(par.vals, list(...))a
+
+  colman = function(args, data) {
+    names(args) = sub(paste0("^", prefix), "", names(args))
+    ordereds = sapply(data, is.ordered)
+    if (args$convert.ord2num) {
+      data[ordereds] = lapply(data[ordereds], as.numeric)
+    }
+    factors = sapply(data, is.factor)
+    if (args$convert.fac2num) {
+      hotencoder = function(col, colname) {
+        newcs = lapply(args$levels[[colname]], function(lvl) as.numeric(col == lvl))
+        names(newcs) = args$levels[[colname]]
+        newcs
+      } 
+      data = cbind(data, do.call(base::c, mapply(hotencoder, data[factors], names(data)[factors])))
+      args$remove.factors = TRUE
+      ordereds = sapply(data, is.ordered)
+      factors = sapply(data, is.factor)
+    }
+    if (args$convert.ord2fac) {
+      data[ordereds] = lapply(data[ordereds], factor, ordered=FALSE)
+      ordereds = FALSE
+    }
+    data = data[!((args$remove.factors & factors) | (args$remove.ordered & ordereds))]
+    data
+  }
+
+  trainfun = function(data, target, args) {
+    tcol = data[target]
+    data[target] = NULL
+    args$levels = lapply(data, levels)
+    data = colman(args, data)
+    data = cbind(data, tcol)
+    list(data=data, control=args)
+  }
+
+  predictfun = function(data, target, args, control) {
+    colman(control, data)
+  }
+  
+  x = makePreprocWrapper(learner, trainfun, predictfun, par.set, par.vals)
+  addClasses(x, "PreprocWrapperAm")
+}
+
+debuglist = function(l, prefix="") {
+  res = ""
+  if (checkNamed(l)) {
+    for (n in sort(names(l))) {
+      res = paste0(res, paste0(prefix, n, ": "))
+      if (is.list(l[[n]])) {
+        res = paste0(res, "\n", debuglistout(l[[n]], paste0(prefix, "+")))
+      } else {
+        res = paste0(res, paste0(l[[n]], "\n"))
+      }
+    }
+  } else {
+    for (i in seq_along(l)) {
+      if (!is.null(names(l)[i]) && !is.na(names(l)[i]) && names(l)[i] != "") {
+        res = paste0(res, paste0(prefix, names(l)[i], ": "))
+      } else {
+        res = paste0(res, paste0(prefix, i, ": "))
+      }
+      if (is.list(l[[i]])) {
+        res = paste0(res, "\n", debuglistout(l[[i]], paste0(prefix, "+")))
+      } else {
+        res = paste0(res, paste0(l[[i]], "\n"))
+      }
+    }
+  }
+  res
+}
+
+debuglistout = function(l) cat("###\n", debuglist(l), "###\n")
+
+expectout = function(l) paste("###\n", debuglist(l), "###")
+
+debuglistout(list(1, 2, 3))
+
+testLearner = function(name, parset, properties, isClassif=TRUE, ...) {  # isClassif==FALSE -> regr
+  ret = (if (isClassif) makeRLearnerClassif else makeRLearnerRegr)(name, character(0), parset, properties=properties, ...)
+  if (isClassif) {
+    ret$fix.factors.prediction = TRUE
+  }
+  pf = parent.frame()
+  
+  assign(paste0("trainLearner.", name), envir=pf, value=function (.learner, .task, .subset, .weights=NULL, ...) {
+    debuglistout(list(myname=name, ...))
+    list(data=getTaskData(.task, .subset), target=getTaskTargetNames(.task))
+  })
+  assign(paste0("predictLearner.", name), envir=pf, value=function (.learner, .model, .newdata, ...) {
+    debuglistout(list(myname=name, ...))
+    sample(.model$learner.model$data[[.model$learner.model$target]], nrow(.newdata), replace=TRUE)
+  })
+  ret
+}
+
+predefParams = list(
+    int1=makeIntegerLearnerParam("int1", 0, Inf, 0),
+    int2=makeIntegerLearnerParam("int2", 0, 10),
+    int3=makeIntegerLearnerParam("int3", default=0, when="predict"),
+    int4=makeIntegerLearnerParam("int4", when="both", requires=quote(int1==0)),
+    int5=makeIntegerVectorLearnerParam("int5", len=3, 0, 10, c(0, 1, 2)),
+    int6=makeIntegerVectorLearnerParam("int6", lower=0, upper=10),
+    real1=makeNumericLearnerParam("real1", 0, Inf, default=0),
+    real2=makeNumericLearnerParam("real2", 0, 10),
+    real3=makeNumericLearnerParam("real3", default=0, when="predict"),
+    real4=makeNumericLearnerParam("real4", when="both", requires=quote(real1==0)),
+    real5=makeNumericVectorLearnerParam("real5", len=3, 0, 10, default=c(0, 1, 2)),
+    real6=makeNumericVectorLearnerParam("real6", lower=0, upper=10),
+    cat1=makeDiscreteLearnerParam("cat1", c("a", "b", "c")),
+    cat2=makeDiscreteLearnerParam("cat2", c("a", "b", "c"), "c"),
+    cat3=makeDiscreteLearnerParam("cat3", c("a", "b", "c"), "a", when="predict"),
+    cat4=makeDiscreteLearnerParam("cat4", c("a", "b", "c"), when="both", requires=quote(cat1==0)),
+    cat5=makeDiscreteVectorLearnerParam("cat5", len=3, c("a", "b", "c"), default=list("a", "b", "a")),
+    cat6=makeDiscreteVectorLearnerParam("cat6", values=c("a", "b", "c")),
+    bool1=makeLogicalLearnerParam("bool1", TRUE),
+    bool2=makeLogicalLearnerParam("bool2"),
+    bool3=makeLogicalLearnerParam("bool3", default=FALSE, when="predict"),
+    bool4=makeLogicalLearnerParam("bool4", when="both", requires=quote(bool1==0)),
+    bool5=makeLogicalVectorLearnerParam("bool5", len=3, default=c(FALSE, TRUE, FALSE)),
+    bool6=makeLogicalVectorLearnerParam("bool6", default=FALSE))
+
+ps = makeParamSet(params=predefParams)
+
+t = testLearner('test1', ps, c("twoclass", "multiclass", "numerics"))
+
+expect_output()
+
+# test that the learner has params in 'trainps' during training and params in 'predps' during prediction
+expect_learner_output = function(learner, task, name, trainps=list(), predps=list()) {
+  oldopts = getMlrOptions()
+  configureMlr(show.learner.output=TRUE)
+  expect_output(model <- train(learner, task), expectout(c(list(myname=name), trainps)), fixed=TRUE)
+  expect_output(predict(model, task), expectout(c(list(myname=name), predps)), fixed=TRUE)
+  do.call(configureMlr, oldopts)
+}
+
+x = expect_output(train(setHyperPars(t, int1=0), pid.task), expectout(list(myname='test1', int1=0)), fixed=TRUE)
+x
+
+expect_learner_output(setHyperPars(t, int1=0, int3=0), pid.task, "test1", list(int1=0), list(int3=0))
 
 
+##### testing
+
+devtools::use_testthat("..")
+
+
+##### mlrMBO
+
+devtools::load_all("../../mlrMBO")
+
+control = makeMBOControl(
+    number.of.targets=1,  # single crit optimization
+    propose.points=1,  # number of proposed points per iter
+    final.method="best.true.y",  # final point to return
+    final.evals = 0,  # evaluate at the end to get a more exact result
+    y.name="y",
+    impute.y.fun=NULL,  # if evaluation fails, this value is used instead
+    trafo.y.fun=NULL,   # trafo y value before modeling, e.g. log transform time
+    suppres.eval.erros=TRUE,  # ignored
+    save.on.disk.at=integer(0),  # TODO: the saving mechanism of mbo seems clumsy, work around it.
+    save.on.disk.at.time=Inf,  # TODO: ditto
+    save.file.path=file.path(getwd(), "mlr_run.RData"),  # TODO ditto
+    store.model.at=NULL,  # TODO: ditto
+    resample.at=integer(0),  # resample the model, we don't need that
+    resample.desc=makeResampleDesc("CV", iter=10),  # ignored
+    resample.measures=list(mse),  #ignored
+    output.num.format="%.3g")
+
+# so we can use the defaults, what we might want to change is
+#  - impute.y.fun give some maximally bad value? Look at the snoek paper how he does it with restricted regions
+
+# setMBOControlInfill - only for multipoint
+# setMBOControlTermination time.budget, exec.time.budget, max.evals, set iters to NULL
+
+control = makeMBOControl()
+control$noisy = FALSE
+fn = makeBraninFunction()
+
+ex = exampleRun(fn, control=control)
+
+ex
+plotExampleRun(ex)
+
+ctrl = makeMBOControl()
+ctrl$noisy = TRUE
+ctrl = setMBOControlTermination(ctrl, iters=1)
+mborun = mbo(fn, control=ctrl)
