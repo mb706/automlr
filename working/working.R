@@ -874,18 +874,38 @@ for (i in 1:10) {
 }
 
 
+##### Let's get dangerous
+
+devtools::load_all("..")
+options(error=dump.frames)
 
 
-createTestData = function(nrow, nNumeric=0, nFactor=0, nOrdered=0) {
+createTestData = function(nrow, nNumeric=0, nFactor=0, nOrdered=0, nClasses=2) {
   res = as.data.frame(c(
                 replicate(nNumeric, rnorm(nrow), FALSE),
-                replicate(nFactor, factor(sample(c("a", "b", "c"), nrow, TRUE), ordered=FALSE), FALSE),
-                replicate(nOrdered, factor(sample(c("a", "b", "c"), nrow, TRUE), ordered=TRUE), FALSE)))
+                replicate(nFactor, factor(sample(letters[1:nClasses], nrow, TRUE), ordered=FALSE), FALSE),
+                replicate(nOrdered, factor(sample(letters[1:nClasses], nrow, TRUE), ordered=TRUE), FALSE)))
   names(res) = c(
       if (nNumeric) paste0("num.", seq_len(nNumeric)),
       if (nFactor) paste0("fac.", seq_len(nFactor)),
       if (nOrdered) paste0("ord.", seq_len(nOrdered)))
   res
+}
+
+createTestClassifTask = function(id, nrow, nNumeric=0, nFactor=0, nOrdered=0, nClasses=2, missings=FALSE, ...) {
+  data = createTestData(nrow, nNumeric, nFactor + 1, nOrdered, nClasses)
+  target = paste0("fac.", nFactor + 1)
+  mrow = (seq_len(nrow) %% 3 == 0) & missings
+  data[mrow, colnames(data) != target] = NA
+  makeClassifTask(id, data, target, ...)
+}
+
+createTestRegrTask = function(id, nrow, nNumeric=0, nFactor=0, nOrdered=0, nClasses=2, missings=FALSE, ...) {
+  data = createTestData(nrow, nNumeric + 1, nFactor, nOrdered, nClasses)
+  target = paste0("num.", nNumeric + 1)
+  mrow = (seq_len(nrow) %% 3 == 0) & missings
+  data[mrow, colnames(data) != target] = NA
+  makeRegrTask(id, data, target, ...)
 }
 
 changeColsWrapper  = function (learner, prefix, ...) {
@@ -897,7 +917,7 @@ changeColsWrapper  = function (learner, prefix, ...) {
       makeLogicalLearnerParam(paste0(prefix, "convert.ord2num"), default=FALSE),
   )
   par.vals = getDefaults(par.set)
-  par.vals = insert(par.vals, list(...))a
+  par.vals = insert(par.vals, list(...))
 
   colman = function(args, data) {
     names(args) = sub(paste0("^", prefix), "", names(args))
@@ -974,8 +994,6 @@ debuglistout = function(l) cat("###\n", debuglist(l), "###\n")
 
 expectout = function(l) paste("###\n", debuglist(l), "###")
 
-debuglistout(list(1, 2, 3))
-
 testLearner = function(name, parset, properties, isClassif=TRUE, ...) {  # isClassif==FALSE -> regr
   ret = (if (isClassif) makeRLearnerClassif else makeRLearnerRegr)(name, character(0), parset, properties=properties, ...)
   if (isClassif) {
@@ -1020,12 +1038,6 @@ predefParams = list(
     bool5=makeLogicalVectorLearnerParam("bool5", len=3, default=c(FALSE, TRUE, FALSE)),
     bool6=makeLogicalVectorLearnerParam("bool6", default=FALSE))
 
-ps = makeParamSet(params=predefParams)
-
-t = testLearner('test1', ps, c("twoclass", "multiclass", "numerics"))
-
-expect_output()
-
 # test that the learner has params in 'trainps' during training and params in 'predps' during prediction
 expect_learner_output = function(learner, task, name, trainps=list(), predps=list()) {
   oldopts = getMlrOptions()
@@ -1035,10 +1047,204 @@ expect_learner_output = function(learner, task, name, trainps=list(), predps=lis
   do.call(configureMlr, oldopts)
 }
 
+
+library("testthat")
+
+### Testing trivial learners are returned when appropriate
+taskNormal = createTestClassifTask("t1", 20, nNumeric=1)
+taskWWeights = createTestClassifTask("t1", 20, nNumeric=1, weights=rpois(20, 1))
+trivialLearner1 = list(autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass"))))
+trivialLearner2 = list(autolearner(testLearner("test", makeParamSet(), c("factors", "twoclass"))))
+
+expect_warning(lrns <- buildLearners(list(), pid.task), 'No model fits the given task')
+expect_null(lrns)
+
+expect_class(buildLearners(trivialLearner1, taskNormal), "RLearnerClassif")
+expect_warning(res <- buildLearners(trivialLearner2, taskNormal), 'No model fits the given task')
+expect_null(res)
+expect_error(buildLearners(trivialLearner1, taskWWeights), "Tasks with weights are currently not supported")
+expect_error(buildLearners(trivialLearner2, taskWWeights), "Tasks with weights are currently not supported")
+###
+
+
+### Testing the right kind of learners are filtered out
+optionalProps = c("numerics", "factors", "ordered", "missings", "twoclass", "multiclass")
+allOPs = do.call(c, lapply(seq_along(optionalProps), function(i) combn(optionalProps, i, simplify=FALSE)))
+names(allOPs) = as.character(seq_along(allOPs))
+propertyLearners = mapply(testLearner, name=names(allOPs), properties=allOPs, MoreArgs=list(parset=makeParamSet()), SIMPLIFY=FALSE)
+autolearnersBASIC = lapply(propertyLearners, autolearner)
+
+defaultExpFun = function(mustBeHandled, mayBeHandled=character(0)) function(x) {  # yes we curry
+  return(all(mustBeHandled %in% x) &&  # all things that must be handled are present
+           any(intersect(union(mustBeHandled, mayBeHandled), c("numerics", "factors", "ordered")) %in% x))  # at least one type of column can be processed
+}
+
+defaultExpFun2 = function(mustBeHandledList) function(x) {  # yes we curry
+  possible = sapply(mustBeHandledList, function(mustBeHandled) all(mustBeHandled %in% x) &&  # all things that must be handled are present
+           any(intersect(mustBeHandled, c("numerics", "factors", "ordered")) %in% x))
+  return(any(possible))  # at least one type of column can be processed
+}
+
+
+checkLearnersPresent = function(task, propertiesExpected, optionalProperties=character(0),
+    expfun = defaultExpFun2(propertiesExpected), debugOut=FALSE) {
+  expectedLearners = names(allOPs)[sapply(allOPs, expfun)]
+  presentLearners = unlist(getParamSet(buildLearners(autolearnersPL, task))$pars$selected.learner$values)
+  if (debugOut) {
+    catf("Expected Learners: %s", paste(expectedLearners, collapse=", "))
+    catf("Present Learners: %s", paste(presentLearners, collapse=", "))
+  }
+  expect_set_equal(presentLearners, expectedLearners)
+}
+
+t.n2 = createTestClassifTask("t.n2", 200, nNumeric=1)
+t.f2 = createTestClassifTask("t.f2", 200, nFactor=1)
+t.o2 = createTestClassifTask("t.o2", 200, nOrdered=1)
+t.nx = createTestClassifTask("t.nx", 200, nNumeric=1, nClasses=25)
+t.fx = createTestClassifTask("t.fx", 200, nFactor=1, nClasses=25)
+t.ox = createTestClassifTask("t.ox", 200, nOrdered=1, nClasses=25)
+t.nm2 = createTestClassifTask("t.nm2", 200, nNumeric=1, missings=TRUE)
+t.fm2 = createTestClassifTask("t.fm2", 200, nFactor=1, missings=TRUE)
+t.om2 = createTestClassifTask("t.om2", 200, nOrdered=1, missings=TRUE)
+t.nmx = createTestClassifTask("t.nmx", 200, nNumeric=1, nClasses=3, missings=TRUE)
+t.fmx = createTestClassifTask("t.fmx", 200, nFactor=1, nClasses=3, missings=TRUE)
+
+
+checkWrapperEffect = function(transformation=list, ...) {
+  checkLearnersPresent(t.n2, transformation(c("numerics", "twoclass")), ...)
+  checkLearnersPresent(t.f2, transformation(c("factors", "twoclass")), ...)
+  checkLearnersPresent(t.o2, transformation(c("ordered", "twoclass")), ...)
+  checkLearnersPresent(t.nx, transformation(c("numerics", "multiclass")), ...)
+  checkLearnersPresent(t.fx, transformation(c("factors", "multiclass")), ...)
+  checkLearnersPresent(t.ox, transformation(c("ordered", "multiclass")), ...)
+  checkLearnersPresent(t.nm2, transformation(c("numerics", "twoclass", "missings")), ...)
+  checkLearnersPresent(t.fm2, transformation(c("factors", "twoclass", "missings")), ...)
+  checkLearnersPresent(t.om2, transformation(c("ordered", "twoclass", "missings")), ...)
+  checkLearnersPresent(t.nmx, transformation(c("numerics", "multiclass", "missings")), ...)
+  checkLearnersPresent(t.fmx, transformation(c("factors", "multiclass", "missings")), ...)
+}
+
+
+createTestWithProperties = function(properties) {
+  assert(any(c("twoclass", "multiclass") %in% properties))
+  nClasses = 2 + ("multiclass" %in% properties)
+  createTestClassifTask("t", 200,
+                        nNumeric=as.numeric("numerics" %in% properties),
+                        nFactor=as.numeric("factors" %in% properties),
+                        nOrdered=as.numeric("ordered" %in% properties),
+                        nClasses=nClasses,
+                        missings=as.numeric("missings" %in% properties))
+}
+
+checkWrapperEffectEx = function(transformation=list, debugOut=FALSE, ...) {
+  testprops = c("numerics", "factors", "ordered")
+  for (classness in c("twoclass", "multiclass")) {
+    for (numprops in seq_along(testprops)) {
+      for (chosenprops in combn(testprops, numprops, simplify=FALSE)) {
+        for (doMissings in c(FALSE, TRUE)) {
+          totalprops = c(classness, if(doMissings) "missings", chosenprops)
+          testTask = createTestWithProperties(totalprops)
+          if (debugOut) {
+            print(totalprops)
+          }
+          checkLearnersPresent(testTask, transformation(totalprops), debugOut=debugOut, ...)
+        }
+      }
+    }
+  }
+}
+
+MRemover = autoWrapper("M.R", identity, function(x) switch(x, missings=c("missings", ""), x))
+FRemover = autoWrapper("F.R", identity, function(x) switch(x, factors=c("factors", ""), x))
+ORemover = autoWrapper("O.R", identity, function(x) switch(x, ordered=c("ordered", ""), x))
+MFRemover = autoWrapper("MF.R", identity, function(x) switch(x, missings=c("missings", ""), factors=c("factors", ""), x))
+OConverter = autoWrapper("O.C", identity, function(x) switch(x, ordered=c("ordered", "numerics"), x))
+FConverter = autoWrapper("F.C", identity, function(x) switch(x, factors=c("factors", "numerics"), x))
+MFRemoverFConverter = autoWrapper("MF.R.F.C", identity, function(x) switch(x, factors=c("factors", "numerics", ""), missings=c("missings", ""), x))
+
+autolearnersPL = autolearnersBASIC
+checkWrapperEffect()
+checkWrapperEffectEx()
+
+for (uneffectiveWrapper in list(MRemover, FRemover, ORemover, MFRemover, OConverter, FConverter, MFRemoverFConverter)) {
+  autolearnersPL = c(autolearnersBASIC, list(autolearner(uneffectiveWrapper, stacktype="wrapper")))
+  checkWrapperEffect()
+  checkWrapperEffectEx()
+}
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(MRemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) list(setdiff(x, "missings")))
+checkWrapperEffectEx(function(x) list(setdiff(x, "missings")))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(FRemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) list(x, setdiff(x, "factors")))
+checkWrapperEffectEx(function(x) list(x, setdiff(x, "factors")))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(ORemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) list(x, setdiff(x, "ordered")))
+checkWrapperEffectEx(function(x) list(x, setdiff(x, "ordered")))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(MFRemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x=x))
+checkWrapperEffectEx(function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x=x))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(MRemover, stacktype="requiredwrapper"), autolearner(FRemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x=x))
+checkWrapperEffectEx(function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x=x))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(MRemover, stacktype="requiredwrapper"), autolearner(FRemover, stacktype="wrapper")))
+checkWrapperEffect(function(x) list(setdiff(x, "missings")))
+checkWrapperEffectEx(function(x) list(setdiff(x, "missings")))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(MFRemover, stacktype="requiredwrapper"), autolearner(ORemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) lapply(list("ordered", "factors", c("ordered", "factors")), function(y) setdiff(x, c("missings", y))))
+checkWrapperEffectEx(function(x) lapply(list("ordered", "factors", c("ordered", "factors")), function(y) setdiff(x, c("missings", y))))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(MFRemoverFConverter, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y="missings"))
+checkWrapperEffectEx(function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y="missings"))
+
+autolearnersPL = c(autolearnersBASIC, list(autolearner(FConverter, stacktype="requiredwrapper"), autolearner(MFRemover, stacktype="requiredwrapper")))
+checkWrapperEffect(function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y="missings"))
+checkWrapperEffectEx(function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y="missings"))
+
+# TODO: it is natural that the following fails, but it would be nice if it worked.
+#autolearnersPL = c(autolearnersBASIC, list(autolearner(OConverter, stacktype="requiredwrapper")))
+#checkWrapperEffect(function(x) list(x, sub("ordered", "numerics", x)))
+#checkWrapperEffectEx(function(x) list(x, sub("ordered", "numerics", x)))
+#
+#autolearnersPL = c(autolearnersBASIC, list(autolearner(FConverter, stacktype="requiredwrapper")))
+#checkWrapperEffect(function(x) list(x, sub("factors", "numerics", x)))
+#checkWrapperEffectEx(function(x) list(x, sub("factors", "numerics", x)))
+#
+#autolearnersPL = c(autolearnersBASIC, list(
+#    autolearner(FConverter, stacktype="requiredwrapper"),
+#    autolearner(MFRemover, stacktype="requiredwrapper"),
+#    autolearner(ORemover, stacktype="requiredwrapper")))
+#chgfun = function(x) {
+#  urlist = list(x, setdiff(x, "factors"), sub("factors", "numerics", x))
+#  c(lapply(urlist, setdiff, y="missings"), lapply(urlist, setdiff, y=c("missings", "ordered")))
+#}
+# TODO: the following should work
+#checkWrapperEffect(chgfun)
+#checkWrapperEffectEx(chgfun)
+###
+
+
+
+
+allOPs[unlist(getParamSet(buildLearners(autolearnersPL, t1))$pars$selected.learner$values)]
+t1
+
+
 x = expect_output(train(setHyperPars(t, int1=0), pid.task), expectout(list(myname='test1', int1=0)), fixed=TRUE)
 x
 
 expect_learner_output(setHyperPars(t, int1=0, int3=0), pid.task, "test1", list(int1=0), list(int3=0))
+
+
+
+
 
 
 # Ok, what needs to be tested?
@@ -1047,92 +1253,11 @@ expect_learner_output(setHyperPars(t, int1=0, int3=0), pid.task, "test1", list(i
 # multiclass classif: all learners that can handle multiclass are present, no others
 #
 
-# - error when task has weights
-# - there is a parameter letting one choose between wrappers, if n(requiredwrappers) > 1 or n(nonrequiredwrappers) >= 1
-# - learners that are selected depend on learner type and task type:
-#   - task is multiclass -- all the twoclass learners missing
-#   - task is class -- all regression learners missing
-#   - task is regression -- all the task learners missing
-#   - task has NAs -- all the learners that can't handle them missing
-#   - task has factors -- all the learners that can't handle them missing
-#   - task has ordereds -- all the learners that can't handle them missing
-#   - task has NAs, factors, ordereds, but a requiredwrapper that can convert them -- the learners are not missing
-#   - task has NAs, factors, ordereds, but a nonrequired wrapper that can handle them: ignored
-#   - task has no numerics but factors or ordereds: learners that can only handle numerics go out
-#   - task has no numerics but factors or ordereds, and requiredwrapper that can convert: learners that can only handle numerics stay in
-# - no valid learner found --> warning received, return NULL
-# - search space parameter behaviour
-#   - parameter has an id but is the only one -> warning, but nothing special
-#   - two parameters have same id but different type/length/feasible region -> error
-#   - learner has parameter that is not part of search space -> warning
-#   - .AMLRFIX without requirements -> error
-#   - .AMLRFIX, but other parameter has no requirements -> error
-#   - .AMLRFIX with "fix" or "def" type -> error
-#   - .AMLRFIX but other parameter has "fix" or "def" -> error
-#   - .AMLRFIX but itself / other parameter is 'dummy' -> error
-#   - .AMLRFIX and itself / other is 'inject' --> works
-#   - 'inject' but parameter exists really -> error
-#   - 'inject' otherwise: parameter is present during training (and testing?)
-#   - 'dummy' but parameter exists -> error
-#   - 'dummy', parameter not visible during either training or testing
-#   - parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
-#   - parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
-#   - parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
-#   - parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
-#   - parameter def unlike true def -> warning; learner then receives the given value
-#   - parameter def like true def but set hyperpar present -> warning, learner receives the given value or nothing (we don't care)
-#   - parameter def is null, true def is null -> learner receives no value
-#   - parameter fix -> learner receives this value
-#   - parameter fix/def -> not in searchspace
-#   - parameter not fix/def -> part of searchspace
-#   - parameter .AMLRFIX -> part of searchspace, but reaches learner as normal value
-#   - true param has requires, searchspace param does not -> warning
-#   - parameter is dummy and 'fix' -> warning (or error?)
-#   - parameter is dummy and 'def' -> error
-#   - parameter is inject and 'def' -> error
-#   - parameter is inject and 'fix' -> no warning, reaches learner like this
-#   - parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
-#   - parameter with trafo fn: trafo function 'works'
-#   - parameter with trafo 'exp': trafo is given. test trafo with known values
-#   - parameters with requirements: given requirements are respected, plus 'selected.learner'. (how to test this?) This even works if 'c()' is used an 'c' parameter exists.
-# - exowrapper
-#   - no wrappers given, or only one required wrapper given: no wrapper selector
-#     - one required wrapper: is always used
-#   - one nonrequired wrapper: is only used some of the time, with selector
-#   - two required wrappers: order can be selected; also changes in reallife
-#   - two optional wrappers: selector, which one is used and the order match
-#   - two optional, two requireds: selector, order and which one is used match
-# - has.X, removes.X
-#   - has.X:
-#     - parameters in learner can depend on 'has.X'. X may be missings, factors, ordered but not numerics. this is so for
-#       - .AMLRFIX
-#         - parameters with .AMLRFIX, fixed: value takes on this value in presence/absence of X
-#         - parameters with .AMLRFIX, variable: two external vars, each only valid some times, set the goal variable differently inside the learner.
-#       - how variable
-#         - is fixed to NO if the task doesn't have X to begin with
-#         - is fixed to YES if the task has it an nothing can convert
-#         - there is an external var determining this if X is in the task and a wrapper can remove it
-#         - there is another var only available if the above is TRUE, determining which wrapper removes it, if more than one wrapper are present
-#         - removes.X is set for the given wrapper. this has influence on .AMLRFIX for fixed and variable learners and changes the external search space accordingly, while setting internally the variable accordingly
-#         - has.X is true for all the wrappers before and including the one removing it, is false afterwards; .AMLRFIX etc. behaves accordingly
-# - fixed parameters never visible from the outside but on the inside
-# - fixed parameters with .AMLRFIX never visible from the outside but appear from the inside
-# - requirements satisfied: generate a random searchspace for a huge setting of wrappers & learners with entanglement of requirements; check internally that these requirements are always satisfied.
-# - requirements satisfied REVERSE: generate the same huge thing; generate variables from the inside and see they are feasible from the outside. THIS MIGHT BE HARD.
-
-
-# automlr.has.missings, etc. are true when they should be
-# automlr.remove.missings etc. are true when they should be
-# learner params that depend only on these and always happen to be false are removed
-# learners that need a certain conversion are present iff there is a wrapper that does this conversion
-# optional wrappers are sometimes there, sometimes not. required wrappers always there.
-
-# maybe work with a code coverage tool
 
 
 ##### testing
 
-devtools::use_testthat("..")
+
 
 
 ##### mlrMBO
