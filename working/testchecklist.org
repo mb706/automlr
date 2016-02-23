@@ -13,14 +13,14 @@
    - [X] task has no numerics but factors or ordereds: learners that can only handle numerics go out
    - [X] task has no numerics but factors or ordereds, and requiredwrapper that can convert: learners that can only handle numerics stay in
  - [X] no valid learner found --> warning received, return NULL
- - [ ] search space parameter behaviour
-   - [ ] parameter definition consistency
-     - [ ] parameter is dummy and 'fix' -> warning (or error?)
-     - [ ] parameter is dummy and 'def' -> error
-     - [ ] parameter is inject and 'def' -> error
-   - [ ] id behaviour
-     - [ ] parameter has an id but is the only one -> warning, but nothing special
-     - [ ] two parameters have same id but different type/length/feasible region -> error
+ - [-] search space parameter behaviour
+   - [X] parameter definition consistency
+     - [X] parameter is dummy and 'fix' -> warning (or error?)
+     - [X] parameter is dummy and 'def' -> error
+     - [X] parameter is inject and 'def' -> error
+   - [X] id behaviour
+     - [X] parameter has an id but is the only one -> warning, but nothing special
+     - [X] two parameters have same id but different type/length/feasible region -> error
    - [ ] .AMLRFIX definitions
      - [ ] .AMLRFIX without requirements -> error
      - [ ] .AMLRFIX, but other parameter has no requirements -> error
@@ -28,16 +28,16 @@
      - [ ] .AMLRFIX but other parameter has "fix" or "def" -> error
      - [ ] .AMLRFIX but itself / other parameter is 'dummy' -> error
      - [ ] .AMLRFIX and itself / other is 'inject' --> works
-   - [ ] parameter definitions match learner
-     - [ ] learner has parameter that is not part of search space -> warning
-     - [ ] 'inject' but parameter exists really -> error
-     - [ ] 'dummy' but parameter exists -> error
-     - [ ] parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
-     - [ ] parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
-     - [ ] parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
-     - [ ] parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
-     - [ ] parameter def unlike true def -> warning; learner then receives the given value
-     - [ ] parameter def like true def but set hyperpar present -> warning, learner receives the given value or nothing (we don't care)
+   - [-] parameter definitions match learner
+     - [X] learner has parameter that is not part of search space -> warning
+     - [X] 'inject' but parameter exists really -> error
+     - [X] 'dummy' but parameter exists -> error
+     - [X] parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
+     - [X] parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
+     - [X] parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
+     - [X] parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
+     - [ ] parameter def unlike true def -> warning
+     - [ ] parameter def like true def but set hyperpar present -> warning, 
      - [ ] true param has requires, searchspace param does not -> warning
    - [ ] parameter trafo
      - [ ] parameter with trafo fn: trafo function 'works'
@@ -52,6 +52,7 @@
      - [ ] parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
      - [ ] parameters with only one possible value not visible
    - [ ] inner parameter values
+     - [ ] learner categorical variable with boolean values and "bool" type in searchspace defn. actually gets these boolean values.
      - [ ] 'dummy', parameter not visible during either training or testing
      - [ ] 'inject' parameter is present during training (and testing?)
      - [ ] parameter .AMLRFIX reaches learner as normal value
@@ -62,6 +63,8 @@
      - [ ] parameter fix -> learner receives this value
      - [ ] parameter is inject and 'fix' -> reaches learner like this
      - [ ] parameters with only one possible value take this value
+     - [ ] parameter given as 'def' but unlike true def --> receive given value
+     - [ ] parameter given as 'def' but set hyperpar present --> learner receives the given value or nothing (we don't care)
  - [ ] wrappers
    - [ ] no wrappers given, or only one required wrapper given: no wrapper selector; otherwise there is a selector
    - [ ] one required wrapper: is always used

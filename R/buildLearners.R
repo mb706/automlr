@@ -1,5 +1,6 @@
 
-
+# what is missing?
+# giving defaults / fixes for vector params
 
 #' Take a list of autolearners and create a (big) mlr Learner object
 #' 
@@ -80,12 +81,12 @@ buildLearners = function(searchspace, task) {
   #  $conversion: function taking one of "factors", "ordered", "numerics", "missings" and returning a subset of these
   #   (the empty string if the input type can be removed).
 
-  allcovtypes = c("factors", "ordered", "numerics", "missings")
+  allcovtypes = c("factors", "ordered", "numerics")
+  allcovproperties = c(allcovtypes, "missings")
   covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0], if (taskdesc$has.missings) "missings")
-
+  maxcovtypes = setdiff(covtypes, "missings")
   requiredClassProperty = c("oneclass", "twoclass", "multiclass")[min(3, length(taskdesc$class.levels))]
   mincovtypes = covtypes
-  maxcovtypes = c(covtypes, "missings")  # absence of missings is never a problem
   wrapperList = list()
   handlerList = list()
   for (w in wrappers) {
@@ -103,7 +104,7 @@ buildLearners = function(searchspace, task) {
       if ("" %in% conv) {
         mincovtypes = setdiff(mincovtypes, t)
       }
-      maxcovtypes = union(maxcovtypes, setdiff(t, ""))
+      maxcovtypes = union(maxcovtypes, setdiff(conv, c("", "missings")))
     }
   }
 
@@ -118,7 +119,7 @@ buildLearners = function(searchspace, task) {
       # can't handle the target variable type
       next
     }
-    learnercovtypes = intersect(allcovtypes, getLearnerProperties(l))
+    learnercovtypes = intersect(allcovproperties, getLearnerProperties(l))
     if (length(setdiff(mincovtypes, learnercovtypes)) != 0) {
       # there are feature types that no wrapper can remove that the learner can't handle
       next
@@ -127,7 +128,7 @@ buildLearners = function(searchspace, task) {
       # we can't convert the features to any kind of feature that the learner can handle
       next
     }
-    for (canHandle in intersect(allcovtypes, getLearnerProperties(l))) {
+    for (canHandle in intersect(allcovproperties, getLearnerProperties(l))) {
       handlerList[[canHandle]] = c(handlerList[[canHandle]], l$id)
     }
     aux = buildTuneSearchSpace(sslist, l, info.env, idRef)
@@ -179,7 +180,7 @@ checkParamIds = function(idRef) {
         if (!identical(prop1, prop2)) {
           stopf("Prameter '%s' of learner '%s' has the same id '%s' as param '%s' of learner '%s', but their '%s' property do not match. ('%s' vs. '%s')",
               protopar$id, idRef[[parid]][[1]]$learner$id, parid, otherpar$param$id, otherpar$learner$id, property,
-              if (is.null(prop1)) "NULL" else prop1, if (is.null(prop2)) "NULL" else prop2)
+              if (is.null(prop1)) "NULL" else paste(prop1, collapse=", "), if (is.null(prop2)) "NULL" else paste(prop2, collapse=", "))
         }
       }
     }
@@ -232,7 +233,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
     # inject --> is not in the learner already unless this is an AMLRPREFIX case
     if (identical(param$special, "inject") && (origParamName %nin% areAlreadyAMLRFIX)) {
       if (origParamName %in% getParamIds(getParamSet(l))) {
-        stopf("Parameter '%s' is present in learner '%s' but is marked as `inject` in search space.",
+        stopf("Parameter '%s' is present in learner '%s' but is marked as 'inject' in search space.",
             param$name, l$id)
       }
       l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid=l$id, do.trafo=FALSE, facingOutside=FALSE)))
@@ -242,8 +243,12 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       names(lptypes) = lpids
     } else if (identical(param$special, "dummy")) {
       if (origParamName %in% getParamIds(getParamSet(l))) {
-        stopf("Parameter '%s' is present in learner '%s' but is marked as `dummy` in search space.",
+        stopf("Parameter '%s' is present in learner '%s' but is marked as 'dummy' in search space.",
             param$name, l$id)
+      }
+      if (param$type %in% c("def", "fix")) {
+        stopf("Dummy parameter '%s' given for learner '%s' must not be of type '%s'.",
+            param$name, l$id, param$type)
       }
     } else {
       if (origParamName %nin% lpids) {
@@ -421,11 +426,11 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
       cat=list(values={x = param$values; names(x) = param$values; x}),
       bool=list(),
       fix={
-        warningf("Parameter '%s' for learner '%s is marked dummy and has type 'fix'; This usually does not make sense.",
+        warningf("Parameter '%s' for learner '%s' is marked 'inject' and has type 'fix'; This usually does not make sense.",
             param$name, learnerid)
         list(values=param$values)
       },
-      def=stopf("Parameter '%s' for learner '%s' is marked as dummy or inject must not have type 'def'.",
+      def=stopf("Parameter '%s' for learner '%s' marked as 'inject' must not have type 'def'.",
           param$name, learnerid),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))
   pobject = do.call(constructor, paramlist, quote=TRUE)
@@ -485,12 +490,12 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
     substitution = lapply(newnames, asQuoted)  # substitution is a list(oldname=quote(newname))
     names(substitution) = oldnames
     for (paramiter in seq_along(origpars)) {  # iterate over the parameters in each ParamSet
-      searchspace$pars[[newname]]$amlr.learnerName = modelid
       cp = origpars[[paramiter]]
       cpname = names(origpars)[paramiter]
       cprequires = cp$requires
       newname = paste(modelid, cpname, sep='.') # the name fo the current Param within mm$searchspace
       newrequires = searchspace$pars[[newname]]$requires
+      searchspace$pars[[newname]]$amlr.learnerName = modelid
       if (is.null(cprequires)) {
         # if there is no '$requires' we don't need to do anything
         next
