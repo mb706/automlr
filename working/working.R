@@ -874,94 +874,6 @@ for (i in 1:10) {
 }
 
 
-# Ok, what needs to be tested?
-# searchspace with regr, twoclass, multiclass learners --
-# twoclass classif: - all learners that can handle twoclass are present, no others
-# multiclass classif: all learners that can handle multiclass are present, no others
-#
-
-# - error when task has weights
-# - there is a parameter letting one choose between wrappers, if n(requiredwrappers) > 1 or n(nonrequiredwrappers) >= 1
-# - learners that are selected depend on learner type and task type:
-#   - task is multiclass -- all the twoclass learners missing
-#   - task is class -- all regression learners missing
-#   - task is regression -- all the task learners missing
-#   - task has NAs -- all the learners that can't handle them missing
-#   - task has factors -- all the learners that can't handle them missing
-#   - task has ordereds -- all the learners that can't handle them missing
-#   - task has NAs, factors, ordereds, but a requiredwrapper that can convert them -- the learners are not missing
-#   - task has NAs, factors, ordereds, but a nonrequired wrapper that can handle them: ignored
-#   - task has no numerics but factors or ordereds: learners that can only handle numerics go out
-#   - task has no numerics but factors or ordereds, and requiredwrapper that can convert: learners that can only handle numerics stay in
-# - no valid learner found --> warning received, return NULL
-# - search space parameter behaviour
-#   - parameter has an id but is the only one -> warning, but nothing special
-#   - two parameters have same id but different type/length/feasible region -> error
-#   - learner has parameter that is not part of search space -> warning
-#   - .AMLRFIX without requirements -> error
-#   - .AMLRFIX, but other parameter has no requirements -> error
-#   - .AMLRFIX with "fix" or "def" type -> error
-#   - .AMLRFIX but other parameter has "fix" or "def" -> error
-#   - .AMLRFIX but itself / other parameter is 'dummy' -> error
-#   - .AMLRFIX and itself / other is 'inject' --> works
-#   - 'inject' but parameter exists really -> error
-#   - 'inject' otherwise: parameter is present during training (and testing?)
-#   - 'dummy' but parameter exists -> error
-#   - 'dummy', parameter not visible during either training or testing
-#   - parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
-#   - parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
-#   - parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
-#   - parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
-#   - parameter def unlike true def -> warning; learner then receives the given value
-#   - parameter def like true def but set hyperpar present -> warning, learner receives the given value or nothing (we don't care)
-#   - parameter def is null, true def is null -> learner receives no value
-#   - parameter fix -> learner receives this value
-#   - parameter fix/def -> not in searchspace
-#   - parameter not fix/def -> part of searchspace
-#   - parameter .AMLRFIX -> part of searchspace, but reaches learner as normal value
-#   - true param has requires, searchspace param does not -> warning
-#   - parameter is dummy and 'fix' -> warning (or error?)
-#   - parameter is dummy and 'def' -> error
-#   - parameter is inject and 'def' -> error
-#   - parameter is inject and 'fix' -> no warning, reaches learner like this
-#   - parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
-#   - parameter with trafo fn: trafo function 'works'
-#   - parameter with trafo 'exp': trafo is given. test trafo with known values
-#   - parameters with requirements: given requirements are respected, plus 'selected.learner'. (how to test this?) This even works if 'c()' is used an 'c' parameter exists.
-# - exowrapper
-#   - no wrappers given, or only one required wrapper given: no wrapper selector
-#     - one required wrapper: is always used
-#   - one nonrequired wrapper: is only used some of the time, with selector
-#   - two required wrappers: order can be selected; also changes in reallife
-#   - two optional wrappers: selector, which one is used and the order match
-#   - two optional, two requireds: selector, order and which one is used match
-# - has.X, removes.X
-#   - has.X:
-#     - parameters in learner can depend on 'has.X'. X may be missings, factors, ordered but not numerics. this is so for
-#       - .AMLRFIX
-#         - parameters with .AMLRFIX, fixed: value takes on this value in presence/absence of X
-#         - parameters with .AMLRFIX, variable: two external vars, each only valid some times, set the goal variable differently inside the learner.
-#       - how variable
-#         - is fixed to NO if the task doesn't have X to begin with
-#         - is fixed to YES if the task has it an nothing can convert
-#         - there is an external var determining this if X is in the task and a wrapper can remove it
-#         - there is another var only available if the above is TRUE, determining which wrapper removes it, if more than one wrapper are present
-#         - removes.X is set for the given wrapper. this has influence on .AMLRFIX for fixed and variable learners and changes the external search space accordingly, while setting internally the variable accordingly
-#         - has.X is true for all the wrappers before and including the one removing it, is false afterwards; .AMLRFIX etc. behaves accordingly
-# - fixed parameters never visible from the outside but on the inside
-# - fixed parameters with .AMLRFIX never visible from the outside but appear from the inside
-# - requirements satisfied: generate a random searchspace for a huge setting of wrappers & learners with entanglement of requirements; check internally that these requirements are always satisfied.
-# - requirements satisfied REVERSE: generate the same huge thing; generate variables from the inside and see they are feasible from the outside. THIS MIGHT BE HARD.
-
-
-# automlr.has.missings, etc. are true when they should be
-# automlr.remove.missings etc. are true when they should be
-# learner params that depend only on these and always happen to be false are removed
-# learners that need a certain conversion are present iff there is a wrapper that does this conversion
-# optional wrappers are sometimes there, sometimes not. required wrappers always there.
-
-# maybe work with a code coverage tool
-
 
 
 createTestData = function(nrow, nNumeric=0, nFactor=0, nOrdered=0) {
@@ -1127,6 +1039,95 @@ x = expect_output(train(setHyperPars(t, int1=0), pid.task), expectout(list(mynam
 x
 
 expect_learner_output(setHyperPars(t, int1=0, int3=0), pid.task, "test1", list(int1=0), list(int3=0))
+
+
+# Ok, what needs to be tested?
+# searchspace with regr, twoclass, multiclass learners --
+# twoclass classif: - all learners that can handle twoclass are present, no others
+# multiclass classif: all learners that can handle multiclass are present, no others
+#
+
+# - error when task has weights
+# - there is a parameter letting one choose between wrappers, if n(requiredwrappers) > 1 or n(nonrequiredwrappers) >= 1
+# - learners that are selected depend on learner type and task type:
+#   - task is multiclass -- all the twoclass learners missing
+#   - task is class -- all regression learners missing
+#   - task is regression -- all the task learners missing
+#   - task has NAs -- all the learners that can't handle them missing
+#   - task has factors -- all the learners that can't handle them missing
+#   - task has ordereds -- all the learners that can't handle them missing
+#   - task has NAs, factors, ordereds, but a requiredwrapper that can convert them -- the learners are not missing
+#   - task has NAs, factors, ordereds, but a nonrequired wrapper that can handle them: ignored
+#   - task has no numerics but factors or ordereds: learners that can only handle numerics go out
+#   - task has no numerics but factors or ordereds, and requiredwrapper that can convert: learners that can only handle numerics stay in
+# - no valid learner found --> warning received, return NULL
+# - search space parameter behaviour
+#   - parameter has an id but is the only one -> warning, but nothing special
+#   - two parameters have same id but different type/length/feasible region -> error
+#   - learner has parameter that is not part of search space -> warning
+#   - .AMLRFIX without requirements -> error
+#   - .AMLRFIX, but other parameter has no requirements -> error
+#   - .AMLRFIX with "fix" or "def" type -> error
+#   - .AMLRFIX but other parameter has "fix" or "def" -> error
+#   - .AMLRFIX but itself / other parameter is 'dummy' -> error
+#   - .AMLRFIX and itself / other is 'inject' --> works
+#   - 'inject' but parameter exists really -> error
+#   - 'inject' otherwise: parameter is present during training (and testing?)
+#   - 'dummy' but parameter exists -> error
+#   - 'dummy', parameter not visible during either training or testing
+#   - parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
+#   - parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
+#   - parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
+#   - parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
+#   - parameter def unlike true def -> warning; learner then receives the given value
+#   - parameter def like true def but set hyperpar present -> warning, learner receives the given value or nothing (we don't care)
+#   - parameter def is null, true def is null -> learner receives no value
+#   - parameter fix -> learner receives this value
+#   - parameter fix/def -> not in searchspace
+#   - parameter not fix/def -> part of searchspace
+#   - parameter .AMLRFIX -> part of searchspace, but reaches learner as normal value
+#   - true param has requires, searchspace param does not -> warning
+#   - parameter is dummy and 'fix' -> warning (or error?)
+#   - parameter is dummy and 'def' -> error
+#   - parameter is inject and 'def' -> error
+#   - parameter is inject and 'fix' -> no warning, reaches learner like this
+#   - parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
+#   - parameter with trafo fn: trafo function 'works'
+#   - parameter with trafo 'exp': trafo is given. test trafo with known values
+#   - parameters with requirements: given requirements are respected, plus 'selected.learner'. (how to test this?) This even works if 'c()' is used an 'c' parameter exists.
+# - exowrapper
+#   - no wrappers given, or only one required wrapper given: no wrapper selector
+#     - one required wrapper: is always used
+#   - one nonrequired wrapper: is only used some of the time, with selector
+#   - two required wrappers: order can be selected; also changes in reallife
+#   - two optional wrappers: selector, which one is used and the order match
+#   - two optional, two requireds: selector, order and which one is used match
+# - has.X, removes.X
+#   - has.X:
+#     - parameters in learner can depend on 'has.X'. X may be missings, factors, ordered but not numerics. this is so for
+#       - .AMLRFIX
+#         - parameters with .AMLRFIX, fixed: value takes on this value in presence/absence of X
+#         - parameters with .AMLRFIX, variable: two external vars, each only valid some times, set the goal variable differently inside the learner.
+#       - how variable
+#         - is fixed to NO if the task doesn't have X to begin with
+#         - is fixed to YES if the task has it an nothing can convert
+#         - there is an external var determining this if X is in the task and a wrapper can remove it
+#         - there is another var only available if the above is TRUE, determining which wrapper removes it, if more than one wrapper are present
+#         - removes.X is set for the given wrapper. this has influence on .AMLRFIX for fixed and variable learners and changes the external search space accordingly, while setting internally the variable accordingly
+#         - has.X is true for all the wrappers before and including the one removing it, is false afterwards; .AMLRFIX etc. behaves accordingly
+# - fixed parameters never visible from the outside but on the inside
+# - fixed parameters with .AMLRFIX never visible from the outside but appear from the inside
+# - requirements satisfied: generate a random searchspace for a huge setting of wrappers & learners with entanglement of requirements; check internally that these requirements are always satisfied.
+# - requirements satisfied REVERSE: generate the same huge thing; generate variables from the inside and see they are feasible from the outside. THIS MIGHT BE HARD.
+
+
+# automlr.has.missings, etc. are true when they should be
+# automlr.remove.missings etc. are true when they should be
+# learner params that depend only on these and always happen to be false are removed
+# learners that need a certain conversion are present iff there is a wrapper that does this conversion
+# optional wrappers are sometimes there, sometimes not. required wrappers always there.
+
+# maybe work with a code coverage tool
 
 
 ##### testing
