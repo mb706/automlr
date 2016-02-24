@@ -66,6 +66,10 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   
   # what's missing is removing the singleton parameters from the search space and replacing them with 
   #   direct setting of parameter values internally.
+  # Easy to forget: parameters set for the modelmultiplexer via setHyperPars, but not visible externally,
+  #  also need to be treated like this.
+  preset = getHyperPars(modelmultiplexer)
+  ### TODO TODO TODO
   aux = extractStaticParams(completeSearchSpace)
   staticParams = aux$staticParams
   substitutions = aux$substitutions
@@ -122,6 +126,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   # limits / values of the parameters with "trafo" have to be reverse-transformed.
   learnerPars = makeLearnerPars(completeSearchSpace)
   
+  visibleHyperIndex = names(getHyperPars(modelmultiplexer)) %in% getParamIds(learnerPars)
+  
   # finally, create the learner object that will be returned!
   constructor = switch(taskdesc$type,
       classif=makeRLearnerClassif, regr=makeRLearnerRegr, surv=makeRLearnerSurv,
@@ -132,12 +138,11 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
       name="automlrlearner",
       properties=properties,
       par.set=learnerPars,
-      par.vals=getHyperPars(modelmultiplexer),
+      par.vals=getHyperPars(modelmultiplexer)[visibleHyperIndex],
       package="automlr")
 
   learner$learner = modelmultiplexer
   learner$staticParams = staticParams
-  learner$fixedParams = getHyperPars(modelmultiplexer)
   learner$searchspace = completeSearchSpace
   learner$fix.factors.prediction = TRUE
   learner$wrappers = extractSubList(wrappers, "constructor")
@@ -169,7 +174,9 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
 }
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {
-  learner = removeHyperPars(learner, names(getHyperPars(learner)))
+  if (length(getHyperPars(learner)) > 0) {
+    learner = removeHyperPars(learner, names(getHyperPars(learner)))
+  }
   pnames = names(params)
   for (p in pnames) {
     tp = amlrTransformName(p)
@@ -244,7 +251,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
     removingWrapperName = paste0("automlr.wremoving.", type)
     newparams = c(newparams, list(makeDiscreteParam(removingWrapperName, removers[[type]], requires=requires)))
   }
-  
+
   # Manipulate the wrapper's search space
   #  - substitute the pseudo variables (automlr.has.xxx, automlr.remove.xxx) with expressions
   #  - add the requirement that the wrapper is actually present

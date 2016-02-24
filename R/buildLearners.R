@@ -1,6 +1,7 @@
 
 # what is missing?
 # giving defaults / fixes for vector params
+# 'inject'ed parameters always have feasibility region of the first parameter given with this name
 
 #' Take a list of autolearners and create a (big) mlr Learner object
 #' 
@@ -146,17 +147,7 @@ buildLearners = function(searchspace, task) {
   multiplexer = removeHyperPars(makeModelMultiplexer(learnerObjects), "selected.learner")
   
   
-  # TODO: it remains to be seen whether the following is necessary and / or a good thing to do.
-  #  - in favour: maybe the learner objects don't remember the fixed hyperparameters that are given to them.
-  #  - against: maybe there will be complaints when a hyperparameter is set for a learner that isn't active b/c of requirements.
-  for (l in learnerObjects) {
-    hs = getHyperPars(l)
-    vals = list()
-    for (hname in names(hs)) {
-      vals[[paste(l$id, hname, sep=".")]] = hs[[hname]]
-    }
-    multiplexer = setHyperPars(multiplexer, par.vals=vals)
-  }
+
   tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets)
   multiplexer$searchspace = tuneParamSet
   allLearners = unlist(tuneParamSet$pars$selected.learner$values)
@@ -190,8 +181,7 @@ checkParamIds = function(idRef) {
 buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
   lp = getParamSet(l)
   lpids = getParamIds(lp)
-  lptypes = getParamTypes(lp)
-  names(lptypes) = lpids
+  lptypes = getParamTypes(lp, use.names=TRUE)
   allParams = extractSubList(sslist, "name")
   untouchedParams = setdiff(lpids, allParams)
   if (length(untouchedParams)) {
@@ -228,10 +218,14 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       areAlreadyAMLRFIX = union(areAlreadyAMLRFIX, origParamName)
     }
     if (is.null(param$req) || identical(param$special, "dummy") || param$type %in% c("def", "fix")) {
+      if (origParamName %in% areAlreadyAMLRFIX) {
+        stopf("Parameter '%s' for learner '%s' already defined with .AMLRFIX suffix cannot be given without requirement or as dummy, def or fix.",
+            param$name, l$id)
+      }
       canNotBeAMLRFIX = union(canNotBeAMLRFIX, origParamName)
     }
     # inject --> is not in the learner already unless this is an AMLRPREFIX case
-    if (identical(param$special, "inject") && (origParamName %nin% areAlreadyAMLRFIX)) {
+    if (identical(param$special, "inject") && (origParamName %nin% areAlreadyAMLRFIX || origParamName %nin% getParamIds(getParamSet(l)))) {
       if (origParamName %in% getParamIds(getParamSet(l))) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as 'inject' in search space.",
             param$name, l$id)
@@ -239,8 +233,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid=l$id, do.trafo=FALSE, facingOutside=FALSE)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
-      lptypes = getParamTypes(lp)  # recreate lptypes here, since it may have changed 
-      names(lptypes) = lpids
+      lptypes = getParamTypes(lp, use.names=TRUE)  # recreate lptypes here, since it may have changed 
     } else if (identical(param$special, "dummy")) {
       if (origParamName %in% getParamIds(getParamSet(l))) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as 'dummy' in search space.",
@@ -338,6 +331,9 @@ allfeasible = function(ps, totest, name, dimension) {
   testlist = list(0)
   names(testlist) = name
   for (t in totest) {
+    if (getParamTypes(ps, use.names=TRUE)[[name]] == "discretevector") {
+      t = list(t)
+    }
     testlist[[1]] = if (dimension > 1) rep(t, dimension) else t
     if (!isFeasible(ps$pars[[name]], testlist[[1]])) {  # this would be easier if there was a way to disable requirements checking.
       return(FALSE)
@@ -433,6 +429,9 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
       def=stopf("Parameter '%s' for learner '%s' marked as 'inject' must not have type 'def'.",
           param$name, learnerid),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))
+  if (!facingOutside) {
+    paramlist$trafo = NULL
+  }
   pobject = do.call(constructor, paramlist, quote=TRUE)
   if (!is.null(pobject$trafo)) {
     environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names=TRUE), parent=info.env)

@@ -21,13 +21,13 @@
    - [X] id behaviour
      - [X] parameter has an id but is the only one -> warning, but nothing special
      - [X] two parameters have same id but different type/length/feasible region -> error
-   - [ ] .AMLRFIX definitions
-     - [ ] .AMLRFIX without requirements -> error
-     - [ ] .AMLRFIX, but other parameter has no requirements -> error
-     - [ ] .AMLRFIX with "fix" or "def" type -> error
-     - [ ] .AMLRFIX but other parameter has "fix" or "def" -> error
-     - [ ] .AMLRFIX but itself / other parameter is 'dummy' -> error
-     - [ ] .AMLRFIX and itself / other is 'inject' --> works
+   - [X] .AMLRFIX definitions
+     - [X] .AMLRFIX without requirements -> error
+     - [X] .AMLRFIX, but other parameter has no requirements -> error
+     - [X] .AMLRFIX with "fix" or "def" type -> error
+     - [X] .AMLRFIX but other parameter has "fix" or "def" -> error
+     - [X] .AMLRFIX but itself / other parameter is 'dummy' -> error
+     - [X] .AMLRFIX and itself / other is 'inject' --> works
    - [-] parameter definitions match learner
      - [X] learner has parameter that is not part of search space -> warning
      - [X] 'inject' but parameter exists really -> error
@@ -36,25 +36,27 @@
      - [X] parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
      - [X] parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
      - [X] parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
-     - [ ] parameter def unlike true def -> warning
-     - [ ] parameter def like true def but set hyperpar present -> warning, 
-     - [ ] true param has requires, searchspace param does not -> warning
+     - [X] parameter def unlike true def -> warning
+     - [X] parameter def like true def but set hyperpar present -> warning, 
+     - [X] true param has requires, searchspace param does not -> warning
+     - [ ] hyperparameter already set for learner -> also set in resulting object
+     - [ ] hyperparameter already set but out of bounds -> warning, is reset.
    - [ ] parameter trafo
      - [ ] parameter with trafo fn: trafo function 'works'
      - [ ] parameter with trafo 'exp': trafo is given. test trafo with known values
-   - [ ] outer searchspace appearance
-     - [ ] 'inject' parameter is visible from the outside
-     - [ ] .AMLRFIX becomes part of searchspace
-     - [ ] fixed .AMLRFIX not visible from the outside
-     - [ ] parameter fix/def -> not in searchspace
-     - [ ] parameter not fix/def -> part of searchspace
-     - [ ] parameter is inject and 'fix' -> not visible from the outside
-     - [ ] parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
-     - [ ] parameters with only one possible value not visible
-   - [ ] inner parameter values
-     - [ ] learner categorical variable with boolean values and "bool" type in searchspace defn. actually gets these boolean values.
-     - [ ] 'dummy', parameter not visible during either training or testing
-     - [ ] 'inject' parameter is present during training (and testing?)
+   - [X] outer searchspace appearance
+     - [X] 'inject' parameter is visible from the outside
+     - [X] .AMLRFIX becomes part of searchspace
+     - [X] fixed .AMLRFIX not visible from the outside
+     - [X] parameter fix/def -> not in searchspace
+     - [X] parameter not fix/def -> part of searchspace
+     - [X] parameter is inject and 'fix' -> not visible from the outside
+     - [X] parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
+     - [X] parameters with only one possible value not visible
+   - [-] inner parameter values
+     - [X] learner categorical variable with boolean values and "bool" type in searchspace defn. actually gets these boolean values.
+     - [X] 'dummy', parameter not visible during either training or testing
+     - [X] 'inject' parameter is present during training (and testing?)
      - [ ] parameter .AMLRFIX reaches learner as normal value
        - [ ] .AMLRFIX reaches learner as fixed value when requirement of a fixed .AMLRFIX given
        - [ ] .AMLRFIX reaches learner as appropriate outside value requirement of a variable .AMLRFIX given
