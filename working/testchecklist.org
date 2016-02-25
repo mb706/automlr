@@ -67,8 +67,8 @@
      - [X] parameters with only one possible value take this value
      - [X] parameter given as 'def' but unlike true def --> receive given value
      - [X] parameter given as 'def' but set hyperpar present --> learner receives the given value or nothing (we don't care)
- - [ ] wrappers
-   - [ ] no wrappers given, or only one required wrapper given: no wrapper selector; otherwise there is a selector
+ - [-] wrappers
+   - [X] no wrappers given, or only one required wrapper given: no wrapper selector; otherwise there is a selector
    - [ ] one required wrapper: is always used
    - [ ] one nonrequired wrapper: is only used some of the time
    - [ ] two required wrappers: order can be selected; also changes in reallife

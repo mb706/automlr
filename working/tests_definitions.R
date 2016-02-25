@@ -6,7 +6,7 @@ options(width=150)
 library("testthat")
 library("smoof")
 devtools::load_all("../../mlr")
-configureMlr(show.learner.output=TRUE)
+configureMlr(show.learner.output=TRUE, on.learner.error="stop")
 library(roxygen2)
 
 roxygenise('..')
@@ -43,19 +43,19 @@ createTestRegrTask = function(id, nrow, nNumeric=0, nFactor=0, nOrdered=0, nClas
 
 changeColsWrapper  = function (learner, prefix, ...) {
   par.set = makeParamSet(
-      makeLogicalLearnerParam(paste0(prefix, "remove.factors"), default=FALSE),
-      makeLogicalLearnerParam(paste0(prefix, "remove.ordered"), default=FALSE),
-      makeLogicalLearnerParam(paste0(prefix, "convert.fac2num"), default=FALSE),
-      makeLogicalLearnerParam(paste0(prefix, "convert.ord2fac"), default=FALSE),
-      makeLogicalLearnerParam(paste0(prefix, "convert.ord2num"), default=FALSE),
-      makeIntegerLearnerParam(paste0(prefix, "spare1"), default=0),
-      makeIntegerLearnerParam(paste0(prefix, "spare2"), default=0)
+      makeLogicalLearnerParam(paste0(prefix, ".remove.factors"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, ".remove.ordered"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, ".convert.fac2num"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, ".convert.ord2fac"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, ".convert.ord2num"), default=FALSE),
+      makeIntegerLearnerParam(paste0(prefix, ".spare1"), default=0),
+      makeIntegerLearnerParam(paste0(prefix, ".spare2"), default=0)
   )
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
 
   colman = function(args, data) {
-    names(args) = sub(paste0("^", prefix), "", names(args))
+    names(args) = sub(paste0("^", prefix, "\\."), "", names(args))
     ordereds = sapply(data, is.ordered)
     if (args$convert.ord2num) {
       data[ordereds] = lapply(data[ordereds], as.numeric)
@@ -86,12 +86,16 @@ changeColsWrapper  = function (learner, prefix, ...) {
     args$levels = lapply(data, levels)
     data = colman(args, data)
     data = cbind(data, tcol)
-    catf("wrapper %s train. spare1 %d, spare2 %d", prefix, args$spare1, args$spare2)
+    catf("wrapper %s train", prefix)
+    dput(args[[paste0(prefix, ".spare1")]])
+    dput(args[[paste0(prefix, ".spare2")]])
     list(data=data, control=args)
   }
 
   predictfun = function(data, target, args, control) {
-    catf("wrapper %s predict. spare1 %d, spare2 %d", prefix, args$spare1, args$spare2)    
+    catf("wrapper %s predict", prefix)
+    dput(args[[paste0(prefix, ".spare1")]])
+    dput(args[[paste0(prefix, ".spare2")]])
     colman(control, data)
   }
   
