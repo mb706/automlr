@@ -912,53 +912,6 @@ expect_learner_output(setHyperPars(t, int1=0, int3=0), pid.task, "test1", list(i
 
 
 
-##### testing
-
-
-
-
-##### mlrMBO
-
-devtools::load_all("../../mlrMBO")
-
-control = makeMBOControl(
-    number.of.targets=1,  # single crit optimization
-    propose.points=1,  # number of proposed points per iter
-    final.method="best.true.y",  # final point to return
-    final.evals = 0,  # evaluate at the end to get a more exact result
-    y.name="y",
-    impute.y.fun=NULL,  # if evaluation fails, this value is used instead
-    trafo.y.fun=NULL,   # trafo y value before modeling, e.g. log transform time
-    suppres.eval.erros=TRUE,  # ignored
-    save.on.disk.at=integer(0),  # TODO: the saving mechanism of mbo seems clumsy, work around it.
-    save.on.disk.at.time=Inf,  # TODO: ditto
-    save.file.path=file.path(getwd(), "mlr_run.RData"),  # TODO ditto
-    store.model.at=NULL,  # TODO: ditto
-    resample.at=integer(0),  # resample the model, we don't need that
-    resample.desc=makeResampleDesc("CV", iter=10),  # ignored
-    resample.measures=list(mse),  #ignored
-    output.num.format="%.3g")
-
-# so we can use the defaults, what we might want to change is
-#  - impute.y.fun give some maximally bad value? Look at the snoek paper how he does it with restricted regions
-
-# setMBOControlInfill - only for multipoint
-# setMBOControlTermination time.budget, exec.time.budget, max.evals, set iters to NULL
-
-control = makeMBOControl()
-control$noisy = FALSE
-fn = makeBraninFunction()
-
-ex = exampleRun(fn, control=control)
-
-ex
-plotExampleRun(ex)
-
-ctrl = makeMBOControl()
-ctrl$noisy = TRUE
-ctrl = setMBOControlTermination(ctrl, iters=1)
-mborun = mbo(fn, control=ctrl)
-
 ##### playing with hyperpars
 
 configureMlr(show.learner.output=TRUE)
@@ -981,14 +934,11 @@ predictLearner.testPS = function(.learner, .model, .newdata, ...) {
   rep(.model$learner.model$dummy, nrow(.newdata))
 }
 
-testPS = setHyperPars(testPS, tpTRAIN=1, tpPREDICT=2, tpBOTH=3)
-
-testPSMM = makeModelMultiplexer(list(testPS))
-
-trained = train(testPSMM, pid.task)
+testPSArgs = setHyperPars(testPS, tpTRAIN=1, tpPREDICT=2, tpBOTH=3)
+trained = train(testPSArgs, pid.task)
 predicted = predict(trained, pid.task)
 
-
-testPSMM = setHyperPars(testPSMM, testPS.tpTRAIN=1, testPS.tpPREDICT=2, testPS.tpBOTH=3)
-trained = train(testPSMM, pid.task)
+testPSMM = makeModelMultiplexer(list(testPS))
+testPSMMArgs = setHyperPars(testPSMM, testPS.tpTRAIN=1, testPS.tpPREDICT=2, testPS.tpBOTH=3)
+trained = train(testPSMMArgs, pid.task)
 predicted = predict(trained, pid.task)
