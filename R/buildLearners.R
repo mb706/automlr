@@ -272,6 +272,9 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
              partype %nin% c("discrete", "discretevector", "character", "charactervector")))) {
         warningf("Parameter '%s' for learner '%s' is of type '%s' and has different (but feasible) type '%s' listed in search space.",
             param$name, l$id, partype, param$type)
+        if (param$type == "cat") {
+          param$amlr.isNotCat = TRUE  # if the underlying type is a VectorParam but not discrete, we will have to unlist().
+        }
       }
     }
     if (param$type == "def") {
@@ -279,12 +282,11 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       truedefault = getDefaults(getParamSet(l))[[origParamName]]
       defaultcandidate = getHyperPars(l)[[origParamName]]
       if (!is.null(defaultcandidate)) {
+        l = removeHyperPars(l, origParamName)
         # we try to use the default, but apparently the value is already set in the learner object.
         if (is.null(truedefault) || truedefault != defaultcandidate) {
-          truedefault = 
-          warningf("Parameter '%s' for learner '%s' is of type 'default', but the learner has it already set to '%s'.",
-              param$name, l$id, defaultcandidate)
-          truedefault = defaultcandidate
+          warningf("Parameter '%s' for learner '%s' is of type 'default', but the learner has it already set to a different value.\nThis value hase been removed; the default will be used.",
+              param$name, l$id)
         }
       }
       if (is.null(truedefault) != is.null(param$values) ||
@@ -302,16 +304,20 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
     }
     
     if (param$type == "fix") {
-      if (lptypes[[origParamName]] == "discretevector") {
-        assignment = list(rep(list(param$values), param$dim))
-      } else {
-        assignment = list(if (param$dim > 1) rep(param$values, param$dim) else param$values)
+      if (!is.null(param$values)) {
+        if (lptypes[[origParamName]] == "discretevector") {
+          assignment = list(rep(list(param$values), param$dim))
+        } else {
+          assignment = list(if (param$dim > 1) rep(param$values, param$dim) else param$values)
+        }
+  
+        names(assignment) = origParamName
+        l = setHyperPars(l, par.vals=assignment)
       }
-
-      names(assignment) = origParamName
-      l = setHyperPars(l, par.vals=assignment)
     } else {
       if (origParamName %in% names(getHyperPars(l))) {  # make sure this is not set at a default.
+        warningf("Parameter '%s' for learner '%s' was already set to a value; this value has been removed.",
+            param$name, l$id)
         l = removeHyperPars(l, param$name)
       }
       if (param$type != "def") {  # variable parameter
@@ -320,6 +326,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
           idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
         }
         newparam$amlr.isDummy = identical(param$special, "dummy")
+        newparam$amlr.isNotCat = !is.null(param$amlr.isNotCat)
         tuneSearchSpace = c(tuneSearchSpace, list(newparam))
       }
     }
@@ -377,9 +384,23 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
   } else {
     ptrafo = param$trafo  # will either be a function or NULL
   }
+  surrogatetype = param$type
+  if (param$type == "fix") {
+      warningf("Parameter '%s' for learner '%s' is marked 'inject' and has type 'fix'; This usually does not make sense.",
+          param$name, learnerid)
+    if (!is.null(param$values)) {
+      if (is.numeric(param$values[1])) {
+        surrogatetype = "real"
+        pmin = param$values[1]
+        pmax = param$values[1]
+      } else if (is.logical(param$values[1])) {
+        surrogatetype = "bool"
+      }
+    }
+  }
   if (param$dim > 1) {
     if (!facingOutside) {
-      constructor = switch(param$type,
+      constructor = switch(surrogatetype,
           real=makeNumericVectorLearnerParam,
           int=makeIntegerVectorLearnerParam,
           cat=makeDiscreteVectorLearnerParam,
@@ -387,7 +408,7 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
           fix=makeDiscreteVectorLearnerParam,
           NULL)
     } else {
-      constructor = switch(param$type,
+      constructor = switch(surrogatetype,
           real=makeNumericVectorParam,
           int=makeIntegerVectorParam,
           cat=makeDiscreteVectorParam,
@@ -398,7 +419,7 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
     paramlist = list(id=param$name, len=param$dim, requires=param$req)
   } else {
     if (!facingOutside) {
-      constructor = switch(param$type,
+      constructor = switch(surrogatetype,
           real=makeNumericLearnerParam,
           int=makeIntegerLearnerParam,
           cat=makeDiscreteLearnerParam,
@@ -406,7 +427,7 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
           fix=makeDiscreteLearnerParam,
           NULL)
     } else {
-      constructor = switch(param$type,
+      constructor = switch(surrogatetype,
               real=makeNumericParam,
               int=makeIntegerParam,
               cat=makeDiscreteParam,
@@ -416,16 +437,12 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
     }
     paramlist = list(id=param$name, requires=param$req)
   }
-  paramlist = c(paramlist, switch(param$type,
+  paramlist = c(paramlist, switch(surrogatetype,
       int=list(lower=pmin, upper=pmax, trafo=ptrafo),
       real=list(lower=pmin, upper=pmax, trafo=ptrafo),
       cat=list(values={x = param$values; names(x) = param$values; x}),
       bool=list(),
-      fix={
-        warningf("Parameter '%s' for learner '%s' is marked 'inject' and has type 'fix'; This usually does not make sense.",
-            param$name, learnerid)
-        list(values=param$values)
-      },
+      fix=list(values={x = param$values; names(x) = param$values; x}),
       def=stopf("Parameter '%s' for learner '%s' marked as 'inject' must not have type 'def'.",
           param$name, learnerid),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))

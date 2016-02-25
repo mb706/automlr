@@ -68,9 +68,9 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   #   direct setting of parameter values internally.
   # Easy to forget: parameters set for the modelmultiplexer via setHyperPars, but not visible externally,
   #  also need to be treated like this.
-  preset = getHyperPars(modelmultiplexer)
-  ### TODO TODO TODO
-  aux = extractStaticParams(completeSearchSpace)
+  presetPars = getHyperPars(modelmultiplexer)
+ 
+  aux = extractStaticParams(completeSearchSpace, presetPars)
   staticParams = aux$staticParams
   substitutions = aux$substitutions
   finalSubstitutions = aux$finalSubstitutions
@@ -141,6 +141,9 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
       par.vals=getHyperPars(modelmultiplexer)[visibleHyperIndex],
       package="automlr")
 
+  if (length(getHyperPars(modelmultiplexer)) > 0) {
+    modelmultiplexer = removeHyperPars(modelmultiplexer, names(getHyperPars(modelmultiplexer)))
+  }
   learner$learner = modelmultiplexer
   learner$staticParams = staticParams
   learner$searchspace = completeSearchSpace
@@ -154,6 +157,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
 trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL, automlr.wrappersetup, ...) {
   # train selected learner model and remove prefix from its param settings
   learner = .learner$learner
+
   if (length(.learner$wrappers) > 0) {
     if (length(.learner$wrappers) == 1) {  # in this case automlr.wrappersetup will be *missing*.
       automlr.wrappersetup = names(.learner$wrappers)
@@ -174,9 +178,6 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
 }
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {
-  if (length(getHyperPars(learner)) > 0) {
-    learner = removeHyperPars(learner, names(getHyperPars(learner)))
-  }
   pnames = names(params)
   for (p in pnames) {
     tp = amlrTransformName(p)
@@ -259,6 +260,9 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
     for (parname in getParamIds(wrappers[[w]]$searchspace)) {
       req = wrappers[[w]]$searchspace$pars[[parname]]$requires
       if (is.null(req)) {
+        if (!wrappers[[w]]$required) {
+          wrappers[[w]]$searchspace$pars[[parname]]$requires = quote(thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$")))
+        }
         next
       }
       replaceList = list()
@@ -395,7 +399,7 @@ makeLearnerPars = function(learnerPars) {
   learnerPars
 }
 
-extractStaticParams = function(completeSearchSpace) {
+extractStaticParams = function(completeSearchSpace, presetPars) {
   # How the substitution mechanism works:
   # There are two distinct problems that this is supposed to solve:
   # 1) Some parameters have different feasible regions depending on other variables.
@@ -422,16 +426,28 @@ extractStaticParams = function(completeSearchSpace) {
   #                       were done. This is to prevent endless recursion.
   # completeSearchSpace :: The search space that will be given externally.
   #   
-  staticParams = list()  # all parameters that have only a single value
-  substitutions = list()  # substitution that will be used instead of the param inside of other parameter's $requires.
+
+  staticParams = lapply(names(presetPars), function(n) list(id=n, value=presetPars[[n]], requires=NULL))  # all parameters that have only a single value
+  substitutions = presetPars  # substitution that will be used instead of the param inside of other parameter's $requires.
   finalSubstitutions = list()
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
     parid = amlrTransformName(curpar$id)
     leaf = paste0(parid, ".AMLRFINAL")
-    if ((curpar$type == "discrete" && length(curpar$values) == 1) ||  # this is a 'fixed' value
-        (curpar$type %in% c("numeric", "integer") && curpar$lower == curpar$upper)) {  # valid interval is a point
-      fixvalue = ifelse(curpar$type == "discrete", curpar$values[[1]], curpar$lower)
+    if ((curpar$type %in% c("discrete", "discretevector") && length(curpar$values) == 1) ||  # this is a 'fixed' value
+        (curpar$type %in% c("numeric", "integer", "numericvector", "integervector") && all(curpar$lower == curpar$upper))) {  # valid interval is a point
+      fixvalue = if (curpar$type == "discrete") {
+        curpar$values[[1]]
+      } else if (curpar$type == "discretevector") {
+        if (!is.null(curpar$amlr.isNotCat) && curpar$amlr.isNotCat) {
+          rep(unname(curpar$values[[1]]), curpar$len)
+        } else {
+          rep(unname(curpar$values[1]), curpar$len)
+        }
+      } else {
+        assert(all(curpar$lower[1] == curpar$lower))  # if this fails, we need to adjust the foll
+        curpar$lower
+      }
       completeSearchSpace$pars[[param]] = NULL
       if (!is.null(curpar$requires)) {
         # the following is a bit unfortunate, because it introduces a kind of recursive dependence. I don't see
