@@ -162,7 +162,7 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL, 
     if (length(.learner$wrappers) == 1) {  # in this case automlr.wrappersetup will be *missing*.
       automlr.wrappersetup = names(.learner$wrappers)
     }
-    for (w in rev(unlist(strsplit(automlr.wrappersetup, "$")))) {
+    for (w in rev(unlist(strsplit(automlr.wrappersetup, "$", TRUE)))) {
       learner = .learner$wrappers[[w]](learner)
     }
   }
@@ -261,7 +261,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
       req = wrappers[[w]]$searchspace$pars[[parname]]$requires
       if (is.null(req)) {
         if (!wrappers[[w]]$required) {
-          wrappers[[w]]$searchspace$pars[[parname]]$requires = quote(thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$")))
+          wrappers[[w]]$searchspace$pars[[parname]]$requires = substitute(thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$", TRUE)), list(thisWrapper=w))
         }
         next
       }
@@ -288,7 +288,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
                 amlrRemove=amlrRemoveQuote))
         #  - OR this wrapper comes before the wrapper (or is the wrapper) that removes xxx.
         typeRemovedAfterwardQuote = substitute(
-            which(unlist(strsplit(automlr.wrappersetup, "$")) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup, "$")) == removingWrapper),
+            which(unlist(strsplit(automlr.wrappersetup, "$", TRUE)) == thisWrapper) <= which(unlist(strsplit(automlr.wrappersetup, "$", TRUE)) == removingWrapper),
             list(thisWrapper=w, removingWrapper=amlrWRemovingQuote))
         replaceQuote = substitute(a || b, list(a=typeStaysPresentQuote, b=typeRemovedAfterwardQuote))
         replaceList[[paste0("automlr.has.", type)]] = replaceQuote
@@ -304,7 +304,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
       req = replaceRequires(req, replaceList)
       if (!wrappers[[w]]$required) {
         # For the wrappers that are not always present: need to add "wrapper is actually used" as a requirement.
-        req = substitute((thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$"))) && eval(req),
+        req = substitute((thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$", TRUE))) && eval(req),
             list(thisWrapper=w, restReq=req))
       }
       wrappers[[w]]$searchspace$pars[[parname]]$requires = req
@@ -339,6 +339,9 @@ listWrapperCombinations = function(ids, required) {
   result = sapply(seq_along(ids), function(l) {
         apply(expand.grid(rep(list(ids), l)), 1, combineNames)
       })
+  if (all(!required)) {
+    result = c("$", result)  # all wrappers are optional --> add "no wrappers" option. The empty string causes errors, however.
+  }
   unlist(result)
 }
 

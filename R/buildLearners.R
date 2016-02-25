@@ -325,7 +325,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         if (!is.null(param$id)) {
           idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
         }
-        newparam$amlr.isDummy = identical(param$special, "dummy")
+
         newparam$amlr.isNotCat = !is.null(param$amlr.isNotCat)
         tuneSearchSpace = c(tuneSearchSpace, list(newparam))
       }
@@ -456,6 +456,7 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
       pobject$amlr.origValues = param$values
     }
   }
+  pobject$amlr.isDummy = identical(param$special, "dummy")
   pobject
 }
 
