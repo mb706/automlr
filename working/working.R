@@ -604,7 +604,9 @@ plot(dtc$y, pch=as.numeric(dtc$ppa.feature.filter)+1)
 ##### Testing
 
 library('testthat')
-devtools::test(pkg="../../mlr", filter="classif_PART")
+devtools::test(pkg="../../mlr", filter="ModelMultiplexer")
+
+devtools::test(pkg="../../mlr", filter="classif_T")
 devtools::test(pkg="../../mlr", filter="classif_J48")
 devtools::test(pkg="../../mlr", filter="cluster_XMeans")#######
 devtools::test(pkg="../../mlr", filter="regr_IBk")
@@ -956,3 +958,37 @@ ctrl = makeMBOControl()
 ctrl$noisy = TRUE
 ctrl = setMBOControlTermination(ctrl, iters=1)
 mborun = mbo(fn, control=ctrl)
+
+##### playing with hyperpars
+
+configureMlr(show.learner.output=TRUE)
+testPS = makeRLearnerClassif("testPS", character(0),
+    makeParamSet(makeIntegerLearnerParam("tpTRAIN", when="train"),
+                 makeIntegerLearnerParam("tpPREDICT", when="predict"),
+                 makeIntegerLearnerParam("tpBOTH", when="both")),
+    properties=c("numerics", "twoclass"))
+testPS$fix.factors.prediction = TRUE
+
+trainLearner.testPS = function(.learner, .task, .subset, .weights=NULL, ...) {
+  cat("training. arguments:\n")
+  print(list(...))
+  list(dummy=getTaskData(.task, .subset)[[getTaskTargetNames(.task)[1]]][1])
+}
+
+predictLearner.testPS = function(.learner, .model, .newdata, ...) {
+  cat("predicting. arguments:\n")
+  print(list(...))
+  rep(.model$learner.model$dummy, nrow(.newdata))
+}
+
+testPS = setHyperPars(testPS, tpTRAIN=1, tpPREDICT=2, tpBOTH=3)
+
+testPSMM = makeModelMultiplexer(list(testPS))
+
+trained = train(testPSMM, pid.task)
+predicted = predict(trained, pid.task)
+
+
+testPSMM = setHyperPars(testPSMM, testPS.tpTRAIN=1, testPS.tpPREDICT=2, testPS.tpBOTH=3)
+trained = train(testPSMM, pid.task)
+predicted = predict(trained, pid.task)

@@ -32,7 +32,7 @@ ssAL = autolearner(outerSS, list(
     sp("real4", "real", c(0.5, 0.5)),
     sp("cat4", "cat", "a")))
 
-expect_warning(lss <- bl(ssAL), "is marked 'inject' and has type 'fix'")
+expect_warning(lss <- bl(ssAL), "(is marked 'inject' and has type 'fix'|'test' has a 'requires' argument but the one given)", all=TRUE)
 expect_set_equal(getParamIds(getParamSet(lss)),
                  paste0("test.", c("int0", "int7", "int3", "int3.AMLRFIX1", "int2", "real2", "cat2", "bool2", "real0", "cat0", "bool0", "real7", "cat7", "bool7")))
 
@@ -49,7 +49,7 @@ dval = c(TRUE, FALSE)
 names(dval) = dval
 innerSS1 = testLearner("test", makeParamSet(makeDiscreteLearnerParam("cat0", dval), makeLogicalLearnerParam("bool0")), c("numerics", "twoclass"))
 issAL1 = autolearner(innerSS1, list(sp("cat0", "bool"), sp("bool0", "cat", dval), sp("dumm0", "bool", special='dummy'), sp("inj0", "cat", c('a', 'b'), special="inject")))
-expect_warning(lissAL1 <- bl(issAL1), "and has different \\(but feasible\\) type '")
+expect_warning(lissAL1 <- bl(issAL1), "and has different \\(but feasible\\) type '", all=TRUE)
 expect_learner_output(lissAL1, pid.task, "test")
 expect_learner_output(setHyperPars(lissAL1, test.cat0=TRUE), pid.task, "test", list(cat0=TRUE))
 expect_learner_output(setHyperPars(lissAL1, test.bool0=TRUE), pid.task, "test", list(bool0=TRUE))
@@ -86,7 +86,7 @@ issAL2 = autolearner(innerSS2, list(
     sp("cat2", "cat", c("a", "b", "c")),
     sp("cat1", "def", NULL),  # 'true' default is NULL
     sp("cat3", "def", "b"),     # wrong default
-    sp("cat4", "cat", c("a", "b"), req=quote(cat1=="a")),
+    sp("cat4", "cat", "a", req=quote(cat2=="a")),
     sp("cat5", "cat", c("a", "b"), req=quote(cat2=="a"), dim=3),
     sp("cat5.AMLRFIX1", "cat", "c", req=quote(cat2!="a"), dim=3),
     sp("cat5.AMLRFIX2", "cat", c("b", "c"), req=quote(cat2=="c"), dim=3),
@@ -102,8 +102,149 @@ issAL2 = autolearner(innerSS2, list(
 
 expect_warning(lissAL2 <- bl(issAL2), "(differs from the true default|and has different \\(but feasible\\) type 'cat)", all=TRUE)
 
-params = list(test.int1=0, test.int5=c(1, 1, 1), test.real1=0, test.real5=c(1, 1, 1), test.cat2="a", test.cat5=list("a", "a", "a"), test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-isFeasible(getParamSet(lissAL2), params)
-setHyperPars(lissAL2, par.vals=params)
+expect_set_equal(getParamIds(getParamSet(lissAL2)),
+                 c("test.int1", "test.int5", "test.int5.AMLRFIX1",
+                   "test.real1", "test.real5", "test.real5.AMLRFIX1",
+                   "test.cat2", "test.cat5", "test.cat5.AMLRFIX2",
+                   "test.bool1", "test.bool5", "test.bool6"))
+                 
 
-# TODO
+params = list(
+    test.int1=0, test.int5=c(1, 1, 1),
+    test.real1=0, test.real5=c(1, 1, 1),
+    test.cat2="a", test.cat5=list("a", "a", "a"),
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
+                      list(int1=0, int4=0, int5=c(1, 1, 1), int6=0,
+                           real1=0, real4=0, real5=c(1, 1, 1), real6=0,
+                           cat2="a", cat4="a", cat5=list("a", "a", "a"), cat6=list("a"),
+                           bool1=TRUE, bool4=TRUE, bool5=c(TRUE, TRUE, TRUE), bool6=TRUE),
+                      list(int3=1, int4=0, real3=1, real4=0, cat3="b", cat4="a", bool3=TRUE, bool4=TRUE))
+
+expect_false(isFeasible(getParamSet(lissAL2), list(test.int1=1, test.int5=c(1, 1, 1))))
+expect_false(isFeasible(getParamSet(lissAL2), list(test.real1=1, test.real5=c(1, 1, 1))))
+expect_false(isFeasible(getParamSet(lissAL2), list(test.cat2="b", test.cat5=list("b", "b", "b"))))
+
+params = list(
+    test.int1=1, test.int5.AMLRFIX1=c(4, 4, 4),
+    test.real1=1, test.real5.AMLRFIX1=c(4, 4, 4),
+    test.cat2="b",
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+
+expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
+                      list(int1=1, int5=c(4, 4, 4), int6=0,
+                           real1=1, real5=c(4, 4, 4), real6=0,
+                           cat2="b", cat5=list("c", "c", "c"), cat6=list("a"),
+                           bool1=TRUE, bool4=TRUE, bool5=c(TRUE, TRUE, TRUE), bool6=TRUE),
+                      list(int3=1, real3=1, cat3="b", bool3=TRUE, bool4=TRUE))
+
+params = list(
+    test.int1=2,
+    test.real1=2,
+    test.cat2="b",
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+
+expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
+                      list(int1=2, int5=c(5, 5, 5), int6=0,
+                           real1=2, real5=c(5, 5, 5), real6=0,
+                           cat2="b", cat5=list("c", "c", "c"), cat6=list("a"),
+                           bool1=TRUE, bool4=TRUE, bool5=c(TRUE, TRUE, TRUE), bool6=TRUE),
+                      list(int3=1, real3=1, cat3="b", bool3=TRUE, bool4=TRUE))
+
+params = list(
+    test.int1=3,
+    test.real1=2,
+    test.cat2="b",
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
+               "'test\\.int5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+expect_class(t, "FailureModel")
+
+params = list(
+    test.int1=2,
+    test.real1=3,
+    test.cat2="b",
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
+               "'test\\.real5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+expect_class(t, "FailureModel")
+
+params = list(
+    test.int1=2,
+    test.real1=2,
+    test.cat2="c", test.cat5.AMLRFIX2=list("b", "b", "b"),
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
+               "'test\\.cat5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+expect_class(t, "FailureModel")
+
+params = list(
+    test.int1=2,
+    test.real1=2,
+    test.cat2="c", test.cat5.AMLRFIX2=list("c", "c", "c"),
+    test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
+               "'test\\.cat5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+expect_class(t, "FailureModel")
+
+params = list(
+    test.int1=2,
+    test.real1=2,
+    test.cat2="b",
+    test.bool1=FALSE, test.bool6=TRUE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
+               "'test\\.bool6' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+expect_class(t, "FailureModel")
+
+params = list(
+    test.int1=2,
+    test.real1=2,
+    test.cat2="b",
+    test.bool1=FALSE)
+expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
+                      list(int1=2, int5=c(5, 5, 5), int6=0,
+                           real1=2, real5=c(5, 5, 5), real6=0,
+                           cat2="b", cat5=list("c", "c", "c"), cat6=list("a"),
+                           bool1=FALSE, bool5=c(TRUE, TRUE, TRUE), bool6=TRUE),
+                      list(int3=1, real3=1, cat3="b", bool3=TRUE))
+
+
+
+
+innerSS2HP = setHyperPars(innerSS2, int1=0, int2=0, int3=0, real1=0, real2=0, real3=0, cat1="a", cat2="a", cat3="a", bool1=FALSE, bool2=FALSE, bool3=FALSE)
+
+issAL3 = autolearner(innerSS2HP, list(
+    sp("int2", "def", NULL),  # 'true' default is NULL
+    sp("int3", "def", 1),     # wrong default
+    sp("real2", "def", NULL),  # 'true' default is NULL
+    sp("real3", "def", 1),     # wrong default
+    sp("cat1", "def", NULL),  # 'true' default is NULL
+    sp("cat3", "def", "b"),     # wrong default
+    sp("bool2", "def", NULL),  # 'true' default is NULL
+    sp("bool3", "def", TRUE),   # wrong default
+    sp("int0", "fix", 1, special="inject", dim=2),
+    sp("real0", "fix", 1, special="inject", dim=2),
+    sp("cat0", "fix", "a", special="inject", dim=2)))
+
+expect_warning(lissAL3 <- bl(issAL3), paste0("(that are not mentioned in search space|",
+                                             "but the learner has it already set to a different value|",
+                                             "differs from the true default|",
+                                             "was already set to a value; this value has been removed|",
+                                             "is marked 'inject' and has type 'fix')"), all=TRUE)
+
+expect_set_equal(getParamIds(getParamSet(lissAL3)), character(0))
+
+expect_learner_output(lissAL3, pid.task, "test",
+                      list(int1=0, real1=0, cat2="a", bool1=FALSE, int0=c(1, 1), real0=c(1, 1), cat0=list("a", "a")),
+                      list(int3=1, real3=1, cat3="b", bool3=TRUE))
+

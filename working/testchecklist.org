@@ -28,7 +28,7 @@
      - [X] .AMLRFIX but other parameter has "fix" or "def" -> error
      - [X] .AMLRFIX but itself / other parameter is 'dummy' -> error
      - [X] .AMLRFIX and itself / other is 'inject' --> works
-   - [-] parameter definitions match learner
+   - [X] parameter definitions match learner
      - [X] learner has parameter that is not part of search space -> warning
      - [X] 'inject' but parameter exists really -> error
      - [X] 'dummy' but parameter exists -> error
@@ -39,8 +39,8 @@
      - [X] parameter def unlike true def -> warning
      - [X] parameter def like true def but set hyperpar present -> warning, 
      - [X] true param has requires, searchspace param does not -> warning
-     - [ ] hyperparameter already set for learner -> also set in resulting object
-     - [ ] hyperparameter already set but out of bounds -> warning, is reset.
+     - [X] hyperparameter already set for learner -> also set in resulting object
+     - [X] hyperparameter already set but overwritten by definition -> is reset
    - [ ] parameter trafo
      - [ ] parameter with trafo fn: trafo function 'works'
      - [ ] parameter with trafo 'exp': trafo is given. test trafo with known values
@@ -53,20 +53,20 @@
      - [X] parameter is inject and 'fix' -> not visible from the outside
      - [X] parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
      - [X] parameters with only one possible value not visible
-   - [-] inner parameter values
+   - [X] inner parameter values
      - [X] learner categorical variable with boolean values and "bool" type in searchspace defn. actually gets these boolean values.
      - [X] 'dummy', parameter not visible during either training or testing
      - [X] 'inject' parameter is present during training (and testing?)
-     - [ ] parameter .AMLRFIX reaches learner as normal value
-       - [ ] .AMLRFIX reaches learner as fixed value when requirement of a fixed .AMLRFIX given
-       - [ ] .AMLRFIX reaches learner as appropriate outside value requirement of a variable .AMLRFIX given
-       - [ ] error when two .AMLRFIX requirements are satisfied simultaneously
-     - [ ] parameter def is null, true def is null -> learner receives no value
-     - [ ] parameter fix -> learner receives this value
-     - [ ] parameter is inject and 'fix' -> reaches learner like this
-     - [ ] parameters with only one possible value take this value
-     - [ ] parameter given as 'def' but unlike true def --> receive given value
-     - [ ] parameter given as 'def' but set hyperpar present --> learner receives the given value or nothing (we don't care)
+     - [X] parameter .AMLRFIX reaches learner as normal value
+       - [X] .AMLRFIX reaches learner as fixed value when requirement of a fixed .AMLRFIX given
+       - [X] .AMLRFIX reaches learner as appropriate outside value requirement of a variable .AMLRFIX given
+       - [X] error when two .AMLRFIX requirements are satisfied simultaneously
+     - [X] parameter def is null, true def is null -> learner receives no value
+     - [X] parameter fix -> learner receives this value
+     - [X] parameter is inject and 'fix' -> reaches learner like this
+     - [X] parameters with only one possible value take this value
+     - [X] parameter given as 'def' but unlike true def --> receive given value
+     - [X] parameter given as 'def' but set hyperpar present --> learner receives the given value or nothing (we don't care)
  - [ ] wrappers
    - [ ] no wrappers given, or only one required wrapper given: no wrapper selector; otherwise there is a selector
    - [ ] one required wrapper: is always used

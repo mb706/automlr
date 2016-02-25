@@ -48,6 +48,8 @@ changeColsWrapper  = function (learner, prefix, ...) {
       makeLogicalLearnerParam(paste0(prefix, "convert.fac2num"), default=FALSE),
       makeLogicalLearnerParam(paste0(prefix, "convert.ord2fac"), default=FALSE),
       makeLogicalLearnerParam(paste0(prefix, "convert.ord2num"), default=FALSE),
+      makeIntegerLearnerParam(paste0(prefix, "spare1"), default=0),
+      makeIntegerLearnerParam(paste0(prefix, "spare2"), default=0)
   )
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
@@ -84,10 +86,12 @@ changeColsWrapper  = function (learner, prefix, ...) {
     args$levels = lapply(data, levels)
     data = colman(args, data)
     data = cbind(data, tcol)
+    catf("wrapper %s train. spare1 %d, spare2 %d", prefix, args$spare1, args$spare2)
     list(data=data, control=args)
   }
 
   predictfun = function(data, target, args, control) {
+    catf("wrapper %s predict. spare1 %d, spare2 %d", prefix, args$spare1, args$spare2)    
     colman(control, data)
   }
   
@@ -97,13 +101,13 @@ changeColsWrapper  = function (learner, prefix, ...) {
 
 debuglist = function(l, prefix="") {
   res = ""
-  if (checkNamed(l)) {
+  if (testNamed(l)) {
     for (n in sort(names(l))) {
       res = paste0(res, paste0(prefix, n, ": "))
       if (is.list(l[[n]])) {
-        res = paste0(res, "\n", debuglistout(l[[n]], paste0(prefix, "+")))
+        res = paste0(res, "\n", debuglist(l[[n]], paste0(prefix, "+")))
       } else {
-        res = paste0(res, paste0(l[[n]], "\n"))
+        res = paste0(res, paste(l[[n]], collapse=", "), "\n")
       }
     }
   } else {
@@ -114,9 +118,9 @@ debuglist = function(l, prefix="") {
         res = paste0(res, paste0(prefix, i, ": "))
       }
       if (is.list(l[[i]])) {
-        res = paste0(res, "\n", debuglistout(l[[i]], paste0(prefix, "+")))
+        res = paste0(res, "\n", debuglist(l[[i]], paste0(prefix, "+")))
       } else {
-        res = paste0(res, paste0(l[[i]], "\n"))
+        res = paste0(res, paste(l[[i]], collapse=", "), "\n")
       }
     }
   }

@@ -2,7 +2,7 @@
 
 ### Testing search space parameter behaviour
 emptySS = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")))
-expect_warning(bl(emptySS), "parameters int1 that are not mentioned in search space.")
+expect_warning(bl(emptySS), "parameters int1 that are not mentioned in search space.", all=TRUE)
 #
 dummyDef = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "def", 0, special="dummy")))
 expect_error(bl(dummyDef), "Dummy parameter 'test' given for learner 'test' must not be of type 'def'")
@@ -14,10 +14,10 @@ injectDef = autolearner(testLearner("test", makeParamSet(), c("numerics", "twocl
 expect_error(bl(injectDef), "Parameter 'test' for learner 'test' marked as 'inject' must not have type 'def'")
 #
 injectFix = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "fix", 0, special="inject")))
-expect_warning(bl(injectFix), "Parameter 'test' for learner 'test' is marked 'inject' and has type 'fix'")
+expect_warning(bl(injectFix), "Parameter 'test' for learner 'test' is marked 'inject' and has type 'fix'", all=TRUE)
 
 singleId = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id="int")))
-expect_warning(bl(singleId), "'int1' of learner 'test' is the only one with parameter id 'int'")
+expect_warning(bl(singleId), "'int1' of learner 'test' is the only one with parameter id 'int'", all=TRUE)
 #
 twoID1 = autolearner(testLearner("test1", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id="int")))
 twoID2 = autolearner(testLearner("test2", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id="int")))
@@ -33,7 +33,7 @@ expect_error(bl(twoID1, twoID2), "their 'len' property do not match")
 #
 twoID1 = autolearner(testLearner("test1", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id="int")))
 twoID2 = autolearner(testLearner("test2", makeParamSet(predefParams$real1), c("numerics", "twoclass")), list(sp("real1", "int", c(0, 10), id="int")))
-expect_warning(bl(twoID1, twoID2), "'real1' for learner 'test2' is of type 'numeric' and has different \\(but feasible\\) type 'int'")
+expect_warning(bl(twoID1, twoID2), "'real1' for learner 'test2' is of type 'numeric' and has different \\(but feasible\\) type 'int'", all=TRUE)
 #
 twoID1 = autolearner(testLearner("test1", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id="int")))
 twoID2 = autolearner(testLearner("test2", makeParamSet(predefParams$real1), c("numerics", "twoclass")), list(sp("real1", "real", c(0, 10), id="int")))
@@ -127,39 +127,39 @@ expect_error(bl(parType), "'cat1' as listed in search space has wrong type 'real
 tf = c(TRUE, FALSE)
 names(tf) = tf
 parType = autolearner(testLearner("test", makeParamSet(makeDiscreteLearnerParam("cat1", tf)), c("numerics", "twoclass")), list(sp("cat1", "bool")))
-expect_warning(bl(parType), "'discrete' and has different \\(but feasible\\) type 'bool' listed")
+expect_warning(bl(parType), "'discrete' and has different \\(but feasible\\) type 'bool' listed", all=TRUE)
 # TODO
 #parType = autolearner(testLearner("test", makeParamSet(makeDiscreteLearnerParam("cat5", tf)), c("numerics", "twoclass")), list(sp("cat5", "bool", dim=3)))
 #expect_warning(bl(parType), "'discrete' and has different \\(but feasible\\) type 'bool' listed")
 #
 parType = autolearner(testLearner("test", makeParamSet(predefParams$real1), c("numerics", "twoclass")), list(sp("real1", "int", c(0, 10))))
-expect_warning(bl(parType), "'numeric' and has different \\(but feasible\\) type 'int' listed")
+expect_warning(bl(parType), "'numeric' and has different \\(but feasible\\) type 'int' listed", all=TRUE)
 parType = autolearner(testLearner("test", makeParamSet(predefParams$real5), c("numerics", "twoclass")), list(sp("real5", "int", c(0, 10), dim=3)))
-expect_warning(bl(parType), "'numericvector' and has different \\(but feasible\\) type 'int' listed")
+expect_warning(bl(parType), "'numericvector' and has different \\(but feasible\\) type 'int' listed", all=TRUE)
 #
 parType = autolearner(testLearner("test", makeParamSet(predefParams$real1), c("numerics", "twoclass")), list(sp("real1", "cat", c(0, 10))))
-expect_warning(bl(parType), "'numeric' and has different \\(but feasible\\) type 'cat' listed")
+expect_warning(bl(parType), "'numeric' and has different \\(but feasible\\) type 'cat' listed", all=TRUE)
 parType = autolearner(testLearner("test", makeParamSet(predefParams$real5), c("numerics", "twoclass")), list(sp("real5", "cat", c(0, 10), dim=3)))
-expect_warning(bl(parType), "'numericvector' and has different \\(but feasible\\) type 'cat' listed")
+expect_warning(bl(parType), "'numericvector' and has different \\(but feasible\\) type 'cat' listed", all=TRUE)
 #
 parType = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "cat", c(0, 10))))
-expect_warning(bl(parType), "'integer' and has different \\(but feasible\\) type 'cat' listed")
+expect_warning(bl(parType), "'integer' and has different \\(but feasible\\) type 'cat' listed", all=TRUE)
 parType = autolearner(testLearner("test", makeParamSet(predefParams$int5), c("numerics", "twoclass")), list(sp("int5", "cat", c(0, 10), dim=3)))
-expect_warning(bl(parType), "'integervector' and has different \\(but feasible\\) type 'cat' listed")
+expect_warning(bl(parType), "'integervector' and has different \\(but feasible\\) type 'cat' listed", all=TRUE)
 #
 parType = autolearner(testLearner("test", makeParamSet(predefParams$bool1), c("numerics", "twoclass")), list(sp("bool1", "cat", c(TRUE, FALSE))))
-expect_warning(bl(parType), "'logical' and has different \\(but feasible\\) type 'cat' listed")
+expect_warning(bl(parType), "'logical' and has different \\(but feasible\\) type 'cat' listed", all=TRUE)
 parType = autolearner(testLearner("test", makeParamSet(predefParams$bool5), c("numerics", "twoclass")), list(sp("bool5", "cat", c(TRUE, FALSE), dim=3)))
-expect_warning(bl(parType), "'logicalvector' and has different \\(but feasible\\) type 'cat' listed")
+expect_warning(bl(parType), "'logicalvector' and has different \\(but feasible\\) type 'cat' listed", all=TRUE)
 
 parDef = autolearner(testLearner("test", makeParamSet(predefParams$int3), c("numerics", "twoclass")), list(sp("int3", "def", 1)))
-expect_warning(bl(parDef), "'int3' for learner 'test' is of type 'default' but its alleged default '1' differs from the true default '0'")
+expect_warning(bl(parDef), "'int3' for learner 'test' is of type 'default' but its alleged default '1' differs from the true default '0'", all=TRUE)
 parDef = autolearner(testLearner("test", makeParamSet(predefParams$real3), c("numerics", "twoclass")), list(sp("real3", "def", 1)))
-expect_warning(bl(parDef), "'real3' for learner 'test' is of type 'default' but its alleged default '1' differs from the true default '0'")
+expect_warning(bl(parDef), "'real3' for learner 'test' is of type 'default' but its alleged default '1' differs from the true default '0'", all=TRUE)
 parDef = autolearner(testLearner("test", makeParamSet(predefParams$cat3), c("numerics", "twoclass")), list(sp("cat3", "def", "b")))
-expect_warning(bl(parDef), "'cat3' for learner 'test' is of type 'default' but its alleged default 'b' differs from the true default 'a'")
+expect_warning(bl(parDef), "'cat3' for learner 'test' is of type 'default' but its alleged default 'b' differs from the true default 'a'", all=TRUE)
 parDef = autolearner(testLearner("test", makeParamSet(predefParams$bool3), c("numerics", "twoclass")), list(sp("bool3", "def", TRUE)))
-expect_warning(bl(parDef), "'bool3' for learner 'test' is of type 'default' but its alleged default 'TRUE' differs from the true default 'FALSE'")
+expect_warning(bl(parDef), "'bool3' for learner 'test' is of type 'default' but its alleged default 'TRUE' differs from the true default 'FALSE'", all=TRUE)
 
 tl = testLearner("test", makeParamSet(predefParams$int1, predefParams$int3), c("numerics", "twoclass"))
 aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "int", c(0, 10), req=quote(int1==0)), sp("int3.AMLRFIX1", "int", c(0, 5))))
@@ -195,10 +195,10 @@ tl = testLearner("test", makeParamSet(predefParams$int3), c("numerics", "twoclas
 parDef = autolearner(tl, list(sp("int3", "def", 0)))
 expect_class(bl(parDef), "RLearnerClassif")
 parDef = autolearner(setHyperPars(tl, int3=1), list(sp("int3", "def", 0)))
-expect_warning(bl(parDef), "learner has it already set to '1'")
+expect_warning(bl(parDef), "learner has it already set to a different value", all=TRUE)
 parDef = autolearner(setHyperPars(tl, int3=1), list(sp("int3", "def", 1)))
-expect_warning(bl(parDef), "learner has it already set to '1'")
+expect_warning(bl(parDef), "learner has it already set to a different value", all=TRUE)
 
 tl = testLearner("test", makeParamSet(predefParams$int1, predefParams$int4), c("numerics", "twoclass"))
 reqDef = autolearner(tl, list(sp("int4", "int", c(0, 1)), sp("int1", "int", c(0, 1))))
-expect_warning(bl(reqDef), "'int4' for learner 'test' has a 'requires' argument but the one given in the search space has not")
+expect_warning(bl(reqDef), "'int4' for learner 'test' has a 'requires' argument but the one given in the search space has not", all=TRUE)
