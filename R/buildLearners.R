@@ -91,7 +91,7 @@ buildLearners = function(searchspace, task) {
   wrapperList = list()
   handlerList = list()
   for (w in wrappers) {
-    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env, learnerid=w$learner$name))
+    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env, learnerid=w$learner$name, forWrapper=TRUE))
     wrapperList[[w$learner$name]] = w$learner
     wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
     if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
@@ -349,7 +349,7 @@ allfeasible = function(ps, totest, name, dimension) {
   TRUE
 }
 
-createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOutside=TRUE) {
+createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOutside=TRUE, forWrapper=FALSE) {
   # facingOutside == FALSE means
   # 1) create LearnerParam instead of Param
   # 2) remove .AMLRFIX# suffix
@@ -385,8 +385,8 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
     ptrafo = param$trafo  # will either be a function or NULL
   }
   surrogatetype = param$type
-  if (param$type == "fix") {
-      warningf("Parameter '%s' for learner '%s' is marked 'inject' and has type 'fix'; This usually does not make sense.",
+  if (param$type == "fix" && !forWrapper) {  # don't warn for wrappers, for them fixed injects are the norm
+      warningf("Parameter '%s' for learner '%s' is marked 'dummy/inject' and has type 'fix'; This usually does not make sense.",
           param$name, learnerid)
     if (!is.null(param$values)) {
       if (is.numeric(param$values[1])) {
