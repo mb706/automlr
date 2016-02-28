@@ -45,6 +45,7 @@ changeColsWrapper  = function (learner, prefix, ...) {
   par.set = makeParamSet(
       makeLogicalLearnerParam(paste0(prefix, ".remove.factors"), default=FALSE),
       makeLogicalLearnerParam(paste0(prefix, ".remove.ordered"), default=FALSE),
+      makeLogicalLearnerParam(paste0(prefix, ".remove.NA"), default=FALSE),      
       makeLogicalLearnerParam(paste0(prefix, ".convert.fac2num"), default=FALSE),
       makeLogicalLearnerParam(paste0(prefix, ".convert.ord2fac"), default=FALSE),
       makeLogicalLearnerParam(paste0(prefix, ".convert.ord2num"), default=FALSE),
@@ -89,6 +90,11 @@ changeColsWrapper  = function (learner, prefix, ...) {
     catf("wrapper %s train", prefix)
     dput(args[[paste0(prefix, ".spare1")]])
     dput(args[[paste0(prefix, ".spare2")]])
+    for (pname in getParamIds(par.set)) {
+      if (par.set$pars[[pname]]$type == "logical" && args[[pname]] == TRUE) {
+        dput(pname)
+      }
+    }
     list(data=data, control=args)
   }
 
@@ -98,7 +104,6 @@ changeColsWrapper  = function (learner, prefix, ...) {
     dput(args[[paste0(prefix, ".spare2")]])
     colman(control, data)
   }
-  
   x = makePreprocWrapper(learner, trainfun, predictfun, par.set, par.vals)
   addClasses(x, "PreprocWrapperAm")
 }
@@ -137,11 +142,29 @@ expectout = function(l) paste("###\n", debuglist(l), "###")
 
 
 # test that the learner has params in 'trainps' during training and params in 'predps' during prediction
-expect_learner_output = function(learner, task, name, trainps=list(), predps=list()) {
+expect_learner_output = function(learner, task, name, trainps=list(), predps=list(), ...) {
   oldopts = getMlrOptions()
   configureMlr(show.learner.output=TRUE)
-  expect_output(model <- train(learner, task), expectout(c(list(myname=name), trainps)), fixed=TRUE)
-  expect_output(predict(model, task), expectout(c(list(myname=name), predps)), fixed=TRUE)
+  wrapperArgs = list(...)
+  wrapperoutput = function(which) capture.output(
+      for (w in names(wrapperArgs)) {
+        catf("wrapper %s %s", w, which)
+        dput(wrapperArgs[[w]][[paste0(w, ".spare1")]])
+        dput(wrapperArgs[[w]][[paste0(w, ".spare2")]])
+        if (which == "train") {
+          for (pname in c(".remove.factors", ".remove.ordered", ".remove.NA", ".convert.fac2num", ".convert.ord2fac", ".convert.ord2num")) {
+            pcomplete = paste0(w, pname)
+            if (isTRUE(wrapperArgs[[w]][[pcomplete]])) {
+              dput(pcomplete)
+            }
+          }
+        }
+      }
+      )
+  learneroutput = expectout(c(list(myname=name), trainps))
+  expect_output(model <- train(learner, task), paste(c(wrapperoutput("train"), learneroutput), collapse="\n"), fixed=TRUE)
+  predictoroutput = expectout(c(list(myname=name), predps))
+  expect_output(predict(model, task), paste(c(wrapperoutput("predict"), predictoroutput), collapse="\n"), fixed=TRUE)
   do.call(configureMlr, oldopts)
 }
 
@@ -258,3 +281,19 @@ checkWrapperEffectEx = function(transformation=list, debugOut=FALSE, ...) {
 bl = function(...) {
   buildLearners(list(...), pid.task)
 }
+
+
+isFeasibleNoneMissing = function(par, x) {
+  nalist = rep(NA, length(par$pars))
+  names(nalist) = getParamIds(par)
+  isFeasible(par, insert(nalist, x))
+}
+
+ps = makeParamSet(makeLogicalParam("a"), makeLogicalParam("b", requires=quote(a==TRUE)))
+expect_true(isFeasible(ps, list(a=TRUE)))
+expect_false(isFeasibleNoneMissing(ps, list(a=TRUE)))
+expect_true(isFeasibleNoneMissing(ps, list(a=TRUE, b=FALSE)))
+expect_false(isFeasibleNoneMissing(ps, list(a=FALSE, b=FALSE)))
+expect_false(isFeasibleNoneMissing(ps, list(b=FALSE)))
+expect_true(isFeasibleNoneMissing(ps, list(a=FALSE)))
+

@@ -53,15 +53,14 @@ ctrl$noisy = TRUE
 ctrl = setMBOControlTermination(ctrl, iters=1)
 mborun = mbo(fn, control=ctrl)
 
+##### start here
 
-learner = makeLearner("classif.J48")
-ho = makeResampleDesc("Holdout")
+learner = makeLearner("classif.rFerns")
 task = pid.task
 measure = getDefaultMeasure(task)
-tfclass = c(TRUE, FALSE)
-names(tfclass) = tfclass
-learner$searchspace = makeParamSet(makeNumericParam("C", 0.1, 0.9), makeDiscreteParam("O", tfclass))
+learner$searchspace = makeParamSet(makeIntegerParam("depth", 1, 13), makeIntegerParam("ferns", 100, 4000))
 
+# learner$config = insert(learner$config, list(show.learner.output=FALSE, on.learner.warning="quiet"))
 complicateParams = function(params, origparset) {
   ret = lapply(names(params), function(parname) {
            vals = origparset$pars[[parname]]$values
@@ -80,14 +79,24 @@ simplifyParams = function(parset) {
                            par$values = names(par$values)
                            names(par$values) = par$values
                          }
+                         if (par$type == "logical") {
+                           par$type = "discrete"
+                         }
+                         if (par$type == "logicalvector") {
+                           par$type = "discretevector"
+                         }
                          par
                        })
   parset
 }
 
 objFun = function(x) {
-  resample(setHyperPars(learner, par.vals=complicateParam(x, learner$searchspace)), pid.task, ho, list(measure))$aggr
+  resample(setHyperPars(learner, par.vals=complicateParams(x, learner$searchspace)), pid.task, resDesc, list(measure), show.info=FALSE)$aggr
 }
+
+resDesc = makeResampleDesc("CV")
+simpleParset = simplifyParams(learner$searchspace)
+
 
 objective = makeSingleObjectiveFunction(
     name="automlr learner optimization",
@@ -96,20 +105,49 @@ objective = makeSingleObjectiveFunction(
     vectorized=FALSE,
     noisy=TRUE,
     minimize=measure$minimize,
-    par.set=simplifyParams(learner$searchspace),
+    par.set=simpleParset,
     fn=objFun)
 
 control = makeMBOControl()
 control$noisy = TRUE
-control$infill.opt.focussearch.points = 100
-mresult = mbo(objective, control=control)
+control$infill.opt.focussearch.points = 1000
+mboLearner = checkLearner(NULL, simpleParset, control)
+mboLearner$config = list(on.learner.warning="quiet", show.learner.output=FALSE)
+
+debugonce(warningf)
+
+mresult = mbo(objective, learner=mboLearner, control=control)
 
 mresult
 
 resample(learner, pid.task, ho, list(measure))$aggr
 
+debug(generateDesign)
+
+trace(generateDesign)
+untrace(generateDesign)
 
 mlrMBO:::checkLearner(NULL, learner$searchspace, control)
 
 
 hasDiscrete
+
+
+
+fun2 = function(y) {
+  r = y + 2
+  r = r / 2
+  r
+}
+
+trace(fun2)
+untrace(fun2)
+
+fun1 = function(x) {
+  r = fun2(x)
+  r + 1
+}
+
+debugonce(fun2)
+
+fun1(10)

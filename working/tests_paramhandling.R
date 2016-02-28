@@ -37,13 +37,20 @@ expect_set_equal(getParamIds(getParamSet(lss)),
                  paste0("test.", c("int0", "int7", "int3", "int3.AMLRFIX1", "int2", "real2", "cat2", "bool2", "real0", "cat0", "bool0", "real7", "cat7", "bool7")))
 
 plss = getParamSet(lss)
-expect_true(isFeasible(plss, x=list(test.int0=0, test.int2=0, test.real2=0, test.cat2="a", test.bool2=TRUE, test.real0=0, test.cat0=0,
+expect_true(isFeasibleNoneMissing(plss, x=list(test.int0=0, test.int2=0, test.real2=0, test.cat2="a", test.bool2=TRUE, test.real0=0, test.cat0=0,
                      test.bool0=FALSE, test.real7=0, test.cat7=0, test.bool7=FALSE, test.int7=0, test.int3=0)))
-expect_true(isFeasible(plss, x=list(test.int7=0, test.int3=0)))
+expect_true(isFeasibleNoneMissing(plss, x=list(test.int7=0, test.int3=0,
+                                            test.int0=0, test.int2=0, test.real2=0, test.cat2="a", test.bool2=TRUE, test.real0=0,
+                                            test.cat0=0, test.bool0=FALSE, test.real7=0, test.cat7=10, test.bool7=FALSE)))
 expect_false(isFeasible(plss, x=list(test.int7=0, test.int3.AMLRFIX1=2)))
-expect_true(isFeasible(plss, x=list(test.int7=1, test.int3.AMLRFIX1=2)))
+expect_true(isFeasibleNoneMissing(plss, x=list(test.int7=1, test.int3.AMLRFIX1=2,
+                                            test.int0=0, test.int2=0, test.real2=0, test.cat2="a", test.bool2=TRUE, test.real0=0,
+                                            test.cat0=0, test.bool0=FALSE, test.real7=0, test.cat7=10, test.bool7=FALSE)))
 expect_false(isFeasible(plss, x=list(test.int7=2, test.int3.AMLRFIX1=2)))
-expect_true(isFeasible(plss, x=list(test.int7=3)))
+expect_true(isFeasibleNoneMissing(plss, x=list(test.int7=3,
+                                            test.int0=0, test.int2=0, test.real2=0, test.cat2="a", test.bool2=TRUE, test.real0=0,
+                                            test.cat0=0, test.bool0=FALSE, test.real7=0, test.cat7=10, test.bool7=FALSE)))
+
 
 dval = c(TRUE, FALSE)
 names(dval) = dval
@@ -114,7 +121,7 @@ params = list(
     test.real1=0, test.real5=c(1, 1, 1),
     test.cat2="a", test.cat5=list("a", "a", "a"),
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
                       list(int1=0, int4=0, int5=c(1, 1, 1), int6=0,
                            real1=0, real4=0, real5=c(1, 1, 1), real6=0,
@@ -131,7 +138,7 @@ params = list(
     test.real1=1, test.real5.AMLRFIX1=c(4, 4, 4),
     test.cat2="b",
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 
 expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
                       list(int1=1, int5=c(4, 4, 4), int6=0,
@@ -145,7 +152,7 @@ params = list(
     test.real1=2,
     test.cat2="b",
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 
 expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
                       list(int1=2, int5=c(5, 5, 5), int6=0,
@@ -160,7 +167,7 @@ params = list(
     test.cat2="b",
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
 
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
                "'test\\.int5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
 expect_class(t, "FailureModel")
@@ -170,7 +177,7 @@ params = list(
     test.real1=3,
     test.cat2="b",
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
                "'test\\.real5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
 expect_class(t, "FailureModel")
@@ -180,7 +187,7 @@ params = list(
     test.real1=2,
     test.cat2="c", test.cat5.AMLRFIX2=list("b", "b", "b"),
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
                "'test\\.cat5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
 expect_class(t, "FailureModel")
@@ -190,7 +197,7 @@ params = list(
     test.real1=2,
     test.cat2="c", test.cat5.AMLRFIX2=list("c", "c", "c"),
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
                "'test\\.cat5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
 expect_class(t, "FailureModel")
@@ -200,7 +207,7 @@ params = list(
     test.real1=2,
     test.cat2="b",
     test.bool1=FALSE, test.bool6=TRUE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
                "'test\\.bool6' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
 expect_class(t, "FailureModel")
@@ -210,7 +217,9 @@ params = list(
     test.real1=2,
     test.cat2="b",
     test.bool1=FALSE)
-expect_true(isFeasible(getParamSet(lissAL2), params))
+#    test.bool6=TRUE)
+# isFeasibleNoneMissing gives an error here since test.bool6 is missing. But giving test.bool6 throws an error too.
+expect_true(isFeasible(getParamSet(lissAL2), params))  
 expect_learner_output(setHyperPars(lissAL2, par.vals=params), pid.task, "test",
                       list(int1=2, int5=c(5, 5, 5), int6=0,
                            real1=2, real5=c(5, 5, 5), real6=0,
