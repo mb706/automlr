@@ -179,6 +179,16 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {
   pnames = names(params)
+  envir = insert(getHyperPars(learner), params)
+  for (fp in staticParams) {
+    if (is.null(fp$requires) || isTRUE(eval(fp$requires, envir=envir))) {
+      if (fp$id %in% names(params)) {
+        stopf("Parameter '%s' is a static (internal) parameter but was also given externally.",
+            fp$id)
+      }
+      params[[fp$id]] = fp$value
+    }
+  }
   for (p in pnames) {
     tp = amlrTransformName(p)
     if (tp != p) {
@@ -188,16 +198,6 @@ setupLearnerParams = function(learner, staticParams, shadowparams, params) {
       }
       params[[tp]] = params[[p]]
       params[[p]] = NULL
-    }
-  }
-  envir = insert(getHyperPars(learner), params)
-  for (fp in staticParams) {
-    if (is.null(fp$requires) || isTRUE(eval(fp$requires, envir=envir))) {
-      if (fp$id %in% names(params)) {
-        stopf("Parameter '%s' is a static (internal) parameter but was also given externally.",
-            fp$id)
-      }
-      params[[fp$id]] = fp$value
     }
   }
   params[c("automlr.wrappersetup", shadowparams)] = NULL
@@ -242,7 +242,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
     # wrapper should do the removing.
     if (setequal(allLearners, canHandleX[[type]])) {
       requires = asQuoted(paste(amlrRemoveName, "== TRUE"))  # need to do the silly ==TRUE thing bc the result isn't "call" class otherwise
-    } else if (length(canHandleX[[type]] == 0)) {
+    } else if (length(canHandleX[[type]]) == 0) {
       requires = NULL
     } else {
       requires = substitute(selected.learner %nin% x || amlrRemove,
@@ -466,7 +466,7 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
         # SOLUTION: append a suffix that prevents cycling in on itself.
         
         subst = substitute(if (eval(req)) value else original, list(req=as.expression(curpar$requires), value=fixvalue, original=asQuoted(leaf)))
-        finalSubstitutions[[leaf]] = parid
+        finalSubstitutions[[leaf]] = asQuoted(parid)
       } else {
         subst = fixvalue
       }
@@ -478,7 +478,7 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
         assert(!is.null(curpar$requires))
         sl = list()
         sl[[leaf]] = substitutions[[parid]]
-        substitutions[[parid]] = substitute(subst, sl)  # yo dawg, I heard you like substitutions...
+        substitutions[[parid]] = do.call(substitute, list(subst, sl))  # yo dawg, I heard you like substitutions...  # TODO: this has the c() vs. c vulnerability
       } else {
         substitutions[[parid]] = subst
       }
@@ -489,7 +489,9 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
         if (parid %in% names(substitutions)) {
           sl = list()
           sl[[leaf]] = substitutions[[parid]]
-          substitutions[[parid]] = substitute(subst, sl)
+          substitutions[[parid]] = do.call(substitute, list(subst, sl))
+        } else {
+          substitutions[[parid]] = subst
         }
       }
     }

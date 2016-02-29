@@ -45,6 +45,7 @@ buildLearners = function(searchspace, task) {
   
   learnerObjects = list()
   modelTuneParsets = list()
+  allParamNames = list()  # need to keep track of all the parameter names, even the "fix" ones that won't be in the SS
   taskdesc = getTaskDescription(task)
   
   if (taskdesc$has.weights) {
@@ -134,6 +135,7 @@ buildLearners = function(searchspace, task) {
     }
     aux = buildTuneSearchSpace(sslist, l, info.env, idRef)
     modelTuneParsets[[l$id]] = aux$tss
+    allParamNames[[l$id]] = aux$nondefParamNames
     learnerObjects = c(learnerObjects, list(aux$l))  # updated learner object with fixed hyperparameters
     idRef = aux$idRef
   }
@@ -148,7 +150,7 @@ buildLearners = function(searchspace, task) {
   
   
 
-  tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets)
+  tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets, allParamNames)
   multiplexer$searchspace = tuneParamSet
   allLearners = unlist(tuneParamSet$pars$selected.learner$values)
   makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, handlerList, allLearners)
@@ -191,6 +193,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
   tuneSearchSpace = list()
   canNotBeAMLRFIX = character(0)
   areAlreadyAMLRFIX = character(0)
+  nondefParamNames = character(0)
   for (param in sslist) {
     if (param$type == "bool") {
       # useful since now we can automatically check for feasibility by checking whether everything in param$values is feasible.
@@ -302,7 +305,9 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       warningf("Parameter '%s' for learner '%s' has a 'requires' argument but the one given in the search space has not.",
           param$name, l$id)
     }
-    
+    if (param$type != "def") {
+      nondefParamNames = c(nondefParamNames, origParamName)
+    }
     if (param$type == "fix") {
       if (!is.null(param$values)) {
         if (lptypes[[origParamName]] == "discretevector") {
@@ -331,7 +336,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       }
     }
   }
-  list(tss=makeParamSet(params=tuneSearchSpace), l=l, idRef=idRef)
+  list(tss=makeParamSet(params=tuneSearchSpace), l=l, idRef=idRef, nondefParamNames = unique(nondefParamNames))
 }
 
 allfeasible = function(ps, totest, name, dimension) {
@@ -496,13 +501,13 @@ createTrafo = function(min, max, isint) {
 #'
 #' @param multiplexer the model multiplexer to use to create the ParamSet
 #' @param modelParsets the list of param sets that are used to create the mmps.
-makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets) {
+makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets, origParamNames) {
   searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets, .check=FALSE))
   # now we need to deal with the bug that makeModelMultiplexer overrides requirements
   for (modeliter in seq_along(modelParsets)) {
     origpars = modelParsets[[modeliter]]$pars
     modelid = names(modelParsets)[modeliter]
-    oldnames = names(origpars)  # the names as in the original model
+    oldnames = origParamNames[[modeliter]]  # the names as in the original model
     newnames = paste(modelid, oldnames, sep='.')  # the name that was assigned in mm$searchspace
     substitution = lapply(newnames, asQuoted)  # substitution is a list(oldname=quote(newname))
     names(substitution) = oldnames
@@ -542,7 +547,7 @@ replaceRequires = function(cprequires, substitution) {
   
   parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", parsed)
   #the following would be dumb: parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1], fixed=TRUE) # NO!
-  cprequires = asQuoted(parsed)
+  cprequires = asQuoted(paste(parsed, collapse="\n"))
   # the following line is a bit of R magic. Use do.call, so that cprequires, which is a
   # 'quote' object, is expanded to its actual content. The 'substitute' call will change all
   # names of the old parameters to the new parameters.
@@ -550,5 +555,5 @@ replaceRequires = function(cprequires, substitution) {
   
   funcallmatchReverse = "(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))(\\()"
   parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", deparse(cprequires, control=c("keepInteger", "keepNA"), width.cutoff=500))
-  eval(asQuoted(parsed))
+  eval(asQuoted(paste(parsed, collapse="\n")))
 }
