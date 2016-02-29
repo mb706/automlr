@@ -1,17 +1,8 @@
 
+# TODO: put 'all=TRUE' in all expect_warning and expect_error
 
-# TODO: put 'all=TRUE' in all expect_warnings
-
-options(width=150)
-library("testthat")
-library("smoof")
-devtools::load_all("../../mlr")
+library("mlr")
 configureMlr(show.learner.output=TRUE, on.learner.error="warn")
-library(roxygen2)
-
-roxygenise('..')
-devtools::load_all("..")
-options(error=dump.frames)
 
 createTestData = function(nrow, nNumeric=0, nFactor=0, nOrdered=0, nClasses=2) {
   res = as.data.frame(c(
@@ -236,7 +227,7 @@ defaultExpFun2 = function(mustBeHandledList) function(x) {  # yes we curry
 }
 
 
-checkLearnersPresent = function(task, propertiesExpected, optionalProperties=character(0),
+checkLearnersPresent = function(autolearnersPL, task, propertiesExpected, optionalProperties=character(0),
     expfun = defaultExpFun2(propertiesExpected), debugOut=FALSE) {
   expectedLearners = names(allOPs)[sapply(allOPs, expfun)]
   presentLearners = unlist(getParamSet(buildLearners(autolearnersPL, task))$pars$selected.learner$values)
@@ -259,7 +250,7 @@ createTestWithProperties = function(properties) {
 }
 
 
-checkWrapperEffectEx = function(transformation=list, debugOut=FALSE, ...) {
+checkWrapperEffectEx = function(autolearnersPL, transformation=list, debugOut=FALSE, ...) {
   testprops = c("numerics", "factors", "ordered")
   for (classness in c("twoclass", "multiclass")) {
     for (numprops in seq_along(testprops)) {
@@ -270,7 +261,7 @@ checkWrapperEffectEx = function(transformation=list, debugOut=FALSE, ...) {
           if (debugOut) {
             print(totalprops)
           }
-          checkLearnersPresent(testTask, transformation(totalprops), debugOut=debugOut, ...)
+          checkLearnersPresent(autolearnersPL, testTask, transformation(totalprops), debugOut=debugOut, ...)
         }
       }
     }
@@ -289,11 +280,14 @@ isFeasibleNoneMissing = function(par, x) {
   isFeasible(par, insert(nalist, x))
 }
 
-ps = makeParamSet(makeLogicalParam("a"), makeLogicalParam("b", requires=quote(a==TRUE)))
-expect_true(isFeasible(ps, list(a=TRUE)))
-expect_false(isFeasibleNoneMissing(ps, list(a=TRUE)))
-expect_true(isFeasibleNoneMissing(ps, list(a=TRUE, b=FALSE)))
-expect_false(isFeasibleNoneMissing(ps, list(a=FALSE, b=FALSE)))
-expect_false(isFeasibleNoneMissing(ps, list(b=FALSE)))
-expect_true(isFeasibleNoneMissing(ps, list(a=FALSE)))
+context("testsetup")
 
+test_that("auxiliary test functions behave as expected", {
+  ps = makeParamSet(makeLogicalParam("a"), makeLogicalParam("b", requires=quote(a==TRUE)))
+  expect_true(isFeasible(ps, list(a=TRUE)))
+  expect_false(isFeasibleNoneMissing(ps, list(a=TRUE)))
+  expect_true(isFeasibleNoneMissing(ps, list(a=TRUE, b=FALSE)))
+  expect_false(isFeasibleNoneMissing(ps, list(a=FALSE, b=FALSE)))
+  expect_false(isFeasibleNoneMissing(ps, list(b=FALSE)))
+  expect_true(isFeasibleNoneMissing(ps, list(a=FALSE)))
+})

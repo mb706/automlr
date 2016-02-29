@@ -10,6 +10,13 @@ roxygenise('..')
 devtools::load_all("..")
 options(error=dump.frames)
 
+##### Testing automlr
+
+
+library('testthat')
+devtools::test(pkg="..")
+
+
 
 ##### mlrMBO
 
