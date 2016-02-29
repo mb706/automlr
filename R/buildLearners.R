@@ -254,7 +254,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       if (!allfeasible(lp, param$values, origParamName, param$dim)) {
         # there is one 'special case': param$values might be names that index into lp$pars[[param$name]]$values.
         vals = getValues(lp)[[origParamName]]
-        if (isSubset(param$values, names(vals))) {
+        if (isSubset(param$values, names(vals)) && param$dim == getParamLengths(lp)[[origParamName]]) {
           param$values = vals[param$values]
           assert(allfeasible(lp, param$values, origParamName, param$dim))
         } else {

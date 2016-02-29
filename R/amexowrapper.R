@@ -116,7 +116,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
     if (!is.error(tryResult)) {
       if (isTRUE(reqValue)) {
         # always true -> remove requirement
-        if (is.null(curpar$amlr.learnerName)) {
+        if (is.null(curpar$amlr.learnerName) || "selected.learner" %in% extractSubList(staticParams, "id")) {
           completeSearchSpace$pars[[param]]$requires = NULL
         } else {
           completeSearchSpace$pars[[param]]$requires = substitute(selected.learner == SL, list(SL=curpar$amlr.learnerName))
