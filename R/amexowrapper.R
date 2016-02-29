@@ -84,7 +84,10 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
 
   
-  
+  allNames = getParamIds(completeSearchSpace)
+  paramReferenceStop = rep(list(quote(stop("AMLR VARREF STOP"))), length(allNames))
+  names(paramReferenceStop) = allNames
+#  paramReferenceStop = list2env(paramReferenceStop, parent=baseenv())
   # Now after all the replacing going on, there might be parameters that have a `requires` always TRUE or always FALSE.
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
@@ -92,29 +95,42 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
     if (is.null(curpar$requires)) {
       next
     }
-    # TODO: better method: take the environment that would usually be present, replace all values with 
+    
+    # take the environment that would usually be present, replace all values with 
     # stop("EXPECTED STOP"), and check if the expected stop happened. Is it possible to stop on variable reference?
     # apparently not, so we have to go the long replaceRequires route.
     # This would have the advantage to not filter out trivial invocations of e.g. c(), and also that we 
     # could check for the simplest of syntax errors by watching whether the error happening is actually the error
     # we expect.
-    if (!is.error(try(reqValue <- eval(req, envir=emptyenv()), silent=TRUE))) {
-      if (isTRUE(reqValue)) {
-        # always true -> remove requirement
-        completeSearchSpace$pars[[param]]$requires = NULL
-      } else {
-        # always false -> remove the parameter.
-        completeSearchSpace$pars[[param]] = NULL
-      }
-    } else if (!is.null(curpar$amlr.learnerName)){
+    if (is.null(curpar$amlr.learnerName)) {
+      paramReferenceStop$selected.learner = quote(stop("AMLR VARREF STOP"))
+    } else {
       # maybe the requires is a mlr learner's requires that now only depends on selected.learner being something.
       # if it is FALSE even if selected.learner equals the given learner, then we remove the parameter.
       # This would be the case e.g. if the parameter is only sensible if there are NAs in the data and the current
       # data set does not have NAs.
-      testenv = new.env(parent=emptyenv())
-      testenv$selected.learner = curpar$amlr.learnerName
-      if (!is.error(try(reqValue <- eval(req, envir=testenv), silent=TRUE)) && !isTRUE(reqValue)) {
+      paramReferenceStop$selected.learner = curpar$amlr.learnerName
+    }
+    req = replaceRequires(curpar$requires, paramReferenceStop)
+    tryResult = try(reqValue <- eval(req, globalenv()), silent=TRUE)
+    if (!is.error(tryResult)) {
+      if (isTRUE(reqValue)) {
+        # always true -> remove requirement
+        if (is.null(curpar$amlr.learnerName)) {
+          completeSearchSpace$pars[[param]]$requires = NULL
+        } else {
+          completeSearchSpace$pars[[param]]$requires = substitute(selected.learner == SL, list(SL=curpar$amlr.learnerName))
+        }
+      } else {
+        # always false -> remove the parameter.
         completeSearchSpace$pars[[param]] = NULL
+      }
+    } else {
+      errormsg = attr(tryResult, "condition")$message
+      if (!identical(errormsg, "AMLR VARREF STOP")) {
+        stopf("Error while evaluating requirement for parameter '%s'%s: '%s'.",
+            param, if (is.null(curpar$amlr.learnerName)) "" else paste0(" of learner ", curpar$amlr.learnerName),
+            errormsg)
       }
     }
   }
