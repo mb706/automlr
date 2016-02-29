@@ -68,7 +68,7 @@ changeColsWrapper  = function (learner, prefix, ...) {
         names(newcs) = args$levels[[colname]]
         newcs
       } 
-      data = cbind(data, do.call(base::c, mapply(hotencoder, data[factors], names(data)[factors])))
+      data = cbind(data, do.call(base::c, mapply(hotencoder, data[factors], names(data)[factors], SIMPLIFY=FALSE)))
       args$remove.factors = TRUE
       ordereds = sapply(data, is.ordered)
       factors = sapply(data, is.factor)

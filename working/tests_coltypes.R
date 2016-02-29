@@ -44,20 +44,23 @@ MissingsFactorsLearner = autolearner(
     testLearner("MissingsFactorsLearner", makeParamSet(predefParams$int1), c("factors", "twoclass", "missings")),
     list())
 MissingsFactorsNumericsLearner = autolearner(
-    testLearner("MissingsFactorsNumericsLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass", "missings", "factors")),
+    testLearner("MissingsFactorsNumericsLearner", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1),
+                c("numerics", "twoclass", "missings", "factors")),
     list(sp("int1", "int", c(0, 10), req=quote(automlr.has.missings==TRUE)),
          sp("real1", "real", c(10, 10), req=quote(automlr.has.factors==TRUE)),
          sp("bool1", "bool", req=quote(automlr.has.missings != automlr.has.factors))))
 FactorsNumericsLearner = autolearner(
-    testLearner("FactorsNumericsLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass", "factors")),
+    testLearner("FactorsNumericsLearner", makeParamSet(predefParams$real1, predefParams$bool1), c("numerics", "twoclass", "factors")),
     list(sp("real1", "real", c(0, 10), req=quote(automlr.has.factors==FALSE)),
-         sp("bool1", "fix", FALSE, req=quote(automlr.has.missings == automlr.has.factors)),
-         sp("bool1.AMLRFIX1", "fix", TRUE, req=quote(automlr.has.missings != automlr.has.factors))))
+         sp("bool1", "cat", FALSE, req=quote(automlr.has.missings == automlr.has.factors)),
+         sp("bool1.AMLRFIX1", "cat", TRUE, req=quote(automlr.has.missings != automlr.has.factors))))
 AllLearner = autolearner(
-    testLearner("AllLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass", "factors", "ordered", "missings")),
+    testLearner("AllLearner", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1), c("numerics", "twoclass", "factors", "ordered", "missings")),
     list(sp("int1", "int", c(0, 10), req=quote(automlr.has.missings==FALSE)),
          sp("real1", "real", c(0, 10), req=quote(automlr.has.factors %in% c(TRUE, FALSE))),
-         sp("bool1", "fix", TRUE, req=quote(automlr.has.ordered == automlr.has.factors))))
+         sp("bool1", "fix", TRUE, req=quote(automlr.has.ordered == automlr.has.factors)),
+         sp("int1.AMLRFIX1", "int", c(2, 2), req=quote(automlr.has.missings==TRUE && automlr.has.factors == TRUE)),
+         sp("int1.AMLRFIX2", "int", c(11, 20), req=quote(automlr.has.missings==TRUE && automlr.has.factors == FALSE))))
 
 XRemover = autolearner(
     autoWrapper("XRemover", function(learner, ...) changeColsWrapper(learner, "XRemover", ...), identity),
@@ -75,7 +78,7 @@ FactorRemover = autolearner(
     list(sp("FactorRemover.remove.factors", "fix", FALSE, req=quote(automlr.remove.factors == FALSE)),
          sp("FactorRemover.convertFactors", "bool", special="dummy", req=quote(automlr.remove.factors == TRUE && automlr.has.numerics == TRUE)),
          sp("FactorRemover.convert.fac2num", "fix", TRUE, req=quote(automlr.remove.factors && automlr.has.numerics && FactorRemover.convertFactors)),
-         sp("FactorRemover.remove.factors.AMLRFIX2", "fix", FALSE, req=quote(automlr.remove.factors && (!automlr.has.numerics || !FactorRemover.convertFactors)))),
+         sp("FactorRemover.remove.factors.AMLRFIX2", "fix", TRUE, req=quote(automlr.remove.factors && (!automlr.has.numerics || !FactorRemover.convertFactors)))),
     "requiredwrapper")
 #
 NAFactorRemover = autolearner(
@@ -89,7 +92,7 @@ getpars = function(learner) getParamSet(learner)$pars
 
 checkLearnerBehaviour = function(learner, task, params, ...) {
   expect_true(isFeasibleNoneMissing(getParamSet(learner), params))
-#  train(setHyperPars(learner, par.vals=params), task)
+#predict(train(setHyperPars(learner, par.vals=params), task), task)
   expect_learner_output(setHyperPars(learner, par.vals=params), task, ...)
 }
 
@@ -101,7 +104,7 @@ checkLearnerBehaviour(l, NumericsTask, list(selected.learner="MissingsNumericsLe
                       "MissingsNumericsLearner", list(), list())
 
 l = buildLearners(list(NumericsLearner, MissingsNumericsLearner), MissingsNumericsTask)
-checkLearnerBehaviour(l, NumericsTask, list(MissingsNumericsLearner.int1=2),
+checkLearnerBehaviour(l, MissingsNumericsTask, list(MissingsNumericsLearner.int1=2),
                       "MissingsNumericsLearner", list(int1=2), list())
 
 l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), NumericsTask)
@@ -114,11 +117,11 @@ checkLearnerBehaviour(l, NumericsTask,
                       NARemover=list(NARemover.spare1=0, NARemover.spare2=0))
 
 l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), MissingsNumericsTask)
-checkLearnerBehaviour(l, NumericsTask,
+checkLearnerBehaviour(l, MissingsNumericsTask,
                       list(selected.learner="NumericsLearner", NumericsLearner.int1=3, automlr.wrappersetup="XRemover$FactorRemover$NARemover",
                            XRemover.spare1=3),
                       "NumericsLearner", list(int1=3), list(),
-                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),                      
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
                       FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0),
                       NARemover=list(NARemover.spare1=0, NARemover.spare2=0, NARemover.remove.NA=TRUE))
 
@@ -149,8 +152,106 @@ checkLearnerBehaviour(l, NumericsTask,
                       XRemover=list(XRemover.spare1=3, XRemover.spare2=9),                      
                       FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0))
 
+expect_warning(l <- buildLearners(list(
+    NumericsLearner, FactorsLearner, OrderedsLearner,
+    MissingsNumericsLearner, MissingsFactorsLearner, MissingsFactorsNumericsLearner,
+    FactorsNumericsLearner, AllLearner,
+    XRemover, NARemover, FactorRemover, NAFactorRemover), MissingsNumericsFactorsTask), "different \\(but feasible\\) type 'cat' listed", all=TRUE)
 
+expect_set_equal(unlist(getpars(l)$automlr.wremoving.factors$values), c("FactorRemover", "NAFactorRemover"))
+expect_set_equal(unlist(getpars(l)$automlr.wremoving.missings$values), c("NARemover", "NAFactorRemover"))
 
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="NumericsLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.wremoving.factors="FactorRemover", automlr.wremoving.missings="NARemover",
+                           XRemover.spare1=3, FactorRemover.convertFactors=FALSE,
+                           NumericsLearner.int1=8),
+                      "NumericsLearner", list(int1=8), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0, NARemover.remove.NA=TRUE),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=0),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0, FactorRemover.remove.factors=TRUE),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="NumericsLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.wremoving.factors="FactorRemover", automlr.wremoving.missings="NAFactorRemover",
+                           XRemover.spare1=3, FactorRemover.convertFactors=TRUE,
+                           NumericsLearner.int1=7),
+                      "NumericsLearner", list(int1=7), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0, FactorRemover.convert.fac2num=TRUE),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0, NAFactorRemover.remove.NA=TRUE))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="NumericsLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.wremoving.factors="NAFactorRemover", automlr.wremoving.missings="NAFactorRemover",
+                           XRemover.spare1=3,
+                           NumericsLearner.int1=6),
+                      "NumericsLearner", list(int1=6), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0, NAFactorRemover.remove.NA=TRUE, NAFactorRemover.remove.factors=TRUE))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="MissingsFactorsNumericsLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.remove.factors=TRUE, automlr.remove.missings=TRUE,
+                           automlr.wremoving.factors="NAFactorRemover", automlr.wremoving.missings="NAFactorRemover",
+                           XRemover.spare1=3),
+                      "MissingsFactorsNumericsLearner", list(), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0, NAFactorRemover.remove.NA=TRUE, NAFactorRemover.remove.factors=TRUE))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="MissingsFactorsNumericsLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.remove.factors=FALSE, automlr.remove.missings=TRUE,
+                           automlr.wremoving.missings="NARemover",
+                           XRemover.spare1=3,
+                           MissingsFactorsNumericsLearner.bool1=TRUE),
+                      "MissingsFactorsNumericsLearner", list(bool1=TRUE, real1=10), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0, NARemover.remove.NA=TRUE),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=0),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="AllLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.remove.factors=FALSE, automlr.remove.missings=TRUE,
+                           automlr.wremoving.missings="NAFactorRemover",
+                           XRemover.spare1=3,
+                           AllLearner.int1=3, AllLearner.real1=0.5),
+                      "AllLearner", list(bool1=TRUE, real1=0.5, int1=3), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0, NAFactorRemover.remove.NA=TRUE))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="AllLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.remove.factors=FALSE, automlr.remove.missings=FALSE,
+                           XRemover.spare1=3,
+                           AllLearner.real1=0.5),
+                      "AllLearner", list(bool1=TRUE, real1=0.5, int1=2), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0))
+
+checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
+                      list(selected.learner="AllLearner", automlr.wrappersetup="NARemover$XRemover$FactorRemover$NAFactorRemover",
+                           automlr.remove.factors=TRUE, automlr.remove.missings=FALSE,
+                           automlr.wremoving.factors="FactorRemover",
+                           FactorRemover.convertFactors=FALSE,
+                           XRemover.spare1=3,
+                           AllLearner.int1.AMLRFIX2=19, AllLearner.real1=0.5),
+                      "AllLearner", list(bool1=TRUE, real1=0.5, int1=19), list(),
+                      NARemover=list(NARemover.spare1=0, NARemover.spare2=0),
+                      XRemover=list(XRemover.spare1=3, XRemover.spare2=9),
+                      FactorRemover=list(FactorRemover.spare1=0, FactorRemover.spare2=0, FactorRemover.remove.factors=TRUE),
+                      NAFactorRemover=list(NAFactorRemover.spare1=0, NAFactorRemover.spare2=0))
 
 
 

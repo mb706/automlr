@@ -14,7 +14,7 @@ injectDef = autolearner(testLearner("test", makeParamSet(), c("numerics", "twocl
 expect_error(bl(injectDef), "Parameter 'test' for learner 'test' marked as 'inject' must not have type 'def'")
 #
 injectFix = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "fix", 0, special="inject")))
-expect_warning(bl(injectFix), "Parameter 'test' for learner 'test' is marked 'inject' and has type 'fix'", all=TRUE)
+expect_warning(bl(injectFix), "Parameter 'test' for learner 'test' is marked 'dummy/inject' and has type 'fix'", all=TRUE)
 
 singleId = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id="int")))
 expect_warning(bl(singleId), "'int1' of learner 'test' is the only one with parameter id 'int'", all=TRUE)
@@ -197,7 +197,7 @@ expect_class(bl(parDef), "RLearnerClassif")
 parDef = autolearner(setHyperPars(tl, int3=1), list(sp("int3", "def", 0)))
 expect_warning(bl(parDef), "learner has it already set to a different value", all=TRUE)
 parDef = autolearner(setHyperPars(tl, int3=1), list(sp("int3", "def", 1)))
-expect_warning(bl(parDef), "learner has it already set to a different value", all=TRUE)
+expect_warning(bl(parDef), "(learner has it already set to a different value|but its alleged default '1' differs from the true default '0')", all=TRUE)
 
 tl = testLearner("test", makeParamSet(predefParams$int1, predefParams$int4), c("numerics", "twoclass"))
 reqDef = autolearner(tl, list(sp("int4", "int", c(0, 1)), sp("int1", "int", c(0, 1))))

@@ -32,7 +32,7 @@ ssAL = autolearner(outerSS, list(
     sp("real4", "real", c(0.5, 0.5)),
     sp("cat4", "cat", "a")))
 
-expect_warning(lss <- bl(ssAL), "(is marked 'inject' and has type 'fix'|'test' has a 'requires' argument but the one given)", all=TRUE)
+expect_warning(lss <- bl(ssAL), "(is marked 'dummy/inject' and has type 'fix'|'test' has a 'requires' argument but the one given)", all=TRUE)
 expect_set_equal(getParamIds(getParamSet(lss)),
                  paste0("test.", c("int0", "int7", "int3", "int3.AMLRFIX1", "int2", "real2", "cat2", "bool2", "real0", "cat0", "bool0", "real7", "cat7", "bool7")))
 
@@ -167,9 +167,10 @@ params = list(
     test.cat2="b",
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
 
+
 expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
-               "'test\\.int5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+               "is a static \\(internal\\) parameter but was also given externally|both given although they should be exclusive", all=TRUE)
 expect_class(t, "FailureModel")
 
 params = list(
@@ -179,7 +180,7 @@ params = list(
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
 expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
-               "'test\\.real5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+               "is a static \\(internal\\) parameter but was also given externally|both given although they should be exclusive", all=TRUE)
 expect_class(t, "FailureModel")
 
 params = list(
@@ -189,7 +190,7 @@ params = list(
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
 expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
-               "'test\\.cat5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+               "is a static \\(internal\\) parameter but was also given externally|both given although they should be exclusive", all=TRUE)
 expect_class(t, "FailureModel")
 
 params = list(
@@ -199,7 +200,7 @@ params = list(
     test.bool1=TRUE, test.bool5=c(TRUE, TRUE, TRUE), test.bool6=TRUE)
 expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
-               "'test\\.cat5' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+               "is a static \\(internal\\) parameter but was also given externally|both given although they should be exclusive", all=TRUE)
 expect_class(t, "FailureModel")
 
 params = list(
@@ -209,7 +210,7 @@ params = list(
     test.bool1=FALSE, test.bool6=TRUE)
 expect_true(isFeasibleNoneMissing(getParamSet(lissAL2), params))
 expect_warning(t <- train(setHyperPars(lissAL2, par.vals=params), pid.task),
-               "'test\\.bool6' is a static \\(internal\\) parameter but was also given externally", all=TRUE)
+               "is a static \\(internal\\) parameter but was also given externally|both given although they should be exclusive", all=TRUE)
 expect_class(t, "FailureModel")
 
 params = list(
@@ -249,7 +250,7 @@ expect_warning(lissAL3 <- bl(issAL3), paste0("(that are not mentioned in search 
                                              "but the learner has it already set to a different value|",
                                              "differs from the true default|",
                                              "was already set to a value; this value has been removed|",
-                                             "is marked 'inject' and has type 'fix')"), all=TRUE)
+                                             "is marked 'dummy/inject' and has type 'fix')"), all=TRUE)
 
 expect_set_equal(getParamIds(getParamSet(lissAL3)), character(0))
 
