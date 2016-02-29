@@ -61,22 +61,15 @@ NAFactorRemover2 = autolearner(
 
 l <- buildLearners(list(l0, l1, NAFactorRemover1, NAFactorRemover2), theTask)
 
-which(getParamIds(getParamSet(l)) %nin% c("selected.learner", "automlr.wrappersetup", "automlr.remove.missings", "automlr.wremoving.missings",
-                                          "automlr.remove.factors", "automlr.wremoving.factors",
-                                          "l0.int1", "l1.int1", "l1.int1.AMLRFIX2", "l1.intermediate2", "l1.intermediate3",
-                                          "l1.real1", "l1.cat1",
-                                          "NAFactorRemover2.intermediate.AMLRFIX1", "NAFactorRemover2.intermediate.AMLRFIX2",
-                                          "NAFactorRemover2.intermediate2", "NAFactorRemover2.intermediate2.AMLRFIX1", "NAFactorRemover2.intermediate2.AMLRFIX2",
-                                          "NAFactorRemover2.spare1"))
+expect_set_equal(getParamIds(getParamSet(l)),
+                 c("selected.learner", "automlr.wrappersetup", "automlr.remove.missings", "automlr.wremoving.missings",
+                   "automlr.remove.factors", "automlr.wremoving.factors",
+                   "l0.int1", "l1.int1", "l1.int1.AMLRFIX2", "l1.intermediate2", "l1.intermediate3",
+                   "l1.real1", "l1.cat1",
+                   "NAFactorRemover2.intermediate2", "NAFactorRemover2.intermediate2.AMLRFIX1",
+                   "NAFactorRemover2.spare1"))
 
-getParamSet(l)$pars[[8]]$id
-getParamSet(l)$pars[[10]]$id
-getParamSet(l)$pars[[11]]$id
-
-getParamSet(l)$pars[["l1.real1"]]$requires
-
-debugonce(isFeasible)
-#debugonce(automlr:::makeModelMultiplexerParamSetEx)
+expect_equal(deparse(getParamSet(l)$pars[["l1.real1"]]$requires), 'selected.learner == "l1"')  # remove always true requirement
 
 checkLearnerBehaviour(l, theTask,
                       list(selected.learner="l1", automlr.wrappersetup="NAFactorRemover1$NAFactorRemover2",

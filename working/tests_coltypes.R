@@ -64,7 +64,7 @@ AllLearner = autolearner(
 
 XRemover = autolearner(
     autoWrapper("XRemover", function(learner, ...) changeColsWrapper(learner, "XRemover", ...), identity),
-    list(sp("XRemover.spare1", "int", c(0, 10)),
+    list(sp("XRemover.spare1", "int", c(0, 10), req=quote(2 %in c(1, 2, 3))),
          sp("XRemover.spare2", "fix", 9, req=quote(automlr.has.missings==TRUE))),
     "requiredwrapper")
 #
@@ -95,6 +95,9 @@ checkLearnerBehaviour = function(learner, task, params, ...) {
 #predict(train(setHyperPars(learner, par.vals=params), task), task)
   expect_learner_output(setHyperPars(learner, par.vals=params), task, ...)
 }
+
+l = buildLearners(list(NumericsLearner, XRemover), NumericsTask)
+expect_null(getParamSet(l)$pars$XRemover.spare1$requires)  # test that '2 %in% c(1, 2, 3)' is removed since it is always true.
 
 l = buildLearners(list(NumericsLearner, FactorsLearner, OrderedsLearner), NumericsTask)
 checkLearnerBehaviour(l, NumericsTask, list(NumericsLearner.int1=1), "NumericsLearner", list(int1=1), list())

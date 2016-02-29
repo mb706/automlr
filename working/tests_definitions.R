@@ -6,7 +6,7 @@ options(width=150)
 library("testthat")
 library("smoof")
 devtools::load_all("../../mlr")
-configureMlr(show.learner.output=TRUE, on.learner.error="stop")
+configureMlr(show.learner.output=TRUE, on.learner.error="warn")
 library(roxygen2)
 
 roxygenise('..')
