@@ -14,7 +14,7 @@ options(error=dump.frames)
 
 
 library('testthat')
-devtools::test(pkg="..")
+devtools::test(pkg="..", filter="paramhandling")
 
 
 
@@ -116,14 +116,41 @@ objective = makeSingleObjectiveFunction(
     fn=objFun)
 
 control = makeMBOControl()
-control$noisy = TRUE
-control$infill.opt.focussearch.points = 1000
+control = setMBOControlInfill(control, opt="focussearch", opt.focussearch.points = 1000)
+
+# We want to have termination criteria for:
+# walltime, cputime, modeltime, evals
+# mbo gives us:
+# as.numeric(getOptStateTimeUsed(opt.state), units="secs")  # 'time budget'
+# sum(getOptPathExecTimes(getOptStateOptPath(opt.state)))  # 'execution time'
+# getOptPathLength(getOptStateOptPath(opt.state)) # 'evals'
+
+
+
+control = setMBOControlTermination(control, iters=NULL, more.stop.conds=list(function(opt.state) list(term=TRUE, message="automlr term", code="iter")))
+names(control)
+
 mboLearner = checkLearner(NULL, simpleParset, control)
-mboLearner$config = list(on.learner.warning="quiet", show.learner.output=FALSE)
+mboLearner$config = list(on.learner.error="stop", on.learner.warning="quiet", show.learner.output=FALSE)
+
+noFinalize = new.env(parent=asNamespace("mlrMBO"))
+noFinalize$mboFinalize2 = identity
+myMBO = mlrMBO::mbo
+environment(myMBO) = noFinalize
+mresult = myMBO(objective, learner=mboLearner, control=control, show.info=FALSE)
+rm(myMBO)
+
+mresult = mlrMBO:::mboTemplate(mresult)
+
+mlrMBO:::mboFinalize2(mresult)
+
+getOptPathLength(mresult$opt.path)
+sum(getOptPathExecTimes(mresult$opt.path))
+mresult$time.used
+
+mresult$state
 
 debugonce(warningf)
-
-mresult = mbo(objective, learner=mboLearner, control=control)
 
 mresult
 
@@ -158,3 +185,39 @@ fun1 = function(x) {
 debugonce(fun2)
 
 fun1(10)
+
+##### testing optMBO
+
+devtools::load_all("..")
+
+aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="mbo")
+
+debugonce(amsetup.ammbo)
+debugonce(isOutOfBudget)
+
+debugonce(aobj$backendprivatedata$runtimeEnv$isOutOfBudget)
+
+names(aobj)
+ls(aobj$backendprivatedata)
+
+aobj2 = automlr(aobj, budget=c(evals=17))
+
+debug(mlr:::trainLearner.regr.randomForest)
+
+aobj3 = automlr(aobj2, budget=c(evals=17))
+
+aobj3$spent
+
+debug(mlrMBO:::trainModels)
+
+debug(randomForest::randomForest)
+
+mlrMBO:::opt
+aobj3$backendprivatedata$opt.state$opt.path
+as.data.frame(aobj2$backendprivatedata$opt.state$opt.path)
+as.data.frame(aobj3$backendprivatedata$opt.state$opt.path)
+
+aobj2
+
+aobj2$previous.version
+
