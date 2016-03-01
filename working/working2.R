@@ -190,7 +190,7 @@ fun1(10)
 
 devtools::load_all("..")
 
-aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="mbo")
+aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="random")
 
 debugonce(amsetup.ammbo)
 debugonce(isOutOfBudget)
@@ -204,20 +204,32 @@ aobj2 = automlr(aobj, budget=c(evals=17))
 
 debug(mlr:::trainLearner.regr.randomForest)
 
-aobj3 = automlr(aobj2, budget=c(evals=17))
+aobj3 = automlr(aobj2, budget=c(evals=20))
+
+
+
 
 aobj3$spent
 
 debug(mlrMBO:::trainModels)
 
+untrace(randomForest::randomForest)
 debug(randomForest::randomForest)
 
 mlrMBO:::opt
 aobj3$backendprivatedata$opt.state$opt.path
+
 as.data.frame(aobj2$backendprivatedata$opt.state$opt.path)
 as.data.frame(aobj3$backendprivatedata$opt.state$opt.path)
 
-aobj2
+aobj3
+names(aobj2$backendprivatedata)
+as.data.frame(aobj2$backendprivatedata$opt.path)
+as.data.frame(aobj3$backendprivatedata$opt.path)
+
+res = mlrMBO::mboFinalize2(aobj2$backendprivatedata$opt.state)
+names(res)
+res$y
 
 aobj2$previous.version
 

@@ -10,7 +10,7 @@ amgetprior.amirace = function(env) {
   NULL
 }
 
-# no bells and whistles here either
+
 amsetup.amirace = function(env, prior, learner, task, measure) {
   env$learner = learner
   env$task = task
@@ -20,8 +20,8 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   ## we do the following to imitade mlr::tuneParams()
   env$ctrl = makeTuneControlIrace(maxExperiments = 1)  # maxExperiments will be overridden by our wrapper
   env$ctrl = mlr:::setDefaultImputeVal(env$ctrl, measure)  # TODO: check this...
-  env$measures = list(getDefaultMeasure(env$task))
-  env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace, env$measures, include.extra = (env$ctrl$tune.threshold))
+  env$measure = measure
+  env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace, list(env$measure), include.extra = (env$ctrl$tune.threshold))
   ## end of imitation
   
   ## the following generates the wrapper around irace::irace that checks our budget constraints and ensures continuation
@@ -81,7 +81,7 @@ amoptimize.amirace = function(env, stepbudget) {
   on.exit(assignInNamespace("irace", env$iraceOriginal, ns="irace"))
   assignInNamespace("irace", env$iraceWrapper, ns="irace")
 
-  mlr:::tuneIrace(env$learner, env$task, env$rinst, env$measures, env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
+  mlr:::tuneIrace(env$learner, env$task, env$rinst, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
   env$tuneresult = tuneParams(env$learner, env$task, env$rdesc, par.set=env$learner$searchspace, control=env$ctrl)
   env$usedbudget
 }

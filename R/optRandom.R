@@ -17,15 +17,18 @@ amsetup.amrandom = function(env, prior, learner, task, measure) {
   env$learner = learner
   env$rdesc = do.call(makeResampleDesc, resampleOptions)
   env$task = task
+  env$measure = measure
   env$opt.path = NULL
   invisible()
 }
 
-# TODO: return whatever the user might be interested in
 amresult.amrandom = function(env) {
-  res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace, list(getDefaultMeasure(env$task)),
+  res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace, list(env$measure),
       makeTuneControlRandom(maxit=100), env$opt.path)
-  list(resultstring="Result was generated, find it as $res.", res=res)
+  list(opt.point=removeMissingValues(res$x),
+       opt.val=res$y,
+       opt.path=res$opt.path,
+       result=res)
 }
 
 # now this is where the fun happens
@@ -48,11 +51,12 @@ amoptimize.amrandom = function(env, stepbudget) {
   mlrModeltime = 0  # we count the modeltime that mlr gives us
   
   numcpus = parallelGetOptions()$settings$cpus
+  numcpus = ifelse(is.na(numcpus), 1, numcpus)
 
   while (!checkoutofbudget(learner$am.env, numcpus, il=TRUE)) {
     iterations = min(ifelse('evals' %in% names(stepbudget), stepbudget['evals'] - learner$am.env$usedbudget['evals'], Inf), 100)
     ctrl = makeTuneControlRandom(maxit=iterations, log.fun=logFunTune)  # chop up 'evals' budget into 1000s
-    tuneresult = tuneParams(learner, env$task, env$rdesc, par.set=learner$searchspace, control=ctrl)
+    tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure), par.set=learner$searchspace, control=ctrl)
     do.call(configureMlr, oldOpts)  # we call this here, in case we loop around. Whenever the error is not an 'out of budget' error we want the usual behaviour.
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
@@ -63,7 +67,6 @@ amoptimize.amrandom = function(env, stepbudget) {
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
     } else {
-      # TODO: this fails catastrophically in case the search space changes.
       appendOptPath(env$opt.path, tuneresult$opt.path)
     }
     # the following updates walltime and cputime.
