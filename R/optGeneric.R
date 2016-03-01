@@ -1,11 +1,11 @@
-#' should return whatever kind of object the backend accepts as 'prior'.
+#' should update the environment's prior by adding the information
+#' contained in 'prior'
 #' 
 #' @param env should not be used
 #' @param prior A 'prior' object as returned by \code{\link{amgetprior}}.
 #'        This is never null.
-#' @param newprior same as 'prior'.
-amcombinepriors = function(env, prior, newprior) {
-  UseMethod("amcombinepriors")
+amaddprior = function(env, prior) {
+  UseMethod("amaddprior")
 }
 
 #' should return whatever kind of object this backend accepts as 'prior'.
@@ -17,8 +17,8 @@ amgetprior = function(env) {
 
 #' return value is ignored; should modify env.
 #' 
-#' 'prior' and 'learner' will not be passed to optimize.<backend>, so they
-#' should probably saved in 'env'.
+#' all arguments except 'env' will not be passed to amoptimize, so they
+#' should be saved in 'env' in some way.
 #' @param env The private data of this backend.
 #' @param prior The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner the learner object that was built from the declared search space.
@@ -44,7 +44,7 @@ amoptimize = function(env, stepbudget) {
 #' 
 #' Required elements are:
 #' 
-#'  resultstring -- message that gets printed in 'print'
+#' $opt.val, $opt.point, $opt.path
 #' 
 #' Names should not collide with AMState / AMResult property names.
 #' @param env The private data of this backend.

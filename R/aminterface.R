@@ -8,6 +8,7 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
     oldamstate$task = NULL
     oldamstate$measure = NULL
     oldamstate$previous.versions = NULL
+    oldamstate$prior.backlog = NULL
     class(oldamstate) = "list"
     amstate$previous.versions = c(amstate$previous.versions, list(oldamstate))
     amstate$creation.time = Sys.time()
@@ -32,12 +33,9 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   # optimizer state, even after it was used as an argument of an automlr() call.
   amstate$backendprivatedata = deepcopy(amstate$backendprivatedata)
   
-  allpriors = filterNull(list(amstate$prior, prior))
-  if (length(allpriors > 1)) {
-    amstate$prior = amcombinepriors(amstate$backendprivatedata, amstate$prior, prior)
-  } else {
-    amstate$prior = coalesce(amstate$prior, prior)
-  }
+  amstate$prior.backlog = c(amstate$prior.backlog, list(prior))
+  
+  amstate$measure = coalesce(amstate$measure, getDefaultMeasure(amstate$task))
   
   # check if budget is already exceeded. in this case we return the (updated) amstate object
   if (!is.null(budget)) {
@@ -54,11 +52,17 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   
   ## TODO How does autoWEKA remember info about similar parameters? The answer might be 'not at all'.
   
-  objectiveLearner = buildLearners(amstate$searchspace, amstate$task)
+
   
-  # set up or change backendprivatedata. This gets called once whenever some part of the AMState object
-  # may have changed.
-  amsetup(amstate$backendprivatedata, amstate$prior, objectiveLearner, amstate$task)  # TODO: also give measure.
+  # set backendprivatedata. This gets called once per amstate lifetime.
+  if (!amstate$isInitialized) {
+    objectiveLearner = buildLearners(amstate$searchspace, amstate$task)
+    amsetup(amstate$backendprivatedata, amstate$prior.backlog[[1]], objectiveLearner, amstate$task, amstate$measure)
+    amstate$prior.backlog[[1]] = NULL
+    amstate$isInitialized = TRUE
+  }
+  
+  updatePriors(amstate)
   
   # the writing out of intermediate results to `savefile` is done here and not delegated to the
   # backend functions. We call the backend with timeout until next write to disk. This greatly
@@ -76,6 +80,14 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
       .Random.seed = amstate$seed  # since writefile may use the rng.
     }
   }
+  amstate$prior = amgetprior(amstate$backendprivatedata)
   amstate
 }
 
+updatePriors = function(amstate) {
+  for (p in amstate$prior.backlog) {
+    amaddprior(amstate$backendprivatedata, p)
+  }
+  amstate$prior.backlog = NULL
+  amstate$prior = amgetprior(amstate$backendprivatedata)
+}

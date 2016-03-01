@@ -1,14 +1,15 @@
 
 #' Reference implementation that exemplifies the backend interface.
 #'
-#' should return whatever kind of object the backend accepts as 'prior'.
+#' should update the environment's prior by adding the information
+#' contained in 'prior'.
 #' @param env should not be used
 #' @param prior A 'prior' object as returned by \code{\link{amgetprior.amdummy}}.
 #'        This is never null.
-#' @param newprior same as 'prior'.
-amcombinepriors.amdummy = function(env, prior, newprior) {
+amaddprior.amdummy = function(env, prior) {
   cat("Called 'combinepriors'.\n")
-  prior + newprior  # our cute 
+  env$prior = env$prior + prior  # our cute prior mechanism
+  invisible()
 }
 
 #' should return whatever kind of object this backend accepts as 'prior'.
@@ -21,8 +22,8 @@ amgetprior.amdummy = function(env) {
 
 #' return value is ignored; should modify env.
 #' 
-#' 'prior' and 'learner' will not be passed to optimize.<backend>, so they
-#' should probably saved in 'env'.
+#' all arguments except 'env' will not be passed to amoptimize, so they
+#' should be saved in 'env' in some way.
 #' @param env The private data of this backend.
 #' @param prior The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner the learner object that was built from the declared search space.
@@ -33,6 +34,7 @@ amsetup.amdummy = function(env, prior, learner, task, measure) {
   env$prior = coalesce(prior, 1)
   env$learner = learner
   env$evals = 0
+  env$measure = measure
   invisible()
 }
 
@@ -62,5 +64,6 @@ amoptimize.amdummy = function(env, stepbudget) {
 #' @param env The private data of this backend.
 amresult.amdummy = function(env) {
   cat("Called 'result'\n")
-  list(resultstring=paste0("Dummy result. Prior grew to ", env$prior, ", evals: ", env$evals))
+  list(opt.val=0, opt.point=removeMissingValues(sampleValue(env$learner$searchspace, trafo=TRUE)),
+      opt.path=makeOptPathDF(env$learner$searchspace, "y", env$measure$minimize))
 }

@@ -1,7 +1,7 @@
 
 
 # 'random' has no prior, so do nothing here
-amcombinepriors.amirace = function(prior, newprior) {
+amaddprior.amirace = function(env, prior) {
   NULL
 }
 

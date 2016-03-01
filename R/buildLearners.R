@@ -486,7 +486,7 @@ createTrafo = function(min, max, isint) {
    }
     ratio = sqrt((min+1) / min)
     sequence = unique(c(addzero, round(min * ratio ^ (seq(from=0, to=floor(log(max/min, base=ratio))))), max))
-    return(list(trafo=function(x) sequence[x], newmin=1, newmax=length(sequence)))
+    return(list(trafo=function(x) ifelse(is.na(x), NA, sequence[x]), newmin=1, newmax=length(sequence)))
   } else {
     #  !!! We have to evaluate 'min' and 'max' here, otherwise they stay in the environment as 'promise' objects
     # and weird stuff happens! 

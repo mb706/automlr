@@ -108,7 +108,8 @@ automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, 
                     seed=.Random.seed,
                     creation.time=Sys.time(),
                     finish.time=NULL,
-                    previous.versions=list()),
+                    previous.versions=list(),
+                    isInitialized=FALSE),
           savefile=savefile, save.interval=save.interval)  # a delegated problem is a solved problem.
 }
 
@@ -144,7 +145,6 @@ automlr.character = function(task, budget=NULL, prior=NULL, savefile=task,
 #' @export
 automlr.AMState = function(task, budget=NULL, prior=NULL, savefile=NULL,
                            save.interval=default.save.interval, new.seed=FALSE, ...) {
-  # TODO: maybe check there's nothing in the '...'.
   if (!is.null(budget)) {
     checkBudgetParam(budget)
   }
@@ -163,24 +163,15 @@ automlr.AMState = function(task, budget=NULL, prior=NULL, savefile=NULL,
 #' @param amstate The AMState or AMResult object from which to extract the prior.
 #' @export
 extractprior = function(amstate) {
-  UseMethod("extractprior")
-}
-
-#' @rdname extractprior
-#' @export
-extractprior.AMState = function(amstate) {
-  newprior = amgetprior(amstate$backendprivatedata)
-  if (is.null(amstate$prior)) {
-    newprior
-  } else {
-    amcombinepriors(amstate$backendprivatedata, amstate$prior, newprior)
+  assertClass(amstate, "AMObject")
+  if (length(amstate$prior.backlog) > 0) {
+    assertClass(amstate, "AMState")
+    if (!amstate$isInitialized) {
+      stop("Object is not initialized but has prior backlog.")
+    }
+    updatePriors(amstate)
   }
-}
-
-#' @rdname extractprior
-#' @export
-extractprior.AMResult = function(amstate) {
-  amstate$newprior
+  amstate$prior
 }
 
 #' Converte the AMState object as returned by \code{\link{automlr}} to a result object.
@@ -189,43 +180,55 @@ extractprior.AMResult = function(amstate) {
 #' @param amstate The AMState object which is to be converted.
 #' @export
 amfinish = function(amstate) {
-  amstate$newprior = extractprior(amstate)
+  assertClass(amstate, "AMState")
+  if (!amstate$isInitialized) {
+    message("No optimization has been done. Empty result.")
+    return(NULL)
+  }
   amstate = insert(amstate, amresult(amstate$backendprivatedata))
+  # inserts:
+  # $opt.val, $opt.point, $opt.path
+  amstate$backendprivatedata = NULL
   class(amstate) = c("AMResult", "AMObject")
   amstate
 }
 
 #' Give some cute info about a given AMState
-#' @param x what to print. WTF I have to do this to get rid of R CMD check warnings?
-#' @param ... See \code{x}.
+#' @param x what to print
+#' @param longform print detailed info
+#' @param ... Ellipsis
 #' @method print AMObject
 #' @export
-print.AMObject = function(x, ...) {
+print.AMObject = function(x, longform=FALSE, ...) {
   allversions = c(x$previous.versions, list(x))
   catf("automlr %s.\nBackend: %s", ifelse("AMState" %in% class(x), "optimization state", "result"), x$backend)
-  catf("First created: %s\nLast finished: %s", allversions[[1]]$creation.time, x$finish.time)
-  cat("Total budget:\n")
-  print(x$budget)
-  cat("Total spent:\n")
-  print(x$spent)
-  if (length(allversions) > 1) {
-    cat("All invocations using this object:\n")
-    # the following does a few gymnastics with do.call(c, ...) to keep the POSIXct type.
-    allversionsdf = data.frame(invocation.time=do.call(c, extractSubList(allversions, "creation.time", simplify=FALSE)),
-                               return.time=do.call(c, extractSubList(allversions, "finish.time", simplify=FALSE)))
-    spentmatrix = t(sapply(allversions, function(v) v$spent[names(x$spent)]))
-    budgetmatrix = t(sapply(allversions, function(v) v$budget[names(x$spent)]))
-    colnames(spentmatrix) = paste("sp", names(x$spent), sep=".")
-    colnames(budgetmatrix) = paste("bg", names(x$spent), sep=".")
-    print(cbind(allversionsdf, budgetmatrix, spentmatrix))
+  if (longform) {
+    catf("First created: %s\nLast finished: %s", allversions[[1]]$creation.time, x$finish.time)
+    cat("Total budget:\n")
+    print(x$budget)
+    cat("Total spent:\n")
+    print(x$spent)
+    if (length(allversions) > 1) {
+      cat("All invocations using this object:\n")
+      # the following does a few gymnastics with do.call(c, ...) to keep the POSIXct type.
+      allversionsdf = data.frame(invocation.time=do.call(c, extractSubList(allversions, "creation.time", simplify=FALSE)),
+                                 return.time=do.call(c, extractSubList(allversions, "finish.time", simplify=FALSE)))
+      spentmatrix = t(sapply(allversions, function(v) v$spent[names(x$spent)]))
+      budgetmatrix = t(sapply(allversions, function(v) v$budget[names(x$spent)]))
+      colnames(spentmatrix) = paste("sp", names(x$spent), sep=".")
+      colnames(budgetmatrix) = paste("bg", names(x$spent), sep=".")
+      print(cbind(allversionsdf, budgetmatrix, spentmatrix))
+    }
+    cat("*****\nMeasure:\n")
+    print(x$measure)
+    cat("*****\nTask:\n")
+    print(x$task)
+    cat("*****\n")
   }
-  cat("Measure: *****\n")
-  print(x$measure)
-  cat("*****\nTask: *****\n")
-  print(x$task)
-  cat("*****\n")
   if ("AMResult" %in% class(x)) {
-    cat(x$resultstring)
-    cat("\n")
+    catf("Optimum %s found: %f", x$measure$id, x$opt.val)
+    if (longform) {
+      print(x$opt.point)
+    }
   }
 }
