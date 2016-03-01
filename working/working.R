@@ -16,6 +16,18 @@ roxygenise('..')
 devtools::load_all("..")
 options(error=dump.frames)
 
+library("covr")
+library("testthat")
+
+devtools::test(pkg="..")
+
+
+cov <- package_coverage("..", exclude=c("R/aminterface.R", "R/automlr.R", "R/lsambackends.R", "R/optDummy.R",
+                                  "R/optGeneric.R", "R/optIRace.R", "R/optMBO.R", "R/optRandom.R", "R/preprocess.R",
+                                        "R/wrappers.R"))
+
+
+
 ##### preProcess
 
 ret <- preProcess(getTaskData(iris.task), univariate.trafo="centerscale", nzv.cutoff.numeric=0.5, multivariate.trafo="ica")

@@ -165,7 +165,7 @@ testLearner = function(name, parset, properties, isClassif=TRUE, ...) {  # isCla
   if (isClassif) {
     ret$fix.factors.prediction = TRUE
   }
-  pf = parent.frame()
+  pf = globalenv()
   
   assign(paste0("trainLearner.", name), envir=pf, value=function (.learner, .task, .subset, .weights=NULL, ...) {
     debuglistout(list(myname=name, ...))
@@ -279,6 +279,15 @@ isFeasibleNoneMissing = function(par, x) {
   names(nalist) = getParamIds(par)
   isFeasible(par, insert(nalist, x))
 }
+
+getpars = function(learner) getParamSet(learner)$pars
+
+checkLearnerBehaviour = function(learner, task, params, ...) {
+  expect_true(isFeasibleNoneMissing(getParamSet(learner), params))
+#predict(train(setHyperPars(learner, par.vals=params), task), task)
+  expect_learner_output(setHyperPars(learner, par.vals=params), task, ...)
+}
+
 
 context("testsetup")
 

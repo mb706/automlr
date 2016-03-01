@@ -1,6 +1,7 @@
 
 context("coltypes")
 
+
 NumericsTask = createTestClassifTask("NumericsTask", 200, nNumeric=3)
 FactorsTask = createTestClassifTask("FactorsTask", 200, nFactor=3)
 OrderedTask = createTestClassifTask("OrderedTask", 200, nOrdered=3)
@@ -79,13 +80,6 @@ NAFactorRemover = autolearner(
          sp("NAFactorRemover.remove.factors", "fix", TRUE, req=quote(automlr.remove.factors == TRUE))),
     "requiredwrapper")
 
-getpars = function(learner) getParamSet(learner)$pars
-
-checkLearnerBehaviour = function(learner, task, params, ...) {
-  expect_true(isFeasibleNoneMissing(getParamSet(learner), params))
-#predict(train(setHyperPars(learner, par.vals=params), task), task)
-  expect_learner_output(setHyperPars(learner, par.vals=params), task, ...)
-}
 
 test_that("the correct learner is automatically chosen", {
   l = buildLearners(list(NumericsLearner, XRemover), NumericsTask)
