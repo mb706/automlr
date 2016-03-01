@@ -111,11 +111,18 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
       }
     } else {
       ppobject$pop.numeric = lapply(data[cols.numeric], function(x) {
-            switch(impute.numeric,
-            mean=mean(x),
-            median=median(x),
+            res = switch(impute.numeric,
+            mean=mean(x, na.rm=TRUE),
+            median=median(x, na.rm=TRUE),
             hist=x[!is.na(x)])
+            if (length(res) == 0 || identical(res, NaN)) {
+              res = 0
+            }
+            res
           })  # TODO: maybe do rounding for mean / median and integers
+      if (length(ppobject$pop.numeric) == 0) {  # this /shouldn't/ happen, but just in case
+        ppobject$pop.numeric = 0
+      }
       data[cols.numeric] = mapply(imputeRandom, data[cols.numeric], ppobject$pop.numeric, SIMPLIFY=FALSE)
     }
   }
@@ -128,16 +135,31 @@ preProcess = function(data, target=NULL, nzv.cutoff.numeric=0, nzv.cutoff.factor
         targetData = targetData[!delendum, ]
       }
     } else if (impute.factor == "distinct") {
-      data[cols.factor] = lapply(data[cols.factor], addNA, ifany=FALSE)
+      data[cols.factor] = lapply(data[cols.factor], function(f) {
+            ret = addNA(f, ifany=FALSE)
+            # if the level name is `NA`, it will removed when copying which crashes some learners.
+            # therefore we give it a 'unique' name here. If preprocess is called like this twice in a row,
+            # this adds an empty new NA level first (since all NAs were removed already) and then
+            # unified with the existing automlr.auxlevel.NA, so everything works as it should.
+            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA', levels(ret))
+            ret
+          })
     } else {
       ppobject$pop.factor = lapply(data[cols.factor], function(x) {
-            switch(impute.factor, 
+            res = switch(impute.factor, 
             mode={
               ftab = sort(table(x), TRUE)
               names(ftab)[ftab==ftab[1]]  # if there is a tie, get all tieing levels
             },
             hist=x[!is.na(x)])
+            if (length(res) == 0) {
+              res = levels(x)[1]
+            }
+            res
           })
+      if (length(ppobject$pop.factor) == 0) {
+        ppobject$pop.factor = levels
+      }
       data[cols.factor] = mapply(imputeRandom, data[cols.factor], ppobject$pop.factor, SIMPLIFY=FALSE)
     }
   }
@@ -226,7 +248,12 @@ predict.ampreproc = function(object, newdata, ...) {
     if (object$impute.factor == "remove.na") {
       newdata = newdata[!naRows(newdata, object$cols.factor), ]
     } else if (object$impute.factor == "distinct") {
-      newdata[object$cols.factor] = lapply(newdata[object$cols.factor], addNA, ifany=FALSE)
+      newdata[object$cols.factor] = lapply(newdata[object$cols.factor], function(f) {
+            ret = addNA(f, ifany=FALSE)
+            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA', levels(ret))
+            ret
+          })
+      
     } else if (object$impute.factor != "off"){
       newdata[object$cols.factor] = mapply(imputeRandom, newdata[object$cols.factor], object$pop.factor, SIMPLIFY=FALSE)
     }
