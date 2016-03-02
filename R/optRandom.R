@@ -51,7 +51,6 @@ amoptimize.amrandom = function(env, stepbudget) {
   mlrModeltime = 0  # we count the modeltime that mlr gives us
   
   numcpus = parallelGetOptions()$settings$cpus
-  numcpus = ifelse(is.na(numcpus), 1, numcpus)
 
   while (!checkoutofbudget(learner$am.env, numcpus, il=TRUE)) {
     iterations = min(ifelse('evals' %in% names(stepbudget), stepbudget['evals'] - learner$am.env$usedbudget['evals'], Inf), 100)

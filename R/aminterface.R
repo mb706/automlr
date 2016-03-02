@@ -19,7 +19,9 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   if (is.null(savefile) || save.interval == 0) {
     save.interval = Inf
   } else {
+    savefile = checkfile(savefile)
     savefile = gsub('(\\.rds|)$', '.rds', savefile)
+    amstate$savefile = savefile
   }
   # basename gives an informative filename in case savefile is a directory
   basename = paste0("automlr_", amstate$backend, format(Sys.time(), "_%F_%H-%M"))
@@ -47,7 +49,9 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   }
   
   if (!new.seed) {
-    .Random.seed = amstate$seed
+    if (!exists(".Random.seed", .GlobalEnv))
+      set.seed(NULL)
+    assign(".Random.seed", amstate$seed, envir=.GlobalEnv)
   }
   
   ## TODO How does autoWEKA remember info about similar parameters? The answer might be 'not at all'.
@@ -73,10 +77,14 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
     usedbudget = amoptimize(amstate$backendprivatedata, stepbudget)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     assert(!anyNA(amstate$spent))  # this may happen if usedbudget does not contain all names that it should contain.
-    amstate$seed = .Random.seed
+
+    if (!exists(".Random.seed", .GlobalEnv))
+      set.seed(NULL)
+    amstate$seed = get(".Random.seed", .GlobalEnv)
+
     amstate$finish.time = Sys.time()
     if (!is.null(savefile)) {
-      savefile = writefile(savefile, amstate, basename)
+      writefile(savefile, amstate, basename)
       .Random.seed = amstate$seed  # since writefile may use the rng.
     }
   }

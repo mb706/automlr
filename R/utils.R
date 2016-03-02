@@ -19,6 +19,29 @@ deepcopy = function(obj) {
   unserialize(serialize(obj, NULL))
 }
 
+checkfile = function(filename, basename) {
+  assert(nchar(filename) > 0)
+  if (substring(filename, 1, 1) != "/") {
+    filename = paste0("./", filename)
+  }
+  givenAsDir = substring(filename, nchar(filename)) == "/"
+  if (file.exists(paste0(filename, "/"))) {
+    if (!givenAsDir) {
+      stopf("Target file '%s' is a directory. To create a file inside the directory, use '%s/' (trailing slash).",
+          filename)
+    }
+    basepath = filename
+    filename = tempfile(paste0(basename, '_'), basepath, ".rds")
+    messagef("Will be saving to file %s", filename)
+  } else {
+    if (givenAsDir) {
+      stopf("Directory '%s' does not exist. If you want to write to it as a FILE, remove the trailing '/'.",
+          filename)
+    }
+  }
+  filename
+}
+
 # write 'object' to file 'filename'. if filename ends with a '/', it is assumed
 # to refer to a directory in which the file should be created using name 'basename', 
 # postfixed with a possible postfix to avoid collision and '.rds'. 
@@ -29,16 +52,8 @@ writefile = function(filename, object, basename) {
   }
   outfile = tempfile(paste0(basename, '_'), basepath, ".rds")
   saveRDS(object, outfile)
-  
-  if (substring(filename, nchar(filename)) == "/") {
-    # TODO: if there is some way to atomically create a file only if it does not already exist,
-    #  we could iteratively try to create <basename>_<n>.rds for n = 1, 2, 3, ...
-    #  Instead, the current implementation just uses the tempfile() R function result.
-    filename = outfile
-  } else {
-    file.rename(outfile, filename)
-  }
-  filename
+  file.rename(outfile, filename)
+  invisible()
 }
 
 # append opt path op2 to opt path op1. This happens in-place.
@@ -99,7 +114,8 @@ checkBudgetParam = function(budget) {
   if (!identical(budget, 0) && !identical(budget, 0L)) {
     assertNamed(budget)
     assertNumeric(budget, lower=0, min.len=1, max.len=4)
-    assert(all(names(budget) %in% c("walltime", "cputime", "evals", "modeltime")))
+    budgetNamesOk = names(budget) %in% c("walltime", "cputime", "evals", "modeltime")
+    assert(all(budgetNamesOk))
   }
 }
 
