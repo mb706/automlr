@@ -1,7 +1,6 @@
 
 # TODO: put 'all=TRUE' in all expect_warning and expect_error
 
-library("mlr")
 configureMlr(show.learner.output=TRUE, on.learner.error="warn")
 
 createTestData = function(nrow, nNumeric=0, nFactor=0, nOrdered=0, nClasses=2) {
@@ -289,14 +288,3 @@ checkLearnerBehaviour = function(learner, task, params, ...) {
 }
 
 
-context("testsetup")
-
-test_that("auxiliary test functions behave as expected", {
-  ps = makeParamSet(makeLogicalParam("a"), makeLogicalParam("b", requires=quote(a==TRUE)))
-  expect_true(isFeasible(ps, list(a=TRUE)))
-  expect_false(isFeasibleNoneMissing(ps, list(a=TRUE)))
-  expect_true(isFeasibleNoneMissing(ps, list(a=TRUE, b=FALSE)))
-  expect_false(isFeasibleNoneMissing(ps, list(a=FALSE, b=FALSE)))
-  expect_false(isFeasibleNoneMissing(ps, list(b=FALSE)))
-  expect_true(isFeasibleNoneMissing(ps, list(a=FALSE)))
-})
