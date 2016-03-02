@@ -1,11 +1,11 @@
+context("automlr")
 
-
-# test error on budget misclassification
-{
+test_that("error on budget misclassification", {
   #the following is backend independent
   backendToTest = "random"
 
   amobject = automlr(theTask, searchspace=nofailSearchSpace, backend=backendToTest)
+  expect_set_equal(amobject$spent, c(0, 0, 0, 0))
   amfile = tempfile()
   fileboundObject = automlr(theTask, savefile=amfile, budget=c(evals=1), searchspace=nofailSearchSpace, backend=backendToTest)
 
@@ -40,40 +40,4 @@
   expect_error(automlr(amobject, savefile="/tmp/", save.interval=-2), "Assertion on 'save.interval' failed")
   expect_error(automlr(amfile, save.interval=-2), "Assertion on 'save.interval' failed")
   try(file.remove(fileboundObject$savefile), silent=TRUE)
-}
-
-{
-  backendToTest = "random"
-  searchSpaceToTest = nofailSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
-}
-
-{
-  backendToTest = "irace"
-  searchSpaceToTest = nofailSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
-}
-
-{
-  backendToTest = "mbo"
-  searchSpaceToTest = nofailSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
-}
-
-{
-  backendToTest = "random"
-  searchSpaceToTest = grandSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
-}
-
-{
-  backendToTest = "irace"
-  searchSpaceToTest = grandSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
-}
-
-{
-  backendToTest = "mbo"
-  searchSpaceToTest = grandSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
-}
+})

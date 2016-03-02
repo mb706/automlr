@@ -101,6 +101,10 @@ rcAL = autolearner(randfailClassif, list(
     sp("radius", "real", c(0.1, 10), "exp"),
     sp("coordinates", "real", c(-10, 10), dim=2)))
 
+preprocAL = autolearner(learner=autoWrapper(name="ampreproc", constructor=makePreprocWrapperAm, conversion=identity), stacktype="requiredwrapper",
+    searchspace=list(
+        sp("ppa.univariate.trafo", "cat", c("off", "center", "scale", "centerscale", "range"), req=quote(automlr.has.numerics == TRUE)),
+        sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"), req=quote(automlr.has.numerics == TRUE))))
 
 #### to visualise what is happening:
 plotres = function(res) {
@@ -117,6 +121,10 @@ function()  plotres(predict(train(setHyperPars(meshClassif, radius=0.5, coordina
                                                                 list(T), list(T), list(T), list(T),
                                                                 list(F), list(T), list(T), list(F))), traintask), predicttask))
 #### end visualization
+
+
+
+
 
 generateCircleTask = function(id, n, x, y, radius, coordinates=c(x, y)) {
   data = matrix(runif(n * 2, -10, 10), ncol=2)
@@ -144,7 +152,6 @@ checkSpentVsBudget = function(amobject, budget, budgettest, runtime) {
 }
 
 checkBackend = function(searchSpaceToTest, backendToTest) {
-  expect_set_equal(amobject$spent, c(0, 0, 0, 0))
   typicalBudget = list(walltime=30, cputime=30, modeltime=2, evals=10)
   amfile = tempfile()
   for (methodOfContinuation in c("file", "object")) {
@@ -185,7 +192,8 @@ checkBackend = function(searchSpaceToTest, backendToTest) {
   try(file.remove(amobject$savefile), silent=TRUE)
 }
 
-
 nofailSearchSpace = list(ccAL, cicAL, mcAL)
-grandSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL)
+withFailSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL)
+withPPSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL, preprocAL)
+
 theTask = generateCircleTask('circle', 200, 1, 2, 3)
