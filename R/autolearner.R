@@ -83,6 +83,7 @@ print.Autolearner = function(x, ...) {
 #'        it does not exist.
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
+#' @export
 sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, special=NULL, req=NULL, dim=1) {
   assertChoice(type, c("real", "int", "cat", "bool", "fix", "def"))
 
