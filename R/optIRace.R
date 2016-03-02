@@ -12,27 +12,27 @@ amgetprior.amirace = function(env) {
 
 
 amsetup.amirace = function(env, prior, learner, task, measure) {
+  requirePackages("irace", why = "optIrace", default.method = "load")
   env$learner = learner
   env$task = task
-  env$rdesc = do.call(makeResampleDesc, resampleOptions)
-  env$rinst = makeResampleInstance(env$rdesc, env$task)
-  
-  ## we do the following to imitade mlr::tuneParams()
-  env$ctrl = makeTuneControlIrace(maxExperiments = 1)  # maxExperiments will be overridden by our wrapper
-  env$ctrl = mlr:::setDefaultImputeVal(env$ctrl, measure)  # TODO: check this...
   env$measure = measure
+  env$rdesc = do.call(makeResampleDesc, resampleOptions)
+  
+  env$ctrl = makeTuneControlIrace(maxExperiments = 1)  # maxExperiments will be overridden by our wrapper
+  ## we do the following to imitade mlr::tuneParams()
+  env$ctrl = mlr:::setDefaultImputeVal(env$ctrl, list(measure))
   env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace, list(env$measure), include.extra = (env$ctrl$tune.threshold))
   ## end of imitation
   
   ## the following generates the wrapper around irace::irace that checks our budget constraints and ensures continuation
-  requirePackages("irace", why = "tuneIrace", default.method = "load")
   iraceFunction = irace::irace
   numcpus = parallelGetOptions()$settings$cpus  # this is assuming we don't use the irace package's parallel functionality.
+  numcpus[is.na(numcpus)] = 1
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(tunerConfig, parameters, ...) {
     evals.zero = 0
     modeltime.zero = 0
-    if (exists(tunerResults, envir=env)) {  # this is the 'env' of amsetup.amirace fame
+    if (exists("tunerResults", envir=env)) {  # this is the 'env' of amsetup.amirace fame
       # if tunerResults is in the environment then we are continuing, so we load the optimization state into the recover file
       tunerResults = env$tunerResults
       save(tunerResults, tunerConfig$logFile)
@@ -41,7 +41,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       modeltime.zero = tunerResults$timeUsedSoFar
     } else {
       tunerConfig$timeBudget = 1e-20
-      tunerConfig$timeEstimate = 1e-30  # end after one round
+      tunerConfig$timeEstimate = 1e-24  # end after one round
     }
     while (TRUE) {
       res = iraceFunction(tunerConfig, parameters, ...)
@@ -67,9 +67,12 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   invisible()
 }
 
-# TODO: return whatever the user might be interested in
 amresult.amirace = function(env) {
-  list(resultstring="Hi there.", res=env$tuneresult)  # TODO
+  res = env$tuneresult
+  list(opt.point=removeMissingValues(res$x),
+      opt.val=res$y,
+      opt.path=res$opt.path,
+      result=res)
 }
 
 # now this is where the fun happens
@@ -81,7 +84,7 @@ amoptimize.amirace = function(env, stepbudget) {
   on.exit(assignInNamespace("irace", env$iraceOriginal, ns="irace"))
   assignInNamespace("irace", env$iraceWrapper, ns="irace")
 
-  mlr:::tuneIrace(env$learner, env$task, env$rinst, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
-  env$tuneresult = tuneParams(env$learner, env$task, env$rdesc, par.set=env$learner$searchspace, control=env$ctrl)
+  env$tuneresult = mlr:::tuneIrace(env$learner, env$task, env$rdesc, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
+  env$opt.path = env$tuneresult$opt.path
   env$usedbudget
 }
