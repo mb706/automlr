@@ -9,7 +9,7 @@ trainLearner.circleClassif = function(.learner, .task, .subset, .weights=NULL, c
   list(coords=coordinates)
 }
 predictLearner.circleClassif = function(.learner, .model, .newdata, radius, ...) {
-  factor(.model$factor.levels[[1]][1 + apply(.newdata, 1, function(x) sum((x - .model$learner.model$coords)^2) < radius^2)])
+  factor(.model$factor.levels[[1]][1 + apply(.newdata, 1, function(x) sum((x - .model$learner.model$coords)^2) > radius^2)])
 }
 ccAL = autolearner(circleClassif, list(
     sp("radius", "real", c(0.1, 10), "exp"),
@@ -18,8 +18,8 @@ ccAL = autolearner(circleClassif, list(
 
 # like circleClassif, but the function to use for classification is a DiscreteParam
 estimfunctions = list(
-    inner=function(x, coords, radius) sum((x - coords)^2) < radius^2,
-    outer=function(x, coords, radius) sum((x - coords)^2) > radius^2)
+    inner=function(x, coords, radius) sum((x - coords)^2) > radius^2,
+    outer=function(x, coords, radius) sum((x - coords)^2) < radius^2)
 circleInoutClassif = makeRLearnerClassif("circleInoutClassif", character(0),
     makeParamSet(makeNumericLearnerParam("radius", lower=0, default=0, when="predict"),
                  makeNumericVectorLearnerParam("coordinates", len=2, default=c(0, 0), when="train"),
@@ -76,7 +76,7 @@ predictLearner.detfailClassif = function(.learner, .model, .newdata, radius, ...
   if (sum(.model$learner.model$coords^2) > radius^2) {
     stop("origin not part of circle")
   }
-  factor(.model$factor.levels[[1]][1 + apply(.newdata, 1, function(x) sum((x - .model$learner.model$coords)^2) < radius^2)])
+  factor(.model$factor.levels[[1]][1 + apply(.newdata, 1, function(x) sum((x - .model$learner.model$coords)^2) > radius^2)])
 }
 dcAL = autolearner(detfailClassif, list(
     sp("radius", "real", c(0.1, 10), "exp"),
@@ -95,7 +95,7 @@ predictLearner.randfailClassif = function(.learner, .model, .newdata, radius, ..
   if (sum((rnorm(2) - .model$learner.model$coords)^2) > radius^2) {
     stop("random point near the origin not part of circle")
   }
-  factor(.model$factor.levels[[1]][1 + apply(.newdata, 1, function(x) sum((x - .model$learner.model$coords)^2) < radius^2)])
+  factor(.model$factor.levels[[1]][1 + apply(.newdata, 1, function(x) sum((x - .model$learner.model$coords)^2) > radius^2)])
 }
 rcAL = autolearner(randfailClassif, list(
     sp("radius", "real", c(0.1, 10), "exp"),

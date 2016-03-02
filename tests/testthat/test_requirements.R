@@ -47,7 +47,7 @@ test_that("requirements including pseudoparameters are simplified as they should
            sp("NAFactorRemover2.spare1.AMLRFIX1", "int", c(4, 4), req=quote(NAFactorRemover2.intermediate2!=1))),
       "requiredwrapper")
 
-  l <- buildLearners(list(l0, l1, NAFactorRemover1, NAFactorRemover2), theTask)
+  l = buildLearners(list(l0, l1, NAFactorRemover1, NAFactorRemover2), theTask)
 
   expect_set_equal(getParamIds(getParamSet(l)),
                    c("selected.learner", "automlr.wrappersetup", "automlr.remove.missings", "automlr.wremoving.missings",
