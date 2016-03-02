@@ -9,7 +9,7 @@ amgetprior.ammbo = function(env) {
 }
 
 amsetup.ammbo = function(env, prior, learner, task, measure) {
-  requirePackages("mbo", why = "optMBO", default.method = "load")
+  requirePackages("mlrMBO", why = "optMBO", default.method = "load")
   requirePackages("smoof", why = "optMBO", default.method = "load")
   # things to adapt:
   #  resampling: holdout, cv, or something adaptive?
@@ -44,7 +44,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
       minimize=measure$minimize,
       par.set=simpleParset,
       fn=objectiveFun)
-  
+
+  control = mlrMBO::makeMBOControl()
   control = mlrMBO::setMBOControlInfill(control, opt="focussearch", opt.focussearch.points = 1000)
   control = mlrMBO::setMBOControlTermination(control, iters=NULL, more.stop.conds=list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
