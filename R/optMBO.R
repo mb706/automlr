@@ -9,6 +9,8 @@ amgetprior.ammbo = function(env) {
 }
 
 amsetup.ammbo = function(env, prior, learner, task, measure) {
+  requirePackages("mbo", why = "optMBO", default.method = "load")
+  requirePackages("smoof", why = "optMBO", default.method = "load")
   # things to adapt:
   #  resampling: holdout, cv, or something adaptive?
   #  infill control: focussearch, something else? how many points?
@@ -18,7 +20,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   zeroModeltime = 0
   zeroEvals = 0
   numcpus = parallelGetOptions()$settings$cpus
-  numcpus = ifelse(is.na(numcpus), 1, numcpus)
+  numcpus[is.na(numcpus)] = 1
   
   budget = 0
   
@@ -33,7 +35,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   
   simpleParset = simplifyParams(learner$searchspace)
   resDesc = makeResampleDesc("Holdout")
-  objective = makeSingleObjectiveFunction(
+  objective = smoof::makeSingleObjectiveFunction(
       name="automlr learner optimization",
       id="automlr.objective",
       has.simple.signature=FALSE,
@@ -43,8 +45,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
       par.set=simpleParset,
       fn=objectiveFun)
   
-  control = setMBOControlInfill(control, opt="focussearch", opt.focussearch.points = 1000)
-  control = setMBOControlTermination(control, iters=NULL, more.stop.conds=list(function(opt.state) {
+  control = mlrMBO::setMBOControlInfill(control, opt="focussearch", opt.focussearch.points = 1000)
+  control = mlrMBO::setMBOControlTermination(control, iters=NULL, more.stop.conds=list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
               list(term=TRUE, message="automlr term", code="iter")
             } else {
@@ -52,7 +54,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
             }
           }))
   
-  mboLearner = mlrMBO::checkLearner(NULL, simpleParset, control)
+  mboLearner = mlrMBO:::checkLearner(NULL, simpleParset, control)
   mboLearner$config = list(on.learner.error="stop", on.learner.warning="warn", show.learner.output=TRUE)
   mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor="distinct", ppa.impute.numeric="median")
   
@@ -79,7 +81,7 @@ amresult.ammbo = function(env) {
 amoptimize.ammbo = function(env, stepbudget) {
   zero = env$runtimeEnv
   zero$numcpus = parallelGetOptions()$settings$cpus
-  zero$numcpus = ifelse(is.na(zero$numcpus), 1, zero$numcpus)
+  zero$numcpus[is.na(zero$numcpus)] = 1
   zero$budget = stepbudget
 
   env$opt.state = mlrMBO:::mboTemplate(env$opt.state)
