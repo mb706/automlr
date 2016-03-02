@@ -190,7 +190,9 @@ fun1(10)
 
 devtools::load_all("..")
 
-aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="random")
+aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="irace")
+aobj
+aobj2 = automlr(aobj, budget=c(evals=17))
 
 debugonce(amsetup.ammbo)
 debugonce(isOutOfBudget)
@@ -200,7 +202,6 @@ debugonce(aobj$backendprivatedata$runtimeEnv$isOutOfBudget)
 names(aobj)
 ls(aobj$backendprivatedata)
 
-aobj2 = automlr(aobj, budget=c(evals=17))
 
 debug(mlr:::trainLearner.regr.randomForest)
 
