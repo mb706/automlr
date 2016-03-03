@@ -97,6 +97,15 @@ logFunTune = function(learner, task, resampling, measures, par.set, control, opt
   )
 }
 
+# similarly copied from mlr logFunOpt.R
+logFunQuiet = function(learner, task, resampling, measures, par.set, control, opt.path, dob,
+    x, y, remove.nas, stage, prev.stage) {
+  
+  if (stage == 1L) {
+    list(start.time = Sys.time())
+  }
+}
+
 # copied from mlr helpers.R
 perfsToString = function(y) {
   paste(paste(names(y), "=", formatC(y, digits = 3L), sep = ""), collapse = ",")
@@ -121,4 +130,9 @@ checkBudgetParam = function(budget) {
 
 amlrTransformName = function(name) {
   sub("\\.AMLRFIX[0-9]+$", "", name)
+}
+
+generateRealisticImputeVal = function(measure, learner, task) {
+  naked = dropFeatures(task, getTaskFeatureNames(task))
+  bootstrapB632(learner, naked, iter=100, show.info=FALSE)$aggr
 }

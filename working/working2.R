@@ -188,11 +188,25 @@ fun1(10)
 
 ##### testing optMBO
 
+options(warn=2)  # stop on warnings
+
+
 devtools::load_all("..")
+
+
+aobj = automlr(pid.task, searchspace=list(ccAL), backend="irace")
+aobj2 = automlr(aobj, budget=c(evals=1))
+debugonce(mlr:::tuneIrace)
+
 
 aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="irace")
 aobj
 aobj2 = automlr(aobj, budget=c(evals=17))
+
+res = amfinish(aobj2)
+
+print(res, longform=TRUE)
+
 
 debugonce(amsetup.ammbo)
 debugonce(isOutOfBudget)
@@ -233,4 +247,119 @@ names(res)
 res$y
 
 aobj2$previous.version
+
+
+
+nf = makeRegrTask("nofeat", data=data.frame(x=c(100, 101, 102, 103, 109)), target='x')
+mean(getTaskData(nf)[['x']])
+td = train(makeLearner("regr.randomForest"), nf)
+predict(td, nf)
+
+
+tf = c(TRUE, FALSE)
+names(tf) = tf
+# a predictor that predicts TRUE or FALSE with probability depending on its hyperparameters
+noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
+    makeParamSet(makeIntegerLearnerParam("int", when="predict"),
+                 makeIntegerVectorLearnerParam("intv", 3, when="both"),
+                 makeNumericLearnerParam("num", when="both"),
+                 makeNumericVectorLearnerParam("numv", 3, when="predict"),
+                 makeLogicalLearnerParam("log", when="predict"),
+                 makeLogicalVectorLearnerParam("logv", 3, when="both"),
+                 makeDiscreteLearnerParam("disc1", c("a", "b", "c"), when="both"),  # easy: character discrete params
+                 makeDiscreteVectorLearnerParam("disc1v", 3, c("a", "b", "c"), when="predict"),
+                 makeDiscreteLearnerParam("disc2", tf, when="predict"),  # harder: booleans
+                 makeDiscreteVectorLearnerParam("disc2v", 3, tf, when="both"),
+                 makeDiscreteLearnerParam("disc3", c(3, 10), when="both"),  # also hard: numeric
+                 makeDiscreteVectorLearnerParam("disc3v", 3, c(3, 10), when="predict"),
+                 makeLogicalLearnerParam("often", default=FALSE, when="predict", requires=quote(int > -10 && mean(intv) > -10 &&
+                                                                                   num - abs(numv[1]) < numv[2] + numv[3] &&
+                                                                                     (log || logv[1] || logv[2] || logv[3]) &&
+                                                                                       disc1 %in% unlist(disc1v) &&
+                                                                                         (disc2 || disc2v[[1]] || disc2v[[2]] || disc2v[[3]]) &&
+                                                                                           disc3 * min(sapply(disc3v, identity)) < 100)),
+                 makeLogicalLearnerParam("seldom", default=FALSE, when="predict", requires=quote(int > 0 && mean(intv) > 0 &&
+                                                                                    num - numv[1] < numv[2] + numv[3] &&
+                                                                                      (log || logv[1] == logv[2] || logv[3]) &&
+                                                                                        disc1 %nin% unlist(disc1v) &&
+                                                                                          (disc2 || disc2v[[1]] || disc2v[[2]] || disc2v[[3]]) &&
+                                                                                            disc3 * min(sapply(disc3v, identity)) < 100)),
+                 makeLogicalLearnerParam("testReqs", default=FALSE, when="predict", tunable=FALSE)),
+    properties=c("twoclass", "numerics", "missings"))
+noiseClassif$fix.factors.prediction = TRUE
+
+trainLearner.noiseClassif = function(.learner, .task, .subset, .weights=NULL, ...) {
+  list()
+}
+predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs=FALSE,
+    int, intv, num, numv, log, logv, disc1, disc1v, disc2, disc2v, disc3, disc3v, ...) {
+  expect_numeric(int, len=1, any.missing=FALSE)
+  expect_numeric(intv, len=3, any.missing=FALSE)
+  expect_numeric(num, len=1, any.missing=FALSE)
+  expect_numeric(numv, len=3, any.missing=FALSE)
+  expect_logical(log, len=1, any.missing=FALSE)
+  expect_logical(logv, len=3, any.missing=FALSE)
+  expect_character(disc1, len=1, any.missing=FALSE)
+  expect_list(disc1v, types="character", any.missing=FALSE, len=3)
+  expect_logical(disc2, len=1, any.missing=FALSE)
+  expect_list(disc2v, types="logical", any.missing=FALSE, len=3)
+  expect_numeric(disc3, len=1, any.missing=FALSE)
+  expect_list(disc3v, types="numeric", any.missing=FALSE, len=3)
+  bar = mean(c(int > 0, intv[1] + intv[2] + intv[3] > 0,
+      num > 0, mean(numv), log == TRUE, logv[1] && logv[2] || logv[3],
+      disc1 == "a", disc1v[[1]] == disc1v[[2]], disc2 == TRUE,
+      disc2v[[1]] && disc2v[[2]], disc3 == 3, disc3v[[1]] * disc3v[[2]] > 10))
+  if (testReqs) {
+    moreArgs = list(...)
+    oftenEval = eval(noiseClassif$par.set$pars$often$requires)
+    seldomEval = eval(noiseClassif$par.set$pars$seldom$requires)
+    expect_identical(oftenEval, "often" %in% names(moreArgs))
+    expect_identical(seldomEval, "seldom" %in% names(moreArgs))
+    if ("often" %nin% names(moreArgs)) {
+      cat("not often\n")
+    }
+    if ("seldom" %in% names(moreArgs)) {
+      cat("seldom\n")
+    }
+  }
+  factor(.model$factor.levels[[1]][1 + (runif(nrow(.newdata)) > bar)])
+}
+
+noiseCL = autolearner(noiseClassif, list(
+    sp("int", "int", c(-5, 5)),
+    sp("intv", "int", c(-5, 5), dim=3),
+    sp("num", "real", c(-5, 5)),
+    sp("numv", "real", c(-5, 5), dim=3),
+    sp("log", "bool"),
+    sp("logv", "bool", dim=3),
+    sp("disc1", "cat", c("a", "b", "c")),
+    sp("disc1v", "cat", c("a", "b", "c"), dim=3),
+    sp("disc2", "cat", c("TRUE", "FALSE")),
+    sp("disc2v", "cat", c(TRUE, FALSE), dim=3),
+    sp("disc3", "cat", c(3, 10)),
+    sp("disc3v", "cat", c(3, 10), dim=3),
+    sp("often", "def", FALSE, req=quote(1==1)),
+    sp("seldom", "def", FALSE, req=quote(1==1)),
+    sp("testReqs", "def", FALSE)))
+
+l <- buildLearners(list(noiseCL), pid.task)
+ps = sampleValues(l$searchspace, 1)[[1]]
+
+tl = train(setHyperPars(l, par.vals=ps), pid.task)
+predict(tl, pid.task)
+
+aobj = automlr(pid.task, searchspace=list(noiseCL), backend="irace")
+aobj2 = automlr(aobj, budget=c(evals=1))
+
+aobj3 = automlr(aobj, budget=c(evals=1000))
+
+mean(getTaskData(pid.task)$diabetes == 'pos')
+
+ps = amfinish(aobj2)$opt.point
+op = amfinish(aobj2)$opt.path
+aobj2$spent
+amfinish(aobj3)$opt.point
+
+oop = order(as.data.frame(op)$mmce.test.mean)
+plot(as.data.frame(op)[oop, 'dob'])
 
