@@ -47,16 +47,6 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       show.irace.output = TRUE,
       log.fun=logFunQuiet)  # make our life easy for now
   
-  # measure the model time and give it to irace, which will give it back to us.
-  hookRunWrapper = function(originalHookRun) {
-    force(originalHookRun)
-    function(experiment, config = list()) {
-      time = system.time(result <- originalHookRun(experiment, config), gcFirst=FALSE)[3]
-      c(result, time)
-    }
-  }
-  
-
   ## we do the following to imitade mlr::tuneParams()
   env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace, list(env$measure), include.extra = (env$ctrl$tune.threshold))
   
@@ -67,14 +57,13 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   numcpus[is.na(numcpus)] = 1
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(tunerConfig, parameters, ...) {
+    modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm=TRUE)
     if (exists("tunerResults", envir=env)) {  # this is the backendprivatedata env
       # if tunerResults is in the environment then we are continuing, so we load the optimization state into the recover file
       tunerResults = env$tunerResults
       tunerConfig = tunerResult$tunerConfig
       evals.zero = tunerResults$state$experimentsUsedSoFar
-      modeltime.zero = tunerResults$state$timeUsedSoFar
     } else {
-      tunerConfig$hookRun = hookRunWrapper(tunerConfig$hookRun)  # measure the time
       # this is the first round.
       assert(tunerConfig$maxExperiments == 100000)
       assert(tunerConfig$timeBudget == 0)
@@ -90,9 +79,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       tunerConfig$nbIterations = 0  # in theory this is loaded from the recovery file, but you never know
       tunerResults$state$timeUsedSoFar = 1 # arbitrary positive number
       tunerResults$state$timeBudget = 0.5  # arbitrary positive number smaller than timeUsedSoFar --> we abort after one loop
-
       evals.zero = 0
-      modeltime.zero = 1  # because timeUsedSoFar was initialized as 1
     }
     while (TRUE) {
 
@@ -106,7 +93,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       
       load(tunerConfig$logFile)
       env$usedbudget['evals'] = tunerResults$state$experimentsUsedSoFar - evals.zero
-      env$usedbudget['modeltime'] = tunerResults$state$timeUsedSoFar - modeltime.zero
+      env$usedbudget['modeltime'] = sum(getOptPathExecTimes(env$opt.path), na.rm=TRUE) - modeltime.zero
       env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
       env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpus
       
