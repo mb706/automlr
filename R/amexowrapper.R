@@ -132,8 +132,14 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
             param, if (is.null(curpar$amlr.learnerName)) "" else paste0(" of learner ", curpar$amlr.learnerName),
             errormsg)
       }
+      if (class(curpar$requires) == "expression") {  # this apparently happens.
+        completeSearchSpace$pars[[param]]$requires = substitute(eval(x), list(x=curpar$requires))
+      } else if (class(curpar$requires) != "call") {
+        stopf("Parameter '%s' has broken requirement:\n%s", param, collapse(deparse(curpar$requires), sep="\n"))
+      }
     }
   }
+  
 
 
   # transform into "LearnerParam" types. This is mostly dumb relabeling, except for one thing: The

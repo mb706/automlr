@@ -2,9 +2,10 @@
 
 
 options(width=150)
-library("smoof")
-# devtools::load_all("../../ParamHelpers")
+
+devtools::load_all("../../ParamHelpers")
 devtools::load_all("../../mlr")
+library("smoof")
 library(roxygen2)
 roxygenise('..')
 devtools::load_all("..")
@@ -151,7 +152,6 @@ mresult$time.used
 mresult$state
 
 debugonce(warningf)
-
 mresult
 
 resample(learner, pid.task, ho, list(measure))$aggr
@@ -325,7 +325,7 @@ predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs=FALS
   factor(.model$factor.levels[[1]][1 + (runif(nrow(.newdata)) > bar)])
 }
 
-noiseCL = autolearner(noiseClassif, list(
+trivialParams = list(
     sp("int", "int", c(-5, 5)),
     sp("intv", "int", c(-5, 5), dim=3),
     sp("num", "real", c(-5, 5)),
@@ -337,29 +337,47 @@ noiseCL = autolearner(noiseClassif, list(
     sp("disc2", "cat", c("TRUE", "FALSE")),
     sp("disc2v", "cat", c(TRUE, FALSE), dim=3),
     sp("disc3", "cat", c(3, 10)),
-    sp("disc3v", "cat", c(3, 10), dim=3),
+    sp("disc3v", "cat", c(3, 10), dim=3))
+
+noiseCL = autolearner(noiseClassif, c(trivialParams, list(
     sp("often", "def", FALSE, req=quote(1==1)),
     sp("seldom", "def", FALSE, req=quote(1==1)),
-    sp("testReqs", "def", FALSE)))
+    sp("testReqs", "def", FALSE))))
+
+reqsCL = autolearner(noiseClassif, c(trivialParams, list(
+    sp("often", "bool", req=getParamSet(noiseClassif)$pars$often$requires),
+    sp("seldom", "bool", req=getParamSet(noiseClassif)$pars$seldom$requires),
+    sp("testReqs", "fix", TRUE))))
+
 
 l <- buildLearners(list(noiseCL), pid.task)
-ps = sampleValues(l$searchspace, 1)[[1]]
 
+l <- buildLearners(list(reqsCL), pid.task)
+class(l$searchspace$pars$noiseClassif.often$requires)
+
+
+ps = removeMissingValues(sampleValues(l$searchspace, 1)[[1]])
 tl = train(setHyperPars(l, par.vals=ps), pid.task)
 predict(tl, pid.task)
 
-aobj = automlr(pid.task, searchspace=list(noiseCL), backend="irace")
-aobj2 = automlr(aobj, budget=c(evals=1))
-
+aobj = automlr(pid.task, searchspace=list(reqsCL), backend="irace")
+aobj2 = automlr(aobj, budget=c(evals=200))
+aobj2$spent
+sum(getOptPathCol(amfinish(aobj2)$opt.path, 'exec.time'))
+sum(getOptPathExecTimes(amfinish(aobj2)$opt.path))
+sum(getOptPathExecTimes(makeOp))
 aobj3 = automlr(aobj, budget=c(evals=1000))
-
+aobj3$spent
 mean(getTaskData(pid.task)$diabetes == 'pos')
 
 ps = amfinish(aobj2)$opt.point
 op = amfinish(aobj2)$opt.path
 aobj2$spent
-amfinish(aobj3)$opt.point
 
+print(amfinish(aobj2), longform=TRUE)
+
+ps
 oop = order(as.data.frame(op)$mmce.test.mean)
 plot(as.data.frame(op)[oop, 'dob'])
 
+convertParamSetToIrace(makeParamSet(makeIntegerParam("C1", lower=0, upper=3), makeIntegerVectorParam("C", len=3, lower=0, upper=3)))

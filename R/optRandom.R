@@ -54,7 +54,7 @@ amoptimize.amrandom = function(env, stepbudget) {
 
   while (!checkoutofbudget(learner$am.env, numcpus, il=TRUE)) {
     iterations = min(ifelse('evals' %in% names(stepbudget), stepbudget['evals'] - learner$am.env$usedbudget['evals'], Inf), 100)
-    ctrl = makeTuneControlRandom(maxit=iterations, log.fun=logFunTune)  # chop up 'evals' budget into 1000s
+    ctrl = makeTuneControlRandom(maxit=iterations, log.fun=logFunQuiet)  # chop up 'evals' budget into 1000s
     tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure), par.set=learner$searchspace, control=ctrl)
     do.call(configureMlr, oldOpts)  # we call this here, in case we loop around. Whenever the error is not an 'out of budget' error we want the usual behaviour.
     # we want to ignore all the 'out of budget' evals
