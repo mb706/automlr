@@ -445,9 +445,9 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
   paramlist = c(paramlist, switch(surrogatetype,
       int=list(lower=pmin, upper=pmax, trafo=ptrafo),
       real=list(lower=pmin, upper=pmax, trafo=ptrafo),
-      cat=list(values={x = param$values; names(x) = param$values; x}),
+      cat=list(values={x = param$values; if (!test_named(x)) names(x) = param$values; x}),
       bool=list(),
-      fix=list(values={x = param$values; names(x) = param$values; x}),
+      fix=list(values={x = param$values; if (!test_named(x)) names(x) = param$values; x}),
       def=stopf("Parameter '%s' for learner '%s' marked as 'inject' must not have type 'def'.",
           param$name, learnerid),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))

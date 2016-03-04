@@ -11,11 +11,10 @@ amgetprior.amirace = function(env) {
 }
 
 irace.nbIterations = 10
-irace.newpopulation = 30
+irace.newpopulation = 2
 
 amsetup.amirace = function(env, prior, learner, task, measure) {
   requirePackages("irace", why = "optIrace", default.method = "load")
-  learner$searchspace = iraceRequirements(learner$searchspace)
   env$learner = learner
   env$task = task
   env$measure = measure
@@ -127,8 +126,12 @@ amoptimize.amirace = function(env, stepbudget) {
   # install the wrapper and make sure it gets removed as soon as we exit
   on.exit(assignInNamespace("irace", env$iraceOriginal, ns="irace"))
   assignInNamespace("irace", env$iraceWrapper, ns="irace")
-
-  env$tuneresult = mlr:::tuneIrace(env$learner, env$task, env$rdesc, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
+  
+  myTuneIrace = mlr:::tuneIrace
+  environment(myTuneIrace) = new.env(parent=asNamespace("mlr"))
+  environment(myTuneIrace)$convertParamSetToIrace = function(par.set) convertParamSetToIrace(iraceRequirements(par.set))  # I stopped caring long ago
+  
+  env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
   env$opt.path = env$tuneresult$opt.path
   env$usedbudget
 }
@@ -147,7 +150,7 @@ iraceRequirements = function(searchspace) {
       assertList(param$values, names="named")
       fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
       if (param$type == "discrete") {
-        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject=fullObject, index=param$id))
+        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject=fullObject, index=asQuoted(param$id)))
       } else { # discretevector
         if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
           stopf("Parameter '%s' is a vector param with undefined length'", param$id)
