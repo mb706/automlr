@@ -2,12 +2,13 @@
 
 
 options(width=150)
-
 devtools::load_all("../../ParamHelpers")
 devtools::load_all("../../mlr")
-library("smoof")
+devtools::load_all("../../smoof")
+
 library(roxygen2)
 roxygenise('..')
+
 devtools::load_all("..")
 options(error=dump.frames)
 
@@ -381,3 +382,18 @@ oop = order(as.data.frame(op)$mmce.test.mean)
 plot(as.data.frame(op)[oop, 'dob'])
 
 convertParamSetToIrace(makeParamSet(makeIntegerParam("C1", lower=0, upper=3), makeIntegerVectorParam("C", len=3, lower=0, upper=3)))
+
+devtools::load_all("..")
+options(error=dump.frames)
+
+
+ss = automlr:::iraceRequirements(l$searchspace)
+
+
+
+ss$pars[[13]]$requires
+ss$pars[[14]]$requires
+
+l$searchspace$pars$noiseClassif.intv$type
+
+debugonce(automlr:::iraceRequirements)

@@ -15,6 +15,7 @@ irace.newpopulation = 30
 
 amsetup.amirace = function(env, prior, learner, task, measure) {
   requirePackages("irace", why = "optIrace", default.method = "load")
+  learner$searchspace = iraceRequirements(learner$searchspace)
   env$learner = learner
   env$task = task
   env$measure = measure
@@ -130,4 +131,64 @@ amoptimize.amirace = function(env, stepbudget) {
   env$tuneresult = mlr:::tuneIrace(env$learner, env$task, env$rdesc, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
   env$opt.path = env$tuneresult$opt.path
   env$usedbudget
+}
+
+# irace treats everything that is not a number as a string, which breaks our requirements.
+# here we repair these requirements by turning <logical> into (<logical> == TRUE) and
+# <discrete> into discreteValuesList[<discrete>]. We also treat vectors.
+iraceRequirements = function(searchspace) {
+  replacements = list()
+  for (param in searchspace$pars) {
+    if (param$type %in% c("discrete", "discretevector")) {
+      if (param$type == "discrete" && all(sapply(param$values, test_character, any.missing=FALSE))) {
+        # irace handles character discrete vectors well, so go right through
+        next
+      }
+      assertList(param$values, names="named")
+      fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
+      if (param$type == "discrete") {
+        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject=fullObject, index=param$id))
+      } else { # discretevector
+        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
+          stopf("Parameter '%s' is a vector param with undefined length'", param$id)
+        }
+        paramvec = asQuoted(sprintf("c(%s)", paste0(param$id, seq_len(param$len), collapse=", ")))
+        replacements[[param$id]] = substitute(fullObject[index], list(fullObject=fullObject, index=paramvec))
+      }
+    } else {
+      replacePattern = switch(param$type,
+          numeric=NULL,
+          numericvector="c(%s)",
+          integer="as.integer(%s)",
+          integervector="as.integer(c(%s))",
+          logical="(%s == TRUE)",
+          logicalvector="(c(%s) == TRUE)",
+                                   # the following code should not be reachable as of yet
+          charactervector="c(%s)", # since we don't generate character vectors
+          if (param$type %nin% c("function", "untyped")) { # ditto, hopefully
+            stopf("Unknown type '%s' of parameter '%s'.", param$type, param$id)
+          })
+      if (is.null(replacePattern)) {
+        # nothing to do
+        next
+      }
+      if (param$type %in% c("numericvector", "integervector", "logicalvector", "charactervector")) {
+        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
+          stopf("Parameter '%s' is a vector param with undefined length'", param$id)
+        }
+        replaceStr = sprintf(replacePattern, paste0(param$id, seq_len(param$len), collapse=", "))
+      } else {
+        replaceStr = sprintf(replacePattern, param$id)
+      }
+      replacements[[param$id]] = asQuoted(replaceStr)
+    }
+  }
+  for (param in names(searchspace$pars)) {
+    req = searchspace$pars[[param]]$requires
+    if (is.null(req)) {
+      next
+    }
+    searchspace$pars[[param]]$requires = deExpression(replaceRequires(req, replacements))
+  }
+  searchspace
 }
