@@ -126,13 +126,107 @@ simplifyParams = function(parset) {
 # undo the 'simplifyParams' operation
 complicateParams = function(params, origparset) {
   ret = lapply(names(params), function(parname) {
+        if (origparset$pars[[parname]]$type == "logicalvector") {
+          params[[parname]] = unlist(params[[parname]])
+        }
         vals = origparset$pars[[parname]]$values
-        if (!is.null(vals) && params[[parname]] %in% names(vals)) {
-          return(vals[[params[[parname]]]])
+        if (!is.null(vals)) {
+          if (origparset$pars[[parname]]$type == "discretevector") {
+            return(lapply(params[[parname]], function(x) vals[[x]]))
+          }
+          if (origparset$pars[[parname]]$type == "discrete") {
+            return(vals[[params[[parname]]]])
+          }
+          return(unlist(vals[params[[parname]]]))
         }
         params[[parname]]
       })
   names(ret) = names(params)
   ret
+}
+
+simplifyParams.ifMBOWasntBroken = function(parset) {
+  parset$pars = lapply(parset$pars, function(par) {
+        if (par$type == "logical") {
+          par$type = "discrete"
+        }
+        if (par$type == "logicalvector") {
+          par$type = "discretevector"
+        }
+        par
+      })
+  parset
+}
+
+complicateParams.ifMBOWasntBroken = function(params, origparset) {
+  ret = lapply(names(params), function(parname) {
+        if (origparset$pars[[parname]]$type == "logicalvector") {
+          unlist(params[[parname]])
+        } else {
+          params[[parname]]
+        }
+      })
+  names(ret) = names(params)
+  ret
+}
+
+
+# adapt requirements to parameter simplification we are doing above.
+mboRequirements = function(searchspace) {
+  # TODO
+  replacements = list()
+  for (param in searchspace$pars) {
+    if (param$type %in% c("discrete", "discretevector")) {
+      if (param$type == "discrete" && all(sapply(param$values, test_character, any.missing=FALSE))) {
+        # irace handles character discrete vectors well, so go right through
+        next
+      }
+      assertList(param$values, names="named")
+      fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
+      if (param$type == "discrete") {
+        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject=fullObject, index=asQuoted(param$id)))
+      } else { # discretevector
+        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
+          stopf("Parameter '%s' is a vector param with undefined length'", param$id)
+        }
+        paramvec = asQuoted(sprintf("c(%s)", paste0(param$id, seq_len(param$len), collapse=", ")))
+        replacements[[param$id]] = substitute(fullObject[index], list(fullObject=fullObject, index=paramvec))
+      }
+    } else {
+      replacePattern = switch(param$type,
+          numeric=NULL,
+          numericvector="c(%s)",
+          integer="as.integer(%s)",
+          integervector="as.integer(c(%s))",
+          logical="(%s == TRUE)",
+          logicalvector="(c(%s) == TRUE)",
+          # the following code should not be reachable as of yet
+          charactervector="c(%s)", # since we don't generate character vectors
+          if (param$type %nin% c("function", "untyped")) { # ditto, hopefully
+            stopf("Unknown type '%s' of parameter '%s'.", param$type, param$id)
+          })
+      if (is.null(replacePattern)) {
+        # nothing to do
+        next
+      }
+      if (param$type %in% c("numericvector", "integervector", "logicalvector", "charactervector")) {
+        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
+          stopf("Parameter '%s' is a vector param with undefined length'", param$id)
+        }
+        replaceStr = sprintf(replacePattern, paste0(param$id, seq_len(param$len), collapse=", "))
+      } else {
+        replaceStr = sprintf(replacePattern, param$id)
+      }
+      replacements[[param$id]] = asQuoted(replaceStr)
+    }
+  }
+  for (param in names(searchspace$pars)) {
+    req = searchspace$pars[[param]]$requires
+    if (is.null(req)) {
+      next
+    }
+    searchspace$pars[[param]]$requires = deExpression(replaceRequires(req, replacements))
+  }
+  searchspace
 }
 
