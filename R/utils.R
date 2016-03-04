@@ -136,3 +136,16 @@ generateRealisticImputeVal = function(measure, learner, task) {
   naked = dropFeatures(task, getTaskFeatureNames(task))
   bootstrapB632(learner, naked, iter=100, show.info=FALSE)$aggr * ifelse(measure$minimize, 1 , -1)  # ... because convertYForTuner is retarded
 }
+
+deExpression = function(language) {  # take a language object (call or expression), turn it into a call
+  if (is.null(language)) {
+    return(NULL)
+  }
+  if (is.expression(language) && length(language) == 1) {
+    language = language[[1]]
+  }
+  if (is.call(language)) {
+    return(language)
+  }
+  substitute(eval(x), list(x=language))
+}

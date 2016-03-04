@@ -133,7 +133,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
             errormsg)
       }
       if (class(curpar$requires) == "expression") {  # this apparently happens.
-        completeSearchSpace$pars[[param]]$requires = substitute(eval(x), list(x=curpar$requires))
+        completeSearchSpace$pars[[param]]$requires = deExpression(curpar$requires)
       } else if (class(curpar$requires) != "call") {
         stopf("Parameter '%s' has broken requirement:\n%s", param, collapse(deparse(curpar$requires), sep="\n"))
       }
@@ -330,8 +330,8 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
         req = replaceRequires(req, replaceList)
         if (!wrappers[[w]]$required) {
           # For the wrappers that are not always present: need to add "wrapper is actually used" as a requirement.
-          req = substitute((thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$", TRUE))) && eval(restReq),
-              list(thisWrapper=w, restReq=req))
+          req = substitute((thisWrapper %in% unlist(strsplit(automlr.wrappersetup, "$", TRUE))) && restReq,
+              list(thisWrapper=w, restReq=deExpression(req)))
         }
         wrappers[[w]]$searchspace$pars[[parname]]$requires = req
       }

@@ -523,7 +523,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets, origParamNa
         next
       }
       cprequires = replaceRequires(cprequires, substitution)
-      newrequires = substitute((a) && eval(b), list(a=newrequires, b=cprequires))
+      newrequires = substitute(a && b, list(a=newrequires, b=deExpression(cprequires)))
       # at this position, newrequires has the form
       # (new requires) && (old requires)
       # where the use of short-cirquiting && should solve any problems that we might get when querying isFeasible.
