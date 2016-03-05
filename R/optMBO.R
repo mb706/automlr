@@ -29,7 +29,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   }
   
   objectiveFun = function(x) {
-    l = setHyperPars(learner, par.vals=removeMissingValues(complicateParams(x, learner$searchspace)))
+    l = setHyperPars(learner, par.vals=complicateParams(removeMissingValues(x), learner$searchspace))
     resample(l, task, resDesc, list(measure), show.info=FALSE)$aggr
   }
   
@@ -85,7 +85,7 @@ amoptimize.ammbo = function(env, stepbudget) {
   zero$numcpus[is.na(zero$numcpus)] = 1
   zero$budget = stepbudget
 
-  env$opt.state = mlrMBO:::mboTemplate(env$opt.state)
+  env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
 
   spent = spentBudget(env$opt.state, zero)
   zero$zeroWalltime = spent["walltime"]
@@ -109,7 +109,7 @@ spentBudget = function(opt.state, zero) {
 simplifyParams = function(parset) {
   parset$pars = lapply(parset$pars, function(par) {
         if (!is.null(par$values)) {
-          par$values = names(par$values)
+          par$values = as.list(names(par$values))
           names(par$values) = par$values
         }
         if (par$type == "logical") {
@@ -144,32 +144,6 @@ complicateParams = function(params, origparset) {
   names(ret) = names(params)
   ret
 }
-
-simplifyParams.ifMBOWasntBroken = function(parset) {
-  parset$pars = lapply(parset$pars, function(par) {
-        if (par$type == "logical") {
-          par$type = "discrete"
-        }
-        if (par$type == "logicalvector") {
-          par$type = "discretevector"
-        }
-        par
-      })
-  parset
-}
-
-complicateParams.ifMBOWasntBroken = function(params, origparset) {
-  ret = lapply(names(params), function(parname) {
-        if (origparset$pars[[parname]]$type == "logicalvector") {
-          unlist(params[[parname]])
-        } else {
-          params[[parname]]
-        }
-      })
-  names(ret) = names(params)
-  ret
-}
-
 
 # adapt requirements to parameter simplification we are doing above.
 mboRequirements = function(searchspace) {

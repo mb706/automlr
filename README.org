@@ -34,6 +34,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
 (under consideration, subject to change)
 - [-] release 0.1
   - [X] write preliminary readme
+  - [ ] Tests pass
   - [ ] adapt coding style to mlrOrg
   - [ ] write documentation for entry points
   - [ ] Adapt entry point docu to mlrOrg style
@@ -44,6 +45,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
+  - [ ] differentiate expensive tests from fast tests
   - [ ] 100% test coverage
     - [ ] tests for preprocessing
     - [ ] test for all possible wrong arguments
