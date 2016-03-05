@@ -55,14 +55,14 @@ amoptimize.amrandom = function(env, stepbudget) {
   while (!checkoutofbudget(learner$am.env, numcpus, il=TRUE)) {
     iterations = min(ifelse('evals' %in% names(stepbudget), stepbudget['evals'] - learner$am.env$usedbudget['evals'], Inf), 100)
     ctrl = makeTuneControlRandom(maxit=iterations, log.fun=logFunQuiet)  # chop up 'evals' budget into 1000s
-    tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure), par.set=learner$searchspace, control=ctrl)
+    tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure), par.set=learner$searchspace, control=ctrl, show.info=FALSE)
     do.call(configureMlr, oldOpts)  # we call this here, in case we loop around. Whenever the error is not an 'out of budget' error we want the usual behaviour.
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     wasOOB = (!is.na(errorsvect)) & (errorsvect == out.of.budget.string)
     performediterations = sum(!wasOOB)
     learner$am.env$usedbudget['evals'] = learner$am.env$usedbudget['evals'] + performediterations
-    mlrModeltime = mlrModeltime + sum(getOptPathExecTimes(tuneresult$opt.path)[!wasOOB])
+    mlrModeltime = mlrModeltime + sum(getOptPathExecTimes(tuneresult$opt.path)[!wasOOB], na.rm=TRUE)
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
     } else {

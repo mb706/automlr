@@ -37,9 +37,10 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] adapt coding style to mlrOrg
   - [ ] write documentation for entry points
   - [ ] Adapt entry point docu to mlrOrg style
-  - [ ] finish writing wrappers, add metawrappers
+  - [ ] finish writing wrappers
   - [ ] correct version dependencies 
   - [ ] argument for debug level
+  - [ ] package build generate mlrLearners.R
   - [ ] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
@@ -48,6 +49,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] test for all possible wrong arguments
     - [ ] other things?
   - [ ] write a nicer readme **selfconscious**
+  - [ ] add metawrappers
   - [ ] respect parameter equality IDs
   - [ ] catch Ctrl-C and handle gracefully
   - [ ] maximum walltime overrun
@@ -61,6 +63,6 @@ Currently the project is undergoing heavy development; while the spirit of the a
 - [ ] release 0.4
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs)
-  - [ ] priors for wrappers?
+  - [ ] priors for learners?
 - [ ] release 1.0
   - [ ] everything is really, really stable
