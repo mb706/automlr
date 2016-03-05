@@ -25,23 +25,42 @@ The functions and data exported by automlr that will be of interest to the user:
   - autolearner :: define your own mlr learner to put in a search space
   - autoWrapper :: define an mlr wrapper to use in a search space
   - sp :: for defining parameters that are given to ~autolearner~
+See their respective R documentation for more information and additional arguments.
 
 * Project status
 Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
 
 ** Project TODO
+(under consideration, subject to change)
 - [-] release 0.1
   - [X] write preliminary readme
   - [ ] adapt coding style to mlrOrg
   - [ ] write documentation for entry points
   - [ ] Adapt entry point docu to mlrOrg style
   - [ ] finish writing wrappers, add metawrappers
+  - [ ] correct version dependencies 
   - [ ] argument for debug level
+  - [ ] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
-  - [ ] tests for preprocessing
+  - [ ] 100% test coverage
+    - [ ] tests for preprocessing
+    - [ ] test for all possible wrong arguments
+    - [ ] other things?
   - [ ] write a nicer readme **selfconscious**
   - [ ] respect parameter equality IDs
-  - [ ] catch Ctrl-C
+  - [ ] catch Ctrl-C and handle gracefully
   - [ ] maximum walltime overrun
   - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
+  - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
+  - [ ] simultaneous multiple task optimization
+  - [ ] nicer printing
+- [ ] release 0.3
+  - [ ] regression learners
+  - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
+- [ ] release 0.4
+  - [ ] other backends?
+  - [ ] batchJobs integration? (e.g. break run down into smaller jobs)
+  - [ ] priors for wrappers?
+- [ ] release 1.0
+  - [ ] everything is really, really stable
