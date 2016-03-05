@@ -9,6 +9,7 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
     oldamstate$measure = NULL
     oldamstate$previous.versions = NULL
     oldamstate$prior.backlog = NULL
+    oldamstate$prior = NULL
     class(oldamstate) = "list"
     amstate$previous.versions = c(amstate$previous.versions, list(oldamstate))
     amstate$creation.time = Sys.time()

@@ -618,6 +618,8 @@ plot(dtc$y, pch=as.numeric(dtc$ppa.feature.filter)+1)
 library('testthat')
 devtools::test(pkg="../../mlr", filter="ModelMultiplexer")
 
+devtools::test(pkg="../../mlr", filter="tuneRandom")
+
 devtools::test(pkg="../../mlr", filter="classif_T")
 devtools::test(pkg="../../mlr", filter="classif_J48")
 devtools::test(pkg="../../mlr", filter="cluster_XMeans")#######
@@ -954,3 +956,10 @@ testPSMM = makeModelMultiplexer(list(testPS))
 testPSMMArgs = setHyperPars(testPSMM, testPS.tpTRAIN=1, testPS.tpPREDICT=2, testPS.tpBOTH=3)
 trained = train(testPSMMArgs, pid.task)
 predicted = predict(trained, pid.task)
+
+
+#### fix.factors.prediction
+
+l = makeRLearnerClassif("test", character(0), makeParamSet(), properties=c("numerics", "twoclass"))
+
+train(l, pid.task)

@@ -40,7 +40,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       testType = "friedman",
       confidence=0.95,
       nbIterations = -1L,  # so that we enter the main loop even though remainingBudget is 0
-      maxExperiments = 100000L,  # so that remainingBudget is 0 in the beginning
+      maxExperiments = 100000L,  # some seed matrix is generated in the beginning, so this limits the number of experiments possible with this object absolutely.
       nbExperimentsPerIteration = expPerIter,
       impute.val = generateRealisticImputeVal(measure, learner, task),
       n.instances = 100,
@@ -53,6 +53,10 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   ## the following generates the wrapper around irace::irace that checks our budget constraints and ensures continuation
   iraceFunction = irace::irace
   env$iraceOriginal = iraceFunction
+  
+  environment(iraceFunction) = new.env(parent=asNamespace("irace"))
+  environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix  # breaking more rules than a maths teacher with anger management problems
+  
   numcpus = parallelGetOptions()$settings$cpus  # this is assuming we don't use the irace package's parallel functionality.
   numcpus[is.na(numcpus)] = 1
   # we use some dark magic to run irace with our custom budget
@@ -61,7 +65,10 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
     if (exists("tunerResults", envir=env)) {  # this is the backendprivatedata env
       # if tunerResults is in the environment then we are continuing, so we load the optimization state into the recover file
       tunerResults = env$tunerResults
-      tunerConfig = tunerResult$tunerConfig
+      tunerResults$tunerConfig$logFile = tunerConfig$logFile  # use the newly generated file
+      tunerResults$tunerConfig$hookRun = tunerConfig$hookRun  # take this round's hookRun, not the one from file.
+      tunerConfig = tunerResults$tunerConfig  # everything else stays the same from last round
+      tunerResults$tunerConfig$hookRun = NULL  # don't carry the heavyweight to the savefile. see `iraceRecoverFromFileFix()`
       evals.zero = tunerResults$state$experimentsUsedSoFar
     } else {
       # this is the first round.
@@ -74,20 +81,22 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       iraceFunction(tunerConfig, parameters, ...)  # we start but immediately stop because maxExperiments == 0
 
       load(tunerConfig$logFile)  # .... and load the state file to play with it
+      tunerResults$tunerConfig$hookRun = tunerConfig$hookRun  # since the hookRun's environment gets broken up by saving and restoring
+      tunerConfig = tunerResults$tunerConfig   # the above assignment is only for us to keep the hookRun in our tunerConfig
+      tunerResults$tunerConfig$hookRun = NULL  # this is a heavyweight object which would get saved every iteration, even though we also give it as argument
+
       tunerResults$state$nbIterations = irace.nbIterations # influences how discrete probability weights are scaled
-      tunerResults$tunerConfig$nbIterations = 0  # this needs to be 0 or irace thinks this is a stopping criterion.
+      tunerResults$tunerConfig$nbIterations = 0
       tunerConfig$nbIterations = 0  # in theory this is loaded from the recovery file, but you never know
       tunerResults$state$timeUsedSoFar = 1 # arbitrary positive number
       tunerResults$state$timeBudget = 0.5  # arbitrary positive number smaller than timeUsedSoFar --> we abort after one loop
       evals.zero = 0
     }
-    while (TRUE) {
 
-      
-      
+    tunerConfig$recoveryFile = tunerConfig$logFile
+    while (TRUE) {
       tunerResults$state$remainingBudget = 1  # arbitrary positive number
       save(tunerResults, file=tunerConfig$logFile)
-      tunerConfig$recoveryFile = tunerConfig$logFile
       
       res = iraceFunction(tunerConfig, parameters, ...)
       
@@ -100,7 +109,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       env$tunerResults = tunerResults
       
       if (stopcondition(env$stepbudget, env$usedbudget)) {
-        return(res)  # TODO since we are guaranteed to have finished one iteration, this is never empty *I hope*
+        return(res)  # since we are guaranteed to have finished one iteration, this is never empty *I hope*
       }
     }
   }
@@ -129,7 +138,9 @@ amoptimize.amirace = function(env, stepbudget) {
   
   myTuneIrace = mlr:::tuneIrace
   environment(myTuneIrace) = new.env(parent=asNamespace("mlr"))
-  environment(myTuneIrace)$convertParamSetToIrace = function(par.set) convertParamSetToIrace(iraceRequirements(par.set))  # I stopped caring long ago
+  environment(myTuneIrace)$convertParamSetToIrace = function(par.set) {  # I stopped caring long ago
+    irace::readParameters(text=convertParamSetToIrace(iraceRequirements(par.set), as.chars=TRUE), digits=.Machine$integer.max)
+  }
   
   env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
   env$opt.path = env$tuneresult$opt.path
@@ -194,4 +205,24 @@ iraceRequirements = function(searchspace) {
     searchspace$pars[[param]]$requires = deExpression(replaceRequires(req, replacements))
   }
   searchspace
+}
+
+
+# this works since irace 1.05
+iraceRecoverFromFileFix = function(file)  {
+  # we don't want to overwrite our tunerConfig$hookRun with the saved one.
+  eval.parent(substitute({
+        load(file)
+        for (name in names(tunerResults$state)) {
+          pos = if (name == ".Random.seed") .GlobalEnv else -1
+          assign(name, tunerResults$state[[name]], pos)
+        }
+        hookRunTemp = tunerConfig$hookRun
+        for (name in c("parameters", "allCandidates", "tunerConfig")) {
+          assign(name, tunerResults[[name]])
+        }
+        tunerConfig$hookRun = hookRunTemp
+        options(.race.debug.level = tunerConfig$debugLevel)
+        options(.irace.debug.level = tunerConfig$debugLevel)
+      }))
 }

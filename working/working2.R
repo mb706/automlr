@@ -5,6 +5,7 @@ options(width=150)
 devtools::load_all("../../ParamHelpers")
 devtools::load_all("../../mlr")
 devtools::load_all("../../smoof")
+devtools::load_all("../../mlrMBO")
 library('testthat')
 
 library(roxygen2)
@@ -378,16 +379,57 @@ aobj = automlr(pid.task, searchspace=list(noiseCL), backend="random")
 
 aobj = automlr(pid.task, searchspace=list(reqsCL), backend="irace")
 
-aobj = automlr(pid.task, searchspace=list(reqsCL), backend="mbo")
+aobj = automlr(pid.task, searchspace=list(noiseCL), backend="mbo")
+debugonce(irace::irace)
+aobj2 = automlr(aobj, budget=c(evals=400))
+aobj3 = automlr(aobj2, budget=c(evals=600))
 
-aobj2 = automlr(aobj, budget=c(evals=100))
-aobj2$spent
+aobj3$spent
+
+
 sum(getOptPathCol(amfinish(aobj2)$opt.path, 'exec.time'))
 sum(getOptPathExecTimes(amfinish(aobj2)$opt.path))
 sum(getOptPathExecTimes(makeOp))
 aobj3 = automlr(aobj, budget=c(evals=1000))
 aobj3$spent
+amfinish(aobj3)$opt.path
+aobj3$backendprivatedata$opt.path$env
+
+
+names(aobj3$backendprivatedata$tunerResults)
+names(aobj3$backendprivatedata$tunerResults$tunerConfig)
+str(aobj3$backendprivatedata$tunerResults)
+str(aobj3)
 mean(getTaskData(pid.task)$diabetes == 'pos')
+
+aobj3$backendprivatedata
+environment(aobj3$backendprivatedata$iraceWrapper)$env  # -- good
+
+aobj3$task$env  # is different because of the deepcopy.
+
+aobj3$backendprivatedata$task$env
+environment(aobj3$backendprivatedata$iraceWrapper)$task$env  # -- good
+
+aobj3$backendprivatedata$opt.path$env
+aobj3$backendprivatedata$tuneresult$opt.path$env  # -- good
+
+
+environment(aobj3$backendprivatedata$iraceWrapper)$iraceFunction
+
+
+
+ls(environment(aobj3$backendprivatedata$iraceWrapper))
+
+ls(aobj3$backendprivatedata)
+str(aobj3$backendprivatedata$ctrl)
+aobj3$backendprivatedata$ctrl
+aobj3$backendprivatedata$iraceOriginal
+str(aobj3$backendprivatedata$tuneresult)
+
+str(aobj3$backendprivatedata$tunerResults)
+
+str(aobj3$backendprivatedata$learner)
+
 
 ps = amfinish(aobj2)$opt.point
 op = amfinish(aobj2)$opt.path
@@ -415,4 +457,9 @@ ss$pars[[14]]$requires
 l$searchspace$pars$noiseClassif.intv$type
 
 debugonce(automlr:::iraceRequirements)
+undebug(automlr:::iraceRequirements)
 
+
+#############################
+# TODO: withPP stresstest fails even with random
+#       catch all errors except the expected ones.
