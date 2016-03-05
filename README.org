@@ -1,2 +1,47 @@
 #+TITLE: Automatic Machine Learning Algorithm Configuration in R
-Welcome to the development branch of automlr
+* Introduction
+Automlr is an R-package for *automatically* configuring *mlr* machine learning algorithms. It is designed for simplicity of use and supposed to run with minimal user intervention.
+
+* Usage
+To run a small example, execute
+#+BEGIN_SRC R
+amrun = automlr(pid.task, backend="random", budget=c(evals=10))
+result = amfinish(amrun)
+print(result, longform=TRUE)
+#+END_SRC
+This example already shows the mandatory arguments of ~automlr~: The task for which to optimize, the backend to use (may be "random", "irace" or "mbo"), and a computational budget. The resulting object can be given to another ~automlr~ call with a different budget to continue optimizing, or to ~amfinish~ to finalize the run.
+
+The functions and data exported by automlr that will be of interest to the user:
+- automlr invocation
+  - automlr :: The main entry point; can be called with a task and a backend, or with an object that was returned by a previous automlr invocation, or even with a file name that was used by automlr to save the state. The user can choose:
+    - which backend to use (~backend~)
+    - the computational budget (~budget~)
+    - a possible savefile (~savefile~) and the interval in which to save to a file (~save.interval~)
+    - a measure for which to optimize, if not the task's default measure (~measure~)
+  - amfinish :: Generates an ~AMResult~ object that contains information about the optimization result.
+  - autolearners :: A collection of mlr learners with corresponding search space.
+  - autolearnersNoWrappers :: as autolearners, but without preprocessing wrappers
+- searchspace definition
+  - autolearner :: define your own mlr learner to put in a search space
+  - autoWrapper :: define an mlr wrapper to use in a search space
+  - sp :: for defining parameters that are given to ~autolearner~
+
+* Project status
+Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
+
+** Project TODO
+- [-] release 0.1
+  - [X] write preliminary readme
+  - [ ] adapt coding style to mlrOrg
+  - [ ] write documentation for entry points
+  - [ ] Adapt entry point docu to mlrOrg style
+  - [ ] finish writing wrappers, add metawrappers
+  - [ ] argument for debug level
+- [ ] release 0.2
+  - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
+  - [ ] tests for preprocessing
+  - [ ] write a nicer readme **selfconscious**
+  - [ ] respect parameter equality IDs
+  - [ ] catch Ctrl-C
+  - [ ] maximum walltime overrun
+  - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
