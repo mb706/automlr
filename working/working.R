@@ -620,6 +620,8 @@ devtools::test(pkg="../../mlr", filter="ModelMultiplexer")
 
 devtools::test(pkg="../../mlr", filter="tuneRandom")
 
+devtools::test(pkg="../../mlrMBO", filter="focus")
+
 devtools::test(pkg="../../mlr", filter="classif_T")
 devtools::test(pkg="../../mlr", filter="classif_J48")
 devtools::test(pkg="../../mlr", filter="cluster_XMeans")#######
@@ -960,6 +962,9 @@ predicted = predict(trained, pid.task)
 
 #### fix.factors.prediction
 
-l = makeRLearnerClassif("test", character(0), makeParamSet(), properties=c("numerics", "twoclass"))
+l = makeRLearnerClassif("myclas", character(0), makeParamSet(), properties=c("numerics", "twoclass"))
+trainLearner.myclas = function(.learner, .task, .subset, .weights=NULL, ...) NULL
+predictLearner.myclas = function(.learner, .model, .newdata, ...) factor("pos")
+l$fix.factors.prediction =FALSE
+predict(train(l, pid.task), pid.task)
 
-train(l, pid.task)

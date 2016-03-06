@@ -200,7 +200,7 @@ devtools::load_all("..")
 aobj = automlr(pid.task, searchspace=list(ccAL), backend="irace")
 aobj2 = automlr(aobj, budget=c(evals=1))
 debugonce(mlr:::tuneIrace)
-
+debugonce(automlr:::complicateParams)
 
 aobj = automlr(pid.task, searchspace=automlr:::autolearners[c('classif.rFerns', 'classif.knn')], backend="irace")
 aobj
@@ -259,110 +259,7 @@ td = train(makeLearner("regr.randomForest"), nf)
 predict(td, nf)
 
 
-tf = c(TRUE, FALSE)
-names(tf) = !tf  # maybe this will cause some confusion..
-# a predictor that predicts TRUE or FALSE with probability depending on its hyperparameters
-noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
-    makeParamSet(makeIntegerLearnerParam("int", when="predict"),
-                 makeIntegerVectorLearnerParam("intv", 3, when="both"),
-                 makeNumericLearnerParam("num", when="both"),
-                 makeNumericVectorLearnerParam("numv", 3, when="predict"),
-                 makeLogicalLearnerParam("log", when="predict"),
-                 makeLogicalVectorLearnerParam("logv", 3, when="both"),
-                 makeDiscreteLearnerParam("disc1", c("a", "b", "c"), when="both"),  # easy: character discrete params
-                 makeDiscreteVectorLearnerParam("disc1v", 3, c("a", "b", "c"), when="predict"),
-                 makeDiscreteLearnerParam("disc2", tf, when="predict"),  # harder: booleans
-                 makeDiscreteVectorLearnerParam("disc2v", 3, tf, when="both"),
-                 makeDiscreteLearnerParam("disc3", c(3, 10), when="both"),  # also harder: numeric
-                 makeDiscreteVectorLearnerParam("disc3v", 3, c(3, 10), when="predict"),
-                 # challenge: mixed types
-                 makeDiscreteLearnerParam("disc4", list(`3`=3, `TRUE`="TRUE", `FALSE`=TRUE, li=list(TRUE, FALSE), fun=function() TRUE), when="both"),  
-                 makeDiscreteVectorLearnerParam("disc4v", 3, list(`3`=3, `TRUE`="TRUE", `FALSE`=TRUE, li=list(TRUE, FALSE)), when="predict"),
-                 makeLogicalLearnerParam("often", default=FALSE, when="predict",
-                                         requires=quote(int > -10 && mean(intv) > -10 &&
-                                                          num - abs(numv[1]) < numv[2] + numv[3] &&
-                                                            (log || logv[1] || logv[2] || logv[3]) &&
-                                                              disc1 %in% unlist(disc1v) &&
-                                                                (disc2 || disc2v[[1]] || disc2v[[2]] || disc2v[[3]]) &&
-                                                                  disc3 * min(unlist(disc3v)) < 100 &&
-                                                                    if(is.function(disc4)) TRUE else as.character(unlist(disc4)[1])==TRUE &&
-                                                                      sum(unlist(disc4v) == "TRUE") > 2)),
-    # remember that functions in requirements do not work and probably will never work
-                 makeLogicalLearnerParam("seldom", default=FALSE, when="predict",
-                                         requires=quote(int > 0 && mean(intv) > 0 &&
-                                                          num - numv[1] < numv[2] + numv[3] &&
-                                                            (log || logv[1] == logv[2] || logv[3]) &&
-                                                              disc1 %nin% unlist(disc1v) &&
-                                                                (disc2 || disc2v[[1]] || disc2v[[2]] || disc2v[[3]]) &&
-                                                                  disc3 * min(unlist(disc3v)) < 100 &&
-                                                                    if(is.function(disc4)) TRUE else as.character(unlist(disc4)[1])==TRUE &&
-                                                                      sum(unlist(disc4v) == "TRUE") > 2)),
-                 makeLogicalLearnerParam("testReqs", default=FALSE, when="predict", tunable=FALSE)),
-    properties=c("twoclass", "numerics", "missings"))
-noiseClassif$fix.factors.prediction = TRUE
 
-trainLearner.noiseClassif = function(.learner, .task, .subset, .weights=NULL, ...) {
-  list()
-}
-predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs=FALSE,
-    int, intv, num, numv, log, logv, disc1, disc1v, disc2, disc2v, disc3, disc3v, disc4, disc4v, ...) {
-  expect_numeric(int, len=1, any.missing=FALSE)
-  expect_numeric(intv, len=3, any.missing=FALSE)
-  expect_numeric(num, len=1, any.missing=FALSE)
-  expect_numeric(numv, len=3, any.missing=FALSE)
-  expect_logical(log, len=1, any.missing=FALSE)
-  expect_logical(logv, len=3, any.missing=FALSE)
-  expect_character(disc1, len=1, any.missing=FALSE)
-  expect_list(disc1v, types="character", any.missing=FALSE, len=3)
-  expect_logical(disc2, len=1, any.missing=FALSE)
-  expect_list(disc2v, types="logical", any.missing=FALSE, len=3)
-  expect_numeric(disc3, len=1, any.missing=FALSE)
-  expect_list(disc3v, types="numeric", any.missing=FALSE, len=3)
-  assert(!identical(disc4, FALSE))
-  bar = mean(c(int > 0, intv[1] + intv[2] + intv[3] > 0,
-      num > 0, mean(numv), log == TRUE, logv[1] && logv[2] || logv[3],
-      disc1 == "a", disc1v[[1]] == disc1v[[2]], disc2 == TRUE,
-      disc2v[[1]] && disc2v[[2]], disc3 == 3, disc3v[[1]] * disc3v[[2]] > 10))
-  if (testReqs) {
-    moreArgs = list(...)
-    oftenEval = eval(noiseClassif$par.set$pars$often$requires)
-    seldomEval = eval(noiseClassif$par.set$pars$seldom$requires)
-    expect_identical(oftenEval, "often" %in% names(moreArgs))
-    expect_identical(seldomEval, "seldom" %in% names(moreArgs))
-    if ("seldom" %in% names(moreArgs)) {
-      cat("seldom\n")
-    }
-  }
-  factor(.model$factor.levels[[1]][1 + (runif(nrow(.newdata)) > bar)])
-}
-
-trivialParams = list(
-    sp("int", "int", c(-5, 5)),
-    sp("intv", "int", c(-5, 5), dim=3),
-    sp("num", "real", c(-5, 5)),
-    sp("numv", "real", c(-5, 5), dim=3),
-    sp("log", "bool"),
-    sp("logv", "bool", dim=3),
-    sp("disc1", "cat", c("a", "b", "c")),
-    sp("disc1v", "cat", c("a", "b", "c"), dim=3),
-    sp("disc2", "cat", c("TRUE", "FALSE")),
-    sp("disc2v", "cat", c(TRUE, FALSE), dim=3),
-    sp("disc3", "cat", c(3, 10)),
-    sp("disc3v", "cat", c(3, 10), dim=3),
-    sp("disc4", "cat", c(3, "TRUE", "FALSE", "li", "fun")),
-    sp("disc4v", "cat", c(3, "TRUE", "FALSE", "li"), dim=3))
-
-
-
-noiseCL = autolearner(noiseClassif, c(trivialParams, list(
-    sp("often", "def", FALSE, req=quote(1==1)),
-    sp("seldom", "def", FALSE, req=quote(1==1)),
-    sp("testReqs", "def", FALSE))))
-
-reqsCL = autolearner(noiseClassif, c(trivialParams, list(
-    sp("often", "bool", req=getParamSet(noiseClassif)$pars$often$requires),
-    sp("seldom", "bool", req=getParamSet(noiseClassif)$pars$seldom$requires),
-    sp("testReqs", "fix", TRUE))))
 
 
 l <- buildLearners(list(noiseCL), pid.task)
@@ -377,14 +274,21 @@ predict(tl, pid.task)
 
 aobj = automlr(pid.task, searchspace=list(noiseCL), backend="random")
 
-aobj = automlr(pid.task, searchspace=list(reqsCL), backend="irace")
+aobj = automlr(pid.task, searchspace=list(reqsCL), backend="mbo")
 
 aobj = automlr(pid.task, searchspace=list(noiseCL), backend="mbo")
 debugonce(irace::irace)
-aobj2 = automlr(aobj, budget=c(evals=400))
-aobj3 = automlr(aobj2, budget=c(evals=600))
 
+devtools::load_all("..")
+
+aobj2 = automlr(aobj, budget=c(evals=10))
+aobj3 = automlr(aobj2, budget=c(evals=200))
+aobj3 = automlr(aobj3, budget=c(evals=30))
+
+aobj2$spent
 aobj3$spent
+
+debugonce(mlrMBO:::infillOptFocus)
 
 
 sum(getOptPathCol(amfinish(aobj2)$opt.path, 'exec.time'))
@@ -443,12 +347,12 @@ plot(as.data.frame(op)[oop, 'dob'])
 
 convertParamSetToIrace(makeParamSet(makeIntegerParam("C1", lower=0, upper=3), makeIntegerVectorParam("C", len=3, lower=0, upper=3)))
 
-devtools::load_all("..")
+
 options(error=dump.frames)
 
 
 ss = automlr:::iraceRequirements(l$searchspace)
-
+debugonce(infillOptFocus)
 
 
 ss$pars[[13]]$requires
