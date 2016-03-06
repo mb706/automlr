@@ -81,7 +81,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars, finalSubstitutions)
   staticParams = substituteParamList(staticParams, substitutions)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
-  staticParams[extractSubList(staticParams, "id") %in% shadowparams] = NULL
+  # shadowparams are supposed to be only visible on the outside. automlr.wrappersetup is handled separately.
+  staticParams[extractSubList(staticParams, "id") %in% c("automlr.wrappersetup", shadowparams)] = NULL
 
   
   allNames = getParamIds(completeSearchSpace)
@@ -164,6 +165,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef, canHand
   if (length(getHyperPars(modelmultiplexer)) > 0) {
     modelmultiplexer = removeHyperPars(modelmultiplexer, names(getHyperPars(modelmultiplexer)))
   }
+  
+  
   learner$learner = modelmultiplexer
   learner$staticParams = staticParams
   learner$searchspace = completeSearchSpace
