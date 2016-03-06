@@ -1,4 +1,5 @@
 
+mboSaveMode = TRUE  # reduce types of parameter set to simple types to avoid mlrMBO bugs
 
 amaddprior.ammbo = function(env, prior) {
   NULL
@@ -29,11 +30,19 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   }
   
   objectiveFun = function(x) {
-    l = setHyperPars(learner, par.vals=complicateParams(removeMissingValues(x), learner$searchspace))
+    x = removeMissingValues(x)
+    if (mboSaveMode) {
+      x = complicateParams(x, learner$searchspace)
+    }
+    l = setHyperPars(learner, par.vals=x)
     resample(l, task, resDesc, list(measure), show.info=FALSE)$aggr
   }
   
-  simpleParset = simplifyParams(learner$searchspace)
+  if (mboSaveMode) {
+    usedParset = simplifyParams(mboRequirements(learner$searchspace))
+  } else {
+    usedParset = learner$searchspace
+  }
   resDesc = makeResampleDesc("Holdout")
   objective = smoof::makeSingleObjectiveFunction(
       name="automlr learner optimization",
@@ -42,7 +51,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
       vectorized=FALSE,
       noisy=TRUE,
       minimize=measure$minimize,
-      par.set=simpleParset,
+      par.set=usedParset,
       fn=objectiveFun)
 
   control = mlrMBO::makeMBOControl()
@@ -55,7 +64,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
             }
           }))
   
-  mboLearner = mlrMBO:::checkLearner(NULL, simpleParset, control)
+  mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
   mboLearner$config = list(on.learner.error="stop", on.learner.warning="warn", show.learner.output=TRUE)
   mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor="distinct", ppa.impute.numeric="median")
   
@@ -73,7 +82,7 @@ amresult.ammbo = function(env) {
   mboResult = mlrMBO:::mboFinalize2(env$opt.state)
   
   list(opt.point=removeMissingValues(mboResult$x),
-      opt.value=mboResult$y,
+      opt.val=mboResult$y,
       opt.path=mboResult$opt.path,
       result=mboResult)
 }
@@ -88,9 +97,9 @@ amoptimize.ammbo = function(env, stepbudget) {
   env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
 
   spent = spentBudget(env$opt.state, zero)
-  zero$zeroWalltime = spent["walltime"]
-  zero$zeroModeltime = spent["modeltime"]
-  zero$zeroEvals = spent["evals"]
+  zero$zeroWalltime = zero$zeroWalltime + spent["walltime"]
+  zero$zeroModeltime = zero$zeroModeltime + spent["modeltime"]
+  zero$zeroEvals = zero$zeroEvals + spent["evals"]
 
   spent
 }
@@ -147,52 +156,25 @@ complicateParams = function(params, origparset) {
 
 # adapt requirements to parameter simplification we are doing above.
 mboRequirements = function(searchspace) {
-  # TODO
   replacements = list()
   for (param in searchspace$pars) {
-    if (param$type %in% c("discrete", "discretevector")) {
-      if (param$type == "discrete" && all(sapply(param$values, test_character, any.missing=FALSE))) {
-        # irace handles character discrete vectors well, so go right through
-        next
-      }
-      assertList(param$values, names="named")
-      fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
-      if (param$type == "discrete") {
-        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject=fullObject, index=asQuoted(param$id)))
-      } else { # discretevector
-        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
-          stopf("Parameter '%s' is a vector param with undefined length'", param$id)
-        }
-        paramvec = asQuoted(sprintf("c(%s)", paste0(param$id, seq_len(param$len), collapse=", ")))
-        replacements[[param$id]] = substitute(fullObject[index], list(fullObject=fullObject, index=paramvec))
-      }
-    } else {
-      replacePattern = switch(param$type,
-          numeric=NULL,
-          numericvector="c(%s)",
-          integer="as.integer(%s)",
-          integervector="as.integer(c(%s))",
-          logical="(%s == TRUE)",
-          logicalvector="(c(%s) == TRUE)",
-          # the following code should not be reachable as of yet
-          charactervector="c(%s)", # since we don't generate character vectors
-          if (param$type %nin% c("function", "untyped")) { # ditto, hopefully
-            stopf("Unknown type '%s' of parameter '%s'.", param$type, param$id)
-          })
-      if (is.null(replacePattern)) {
-        # nothing to do
-        next
-      }
-      if (param$type %in% c("numericvector", "integervector", "logicalvector", "charactervector")) {
-        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
-          stopf("Parameter '%s' is a vector param with undefined length'", param$id)
-        }
-        replaceStr = sprintf(replacePattern, paste0(param$id, seq_len(param$len), collapse=", "))
-      } else {
-        replaceStr = sprintf(replacePattern, param$id)
-      }
-      replacements[[param$id]] = asQuoted(replaceStr)
+    if (param$type %nin% c("discrete", "discretevector", "logical", "logicalvector")) {
+      next
     }
+    fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
+    substituendum =  list(fullObject=fullObject, index=asQuoted(param$id))
+    if (param$type %in% c("discretevector")) {
+      # index is a list -- we turn it into a vector and index into fullObject to get a list
+      substituens = quote(fullObject[unlist(index)])
+    } else if (param$type == "logicalvector") {
+      # index is also a list because to mlrMBO, logicalvector looks like discretevector. however
+      # unlike for 'discretevector', we want to get a logical vector out of this.
+      substituens = quote(unlist(fullObject[unlist(index)]))
+    } else {  # param$type %in% c("locical", "discrete")
+      # index is a single element, and we want to get a single element.
+      substituens = quote(fullObject[[index]])
+    }
+    replacements[[param$id]] = do.call(substitute, list(substituens, substituendum))
   }
   for (param in names(searchspace$pars)) {
     req = searchspace$pars[[param]]$requires
