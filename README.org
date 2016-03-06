@@ -45,23 +45,27 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
-  - [ ] differentiate expensive tests from fast tests
-  - [ ] 100% test coverage
+  - [ ] event handling
+    - [ ] catch Ctrl-C and handle gracefully
+    - [ ] maximum walltime overrun
+    - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
+    - [ ] nicer printing
+  - [ ] searchspace
+    - [ ] add metalearner wrappers
+    - [ ] respect parameter equality IDs
+    - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
+  - [ ] tests
+    - [ ] differentiate expensive tests from fast tests
+    - [ ] 100% test coverage
     - [ ] tests for preprocessing
     - [ ] test for all possible wrong arguments
     - [ ] other things?
-  - [ ] write a nicer readme **selfconscious**
-  - [ ] add metawrappers
-  - [ ] respect parameter equality IDs
-  - [ ] catch Ctrl-C and handle gracefully
-  - [ ] maximum walltime overrun
-  - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
-  - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
   - [ ] simultaneous multiple task optimization
-  - [ ] nicer printing
+  - [ ] write a nicer readme **selfconscious**
 - [ ] release 0.3
   - [ ] regression learners
   - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
+  - [ ] use seeds in learners that use external RNGs
 - [ ] release 0.4
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs)

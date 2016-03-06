@@ -53,8 +53,11 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
       minimize=measure$minimize,
       par.set=usedParset,
       fn=objectiveFun)
+  
+  imputeval = generateRealisticImputeVal(measure, learner, task)
+  imputefun = function(x, y, opt.path) imputeval
 
-  control = mlrMBO::makeMBOControl()
+  control = mlrMBO::makeMBOControl(impute.y.fun=imputefun)
   control = mlrMBO::setMBOControlInfill(control, opt="focussearch", opt.focussearch.points = 1000)
   control = mlrMBO::setMBOControlTermination(control, iters=NULL, more.stop.conds=list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
@@ -63,6 +66,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
               list(term=FALSE, message=NA_character_, code="iter")
             }
           }))
+  
+
   
   mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
   mboLearner$config = list(on.learner.error="stop", on.learner.warning="warn", show.learner.output=TRUE)
