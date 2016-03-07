@@ -108,7 +108,7 @@ logFunQuiet = function(learner, task, resampling, measures, par.set, control, op
 
 # copied from mlr helpers.R
 perfsToString = function(y) {
-  paste(paste(names(y), "=", formatC(y, digits = 3L), sep = ""), collapse = ",")
+  paste(paste(names(y), " = ", formatC(y, digits = 3L), sep = ""), collapse = ",")
 }
 
 extractSubList = function(xs, element, element.value, simplify = TRUE, use.names = TRUE) {
@@ -122,7 +122,7 @@ extractSubList = function(xs, element, element.value, simplify = TRUE, use.names
 checkBudgetParam = function(budget) {
   if (!identical(budget, 0) && !identical(budget, 0L)) {
     assertNamed(budget)
-    assertNumeric(budget, lower=0, min.len=1, max.len=4)
+    assertNumeric(budget, lower = 0, min.len = 1, max.len = 4)
     budgetNamesOk = names(budget) %in% c("walltime", "cputime", "evals", "modeltime")
     assert(all(budgetNamesOk))
   }
@@ -134,7 +134,7 @@ amlrTransformName = function(name) {
 
 generateRealisticImputeVal = function(measure, learner, task) {
   naked = dropFeatures(task, getTaskFeatureNames(task))
-  bootstrapB632(learner, naked, iter=100, show.info=FALSE)$aggr * ifelse(measure$minimize, 1 , -1)  # ... because convertYForTuner is retarded
+  bootstrapB632(learner, naked, iter = 100, show.info = FALSE)$aggr * ifelse(measure$minimize, 1 , -1)  # ... because convertYForTuner is retarded
 }
 
 deExpression = function(language) {  # take a language object (call or expression), turn it into a call
@@ -147,5 +147,5 @@ deExpression = function(language) {  # take a language object (call or expressio
   if (is.call(language)) {
     return(language)
   }
-  substitute(eval(x), list(x=language))
+  substitute(eval(x), list(x = language))
 }

@@ -52,7 +52,7 @@ buildLearners = function(searchspace, task) {
     stop("Tasks with weights are currently not supported.")
   }
   
-  info.env = new.env(parent=baseenv())
+  info.env = new.env(parent = baseenv())
   info.env$info = taskdesc
   idRef = list()
   # short reference of important features to watch:
@@ -92,7 +92,7 @@ buildLearners = function(searchspace, task) {
   wrapperList = list()
   handlerList = list()
   for (w in wrappers) {
-    w$learner$searchspace = makeParamSet(params=lapply(w$searchspace, createParameter, info.env=info.env, learnerid=w$learner$name, forWrapper=TRUE))
+    w$learner$searchspace = makeParamSet(params = lapply(w$searchspace, createParameter, info.env = info.env, learnerid = w$learner$name, forWrapper = TRUE))
     wrapperList[[w$learner$name]] = w$learner
     wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
     if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
@@ -173,7 +173,7 @@ checkParamIds = function(idRef) {
         if (!identical(prop1, prop2)) {
           stopf("Prameter '%s' of learner '%s' has the same id '%s' as param '%s' of learner '%s', but their '%s' property do not match. ('%s' vs. '%s')",
               protopar$id, idRef[[parid]][[1]]$learner$id, parid, otherpar$param$id, otherpar$learner$id, property,
-              if (is.null(prop1)) "NULL" else paste(prop1, collapse=", "), if (is.null(prop2)) "NULL" else paste(prop2, collapse=", "))
+              if (is.null(prop1)) "NULL" else paste(prop1, collapse = ", "), if (is.null(prop2)) "NULL" else paste(prop2, collapse = ", "))
         }
       }
     }
@@ -183,12 +183,12 @@ checkParamIds = function(idRef) {
 buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
   lp = getParamSet(l)
   lpids = getParamIds(lp)
-  lptypes = getParamTypes(lp, use.names=TRUE)
+  lptypes = getParamTypes(lp, use.names = TRUE)
   allParams = extractSubList(sslist, "name")
   untouchedParams = setdiff(lpids, allParams)
   if (length(untouchedParams)) {
     warningf("Learner '%s' has parameters %s that are not mentioned in search space.",
-        l$id, paste(untouchedParams, collapse=", "))
+        l$id, paste(untouchedParams, collapse = ", "))
   }
   tuneSearchSpace = list()
   canNotBeAMLRFIX = character(0)
@@ -233,10 +233,10 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as 'inject' in search space.",
             param$name, l$id)
       }
-      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid=l$id, do.trafo=FALSE, facingOutside=FALSE)))
+      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env, learnerid = l$id, do.trafo = FALSE, facingOutside = FALSE)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
-      lptypes = getParamTypes(lp, use.names=TRUE)  # recreate lptypes here, since it may have changed 
+      lptypes = getParamTypes(lp, use.names = TRUE)  # recreate lptypes here, since it may have changed 
     } else if (identical(param$special, "dummy")) {
       if (origParamName %in% getParamIds(getParamSet(l))) {
         stopf("Parameter '%s' is present in learner '%s' but is marked as 'dummy' in search space.",
@@ -259,7 +259,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
           assert(allfeasible(lp, param$values, origParamName, param$dim))
         } else {
           stopf("Parameter '%s' as listed in search space has infeasible bounds '%s' for learner '%s'.",
-            param$name, paste(param$values, collapse="', '"), l$id)
+            param$name, paste(param$values, collapse = "', '"), l$id)
         }
       }
       partype = lptypes[[origParamName]]
@@ -317,7 +317,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         }
   
         names(assignment) = origParamName
-        l = setHyperPars(l, par.vals=assignment)
+        l = setHyperPars(l, par.vals = assignment)
       }
     } else {
       if (origParamName %in% names(getHyperPars(l))) {  # make sure this is not set at a default.
@@ -326,9 +326,9 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         l = removeHyperPars(l, param$name)
       }
       if (param$type != "def") {  # variable parameter
-        newparam = createParameter(param, info.env, learnerid=l$id)
+        newparam = createParameter(param, info.env, learnerid = l$id)
         if (!is.null(param$id)) {
-          idRef[[param$id]] = c(idRef[[param$id]], list(list(learner=l, param=newparam)))
+          idRef[[param$id]] = c(idRef[[param$id]], list(list(learner = l, param = newparam)))
         }
 
         newparam$amlr.isNotCat = !is.null(param$amlr.isNotCat)
@@ -336,14 +336,14 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       }
     }
   }
-  list(tss=makeParamSet(params=tuneSearchSpace), l=l, idRef=idRef, nondefParamNames = unique(nondefParamNames))
+  list(tss = makeParamSet(params = tuneSearchSpace), l = l, idRef = idRef, nondefParamNames = unique(nondefParamNames))
 }
 
 allfeasible = function(ps, totest, name, dimension) {
   testlist = list(0)
   names(testlist) = name
   for (t in totest) {
-    if (getParamTypes(ps, use.names=TRUE)[[name]] == "discretevector") {
+    if (getParamTypes(ps, use.names = TRUE)[[name]] == "discretevector") {
       t = list(t)
     }
     testlist[[1]] = if (dimension > 1) rep(t, dimension) else t
@@ -354,7 +354,7 @@ allfeasible = function(ps, totest, name, dimension) {
   TRUE
 }
 
-createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOutside=TRUE, forWrapper=FALSE) {
+createParameter = function(param, info.env, learnerid, do.trafo = TRUE, facingOutside = TRUE, forWrapper = FALSE) {
   # facingOutside == FALSE means
   # 1) create LearnerParam instead of Param
   # 2) remove .AMLRFIX# suffix
@@ -406,57 +406,57 @@ createParameter = function(param, info.env, learnerid, do.trafo=TRUE, facingOuts
   if (param$dim > 1) {
     if (!facingOutside) {
       constructor = switch(surrogatetype,
-          real=makeNumericVectorLearnerParam,
-          int=makeIntegerVectorLearnerParam,
-          cat=makeDiscreteVectorLearnerParam,
-          bool=makeLogicalVectorLearnerParam,
-          fix=makeDiscreteVectorLearnerParam,
+          real = makeNumericVectorLearnerParam,
+          int = makeIntegerVectorLearnerParam,
+          cat = makeDiscreteVectorLearnerParam,
+          bool = makeLogicalVectorLearnerParam,
+          fix = makeDiscreteVectorLearnerParam,
           NULL)
     } else {
       constructor = switch(surrogatetype,
-          real=makeNumericVectorParam,
-          int=makeIntegerVectorParam,
-          cat=makeDiscreteVectorParam,
-          bool=makeLogicalVectorParam,
-          fix=makeDiscreteVectorParam,
+          real = makeNumericVectorParam,
+          int = makeIntegerVectorParam,
+          cat = makeDiscreteVectorParam,
+          bool = makeLogicalVectorParam,
+          fix = makeDiscreteVectorParam,
           NULL)
     }
-    paramlist = list(id=param$name, len=param$dim, requires=param$req)
+    paramlist = list(id = param$name, len = param$dim, requires = param$req)
   } else {
     if (!facingOutside) {
       constructor = switch(surrogatetype,
-          real=makeNumericLearnerParam,
-          int=makeIntegerLearnerParam,
-          cat=makeDiscreteLearnerParam,
-          bool=makeLogicalLearnerParam,
-          fix=makeDiscreteLearnerParam,
+          real = makeNumericLearnerParam,
+          int = makeIntegerLearnerParam,
+          cat = makeDiscreteLearnerParam,
+          bool = makeLogicalLearnerParam,
+          fix = makeDiscreteLearnerParam,
           NULL)
     } else {
       constructor = switch(surrogatetype,
-              real=makeNumericParam,
-              int=makeIntegerParam,
-              cat=makeDiscreteParam,
-              bool=makeLogicalParam,
-              fix=makeDiscreteParam,
+              real = makeNumericParam,
+              int = makeIntegerParam,
+              cat = makeDiscreteParam,
+              bool = makeLogicalParam,
+              fix = makeDiscreteParam,
               NULL)
     }
-    paramlist = list(id=param$name, requires=param$req)
+    paramlist = list(id = param$name, requires = param$req)
   }
   paramlist = c(paramlist, switch(surrogatetype,
-      int=list(lower=pmin, upper=pmax, trafo=ptrafo),
-      real=list(lower=pmin, upper=pmax, trafo=ptrafo),
-      cat=list(values={x = param$values; if (!test_named(x)) names(x) = param$values; x}),
-      bool=list(),
-      fix=list(values={x = param$values; if (!test_named(x)) names(x) = param$values; x}),
-      def=stopf("Parameter '%s' for learner '%s' marked as 'inject' must not have type 'def'.",
+      int = list(lower = pmin, upper = pmax, trafo = ptrafo),
+      real = list(lower = pmin, upper = pmax, trafo = ptrafo),
+      cat = list(values = {x = param$values; if (!test_named(x)) names(x) = param$values; x}),
+      bool = list(),
+      fix = list(values = {x = param$values; if (!test_named(x)) names(x) = param$values; x}),
+      def = stopf("Parameter '%s' for learner '%s' marked as 'inject' must not have type 'def'.",
           param$name, learnerid),
       stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type, param$name, learnerid)))
   if (!facingOutside) {
     paramlist$trafo = NULL
   }
-  pobject = do.call(constructor, paramlist, quote=TRUE)
+  pobject = do.call(constructor, paramlist, quote = TRUE)
   if (!is.null(pobject$trafo)) {
-    environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names=TRUE), parent=info.env)
+    environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo), all.names = TRUE), parent = info.env)
     if (identical(param$trafo, "exp")) {
       pobject$amlr.origValues = param$values
     }
@@ -485,15 +485,15 @@ createTrafo = function(min, max, isint) {
      min = 1
    }
     ratio = sqrt((min+1) / min)
-    sequence = unique(c(addzero, round(min * ratio ^ (seq(from=0, to=floor(log(max/min, base=ratio))))), max))
-    return(list(trafo=function(x) ifelse(is.na(x), NA, sequence[x]), newmin=1, newmax=length(sequence)))
+    sequence = unique(c(addzero, round(min * ratio ^ (seq(from = 0, to = floor(log(max/min, base = ratio))))), max))
+    return(list(trafo = function(x) ifelse(is.na(x), NA, sequence[x]), newmin = 1, newmax = length(sequence)))
   } else {
     #  !!! We have to evaluate 'min' and 'max' here, otherwise they stay in the environment as 'promise' objects
     # and weird stuff happens! 
     assert(min > 0)
     assert(max > 0)
 
-    return(list(trafo=function(x) min * (max / min)^x, newmin=0, newmax=1))
+    return(list(trafo = function(x) min * (max / min)^x, newmin = 0, newmax = 1))
   }
 }
 
@@ -502,20 +502,20 @@ createTrafo = function(min, max, isint) {
 #' @param multiplexer the model multiplexer to use to create the ParamSet
 #' @param modelParsets the list of param sets that are used to create the mmps.
 makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets, origParamNames) {
-  searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets, .check=FALSE))
+  searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer), modelParsets, .check = FALSE))
   # now we need to deal with the bug that makeModelMultiplexer overrides requirements
   for (modeliter in seq_along(modelParsets)) {
     origpars = modelParsets[[modeliter]]$pars
     modelid = names(modelParsets)[modeliter]
     oldnames = origParamNames[[modeliter]]  # the names as in the original model
-    newnames = paste(modelid, oldnames, sep='.')  # the name that was assigned in mm$searchspace
-    substitution = lapply(newnames, asQuoted)  # substitution is a list(oldname=quote(newname))
+    newnames = paste(modelid, oldnames, sep = '.')  # the name that was assigned in mm$searchspace
+    substitution = lapply(newnames, asQuoted)  # substitution is a list(oldname = quote(newname))
     names(substitution) = oldnames
     for (paramiter in seq_along(origpars)) {  # iterate over the parameters in each ParamSet
       cp = origpars[[paramiter]]
       cpname = names(origpars)[paramiter]
       cprequires = cp$requires
-      newname = paste(modelid, cpname, sep='.') # the name fo the current Param within mm$searchspace
+      newname = paste(modelid, cpname, sep = '.') # the name fo the current Param within mm$searchspace
       newrequires = searchspace$pars[[newname]]$requires
       searchspace$pars[[newname]]$amlr.learnerName = modelid
       if (is.null(cprequires)) {
@@ -523,7 +523,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets, origParamNa
         next
       }
       cprequires = replaceRequires(cprequires, substitution)
-      newrequires = substitute(a && b, list(a=newrequires, b=deExpression(cprequires)))
+      newrequires = substitute(a && b, list(a = newrequires, b = deExpression(cprequires)))
       # at this position, newrequires has the form
       # (new requires) && (old requires)
       # where the use of short-cirquiting && should solve any problems that we might get when querying isFeasible.
@@ -542,18 +542,18 @@ replaceRequires = function(cprequires, substitution) {
   # manually substitute all function calls with different names.
   #
   # the width.cutoff may be a problem? I wouldn't assume so if deparse keeps function name and opening parenthesis on the same line.
-  parsed = deparse(as.expression(cprequires), control=c("keepInteger", "keepNA"), width.cutoff=500)
+  parsed = deparse(as.expression(cprequires), control = c("keepInteger", "keepNA"), width.cutoff = 500)
   funcallmatch = "(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)((?:[^`\\\\]|\\\\.)+`))(\\()"
   
   parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", parsed)
-  #the following would be dumb: parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1], fixed=TRUE) # NO!
-  cprequires = asQuoted(paste(parsed, collapse="\n"))
+  #the following would be dumb: parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1], fixed = TRUE) # NO!
+  cprequires = asQuoted(paste(parsed, collapse = "\n"))
   # the following line is a bit of R magic. Use do.call, so that cprequires, which is a
   # 'quote' object, is expanded to its actual content. The 'substitute' call will change all
   # names of the old parameters to the new parameters.
   cprequires = do.call(substitute, list(cprequires, substitution))
   
   funcallmatchReverse = "(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))(\\()"
-  parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", deparse(cprequires, control=c("keepInteger", "keepNA"), width.cutoff=500))
-  eval(asQuoted(paste(parsed, collapse="\n")))
+  parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", deparse(cprequires, control = c("keepInteger", "keepNA"), width.cutoff = 500))
+  eval(asQuoted(paste(parsed, collapse = "\n")))
 }

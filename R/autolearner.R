@@ -11,18 +11,18 @@
 #' Must be one of \code{requiredwrapper} (e.g. feature selection), \code{learner}, \code{wrapper}
 #' (is optionally combined with another learner, e.g. bagging)
 #' @export
-autolearner = function(learner, searchspace=list(), stacktype="learner") {
+autolearner = function(learner, searchspace = list(), stacktype = "learner") {
   
   assertChoice(stacktype, c("learner", "wrapper", "requiredwrapper"))
   names = extractSubList(searchspace, "name")
   if (any(duplicated(names))) {
-    stopf("Duplicated names %s for learner '%s'", paste(unique(names[duplicated(names)]), collapse=", "),
+    stopf("Duplicated names %s for learner '%s'", paste(unique(names[duplicated(names)]), collapse = ", "),
         if(is.character(learner)) learner else coalesce(learner$id, learner$name)) 
   }
   makeS3Obj("Autolearner",
-            learner=learner,
-            searchspace=searchspace,
-            stacktype=stacktype)
+            learner = learner,
+            searchspace = searchspace,
+            stacktype = stacktype)
 }
 
 #' Create a wrapper object for \code{\link{autolearner}}.
@@ -43,9 +43,9 @@ autolearner = function(learner, searchspace=list(), stacktype="learner") {
 #' @export
 autoWrapper = function(name, constructor, conversion) {
   assertString(name)
-  assert(identical(grep("$", name, fixed=TRUE), integer(0)))
+  assert(identical(grep("$", name, fixed = TRUE), integer(0)))
   assertFunction(constructor)
-  assertFunction(conversion, nargs=1)
+  assertFunction(conversion, nargs = 1)
   
   input = c("factors", "ordered", "numerics", "missings")
   output = c(input, "")
@@ -53,7 +53,7 @@ autoWrapper = function(name, constructor, conversion) {
     assert(all(conversion(inp) %in% output))
   }
   
-  list(name=name, constructor=constructor, conversion=conversion)
+  list(name = name, constructor = constructor, conversion = conversion)
 }
 
 #' @export
@@ -84,14 +84,14 @@ print.Autolearner = function(x, ...) {
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
 #' @export
-sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, special=NULL, req=NULL, dim=1) {
+sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL, special = NULL, req = NULL, dim = 1) {
   assertChoice(type, c("real", "int", "cat", "bool", "fix", "def"))
 
   assertString(name)
   assert(nchar(name) > 0)
 
   if (type %in% c("real", "int")) {
-    assertNumeric(values, any.missing=FALSE, len=2)
+    assertNumeric(values, any.missing = FALSE, len = 2)
     assert(values[2] >= values[1])
     if (type == "int") {
       assert(all(as.integer(values) == values))
@@ -99,10 +99,10 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, special=NULL,
     }
   } else if (type %in% c("fix", "def")) {
     if (!is.null(values)) {
-      assertVector(values, strict=TRUE, len=1)
+      assertVector(values, strict = TRUE, len = 1)
     }
   } else if (type == "cat"){
-    assertVector(values, strict=TRUE, min.len=1)
+    assertVector(values, strict = TRUE, min.len = 1)
   } else {  # type == "bool"
     assertNull(values)
   }
@@ -111,7 +111,7 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, special=NULL,
     if (identical(trafo, "exp")) { 
       assert(type %in% c("real", "int"))
     } else {
-      assertFunction(trafo, nargs=1)
+      assertFunction(trafo, nargs = 1)
     }
   }
 
@@ -132,10 +132,10 @@ sp = function(name, type="real", values=NULL, trafo=NULL, id=NULL, special=NULL,
   assert(all(as.integer(dim) == dim))
   dim = as.integer(dim)
 
-  assertInteger(dim, lower=1, len=1)
+  assertInteger(dim, lower = 1, len = 1)
 
-  makeS3Obj("searchparam", name=name, values=values, type=type, trafo=trafo, id=id, special=special,
-      req=req, dim=dim)
+  makeS3Obj("searchparam", name = name, values = values, type = type, trafo = trafo, id = id, special = special,
+      req = req, dim = dim)
 }
 
 makeNamedAlList = function(...) {  # make a named list, more convenient to use

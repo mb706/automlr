@@ -60,12 +60,12 @@
 #' \dontrun{
 #' library(mlr)
 #' # almost minimal invocation. Will save progress to './iris.rds'.
-#' automlr(iris.task, budget=c(evals=1000), backend="random", savefile="iris")
+#' automlr(iris.task, budget = c(evals = 1000), backend = "random", savefile = "iris")
 #' > SOME RESULT YOU GUYS
 #' 
 #' # optimize for another 1000 evaluations, loading the 'iris.rds' savefile
 #' # automatically and saving back to it during evaluation.
-#' automlr("iris", budget=c(evals=2000))
+#' automlr("iris", budget = c(evals = 2000))
 #' > MORE RESULTS, THE WORLD IS BEAUTIFUL
 #' }
 #' 
@@ -79,8 +79,8 @@ automlr = function(task, ...) {
 #' 
 #' @rdname automlr
 #' @export
-automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, prior=NULL, savefile=NULL,
-                        save.interval=default.save.interval, backend, ...) {
+automlr.Task = function(task, measure = NULL, budget = 0, searchspace = autolearners, prior = NULL, savefile = NULL,
+                        save.interval = default.save.interval, backend, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
   if (is.null(measure)) {
@@ -89,36 +89,36 @@ automlr.Task = function(task, measure=NULL, budget=0, searchspace=autolearners, 
     assertClass(measure, "Measure")
   }
   checkBudgetParam(budget)
-  assertList(searchspace, types="Autolearner", min.len=1)
+  assertList(searchspace, types = "Autolearner", min.len = 1)
   assert(any(extractSubList(searchspace, "stacktype") == "learner"))  # need at least one learner
   if (!is.null(savefile)) {
     assertString(savefile)
-    assertNumber(save.interval, lower=0)
+    assertNumber(save.interval, lower = 0)
   }
   assert(identical(list(...), list()))
   automlr(makeS3Obj(c("AMState", "AMObject"),
-                    task=task,
-                    measure=coalesce(measure, getDefaultMeasure(task)),
-                    budget=budget,
-                    spent=c(walltime=0, cputime=0, modeltime=0, evals=0),
-                    searchspace=searchspace,
-                    prior=prior,
-                    backend=backend,
-                    backendprivatedata=setClasses(new.env(parent=emptyenv()), paste0("am", backend)),
-                    seed=.Random.seed,
-                    creation.time=Sys.time(),
-                    finish.time=NULL,
-                    previous.versions=list(),
-                    isInitialized=FALSE),
-          savefile=savefile, save.interval=save.interval)  # a delegated problem is a solved problem.
+                    task = task,
+                    measure = coalesce(measure, getDefaultMeasure(task)),
+                    budget = budget,
+                    spent = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0),
+                    searchspace = searchspace,
+                    prior = prior,
+                    backend = backend,
+                    backendprivatedata = setClasses(new.env(parent = emptyenv()), paste0("am", backend)),
+                    seed = .Random.seed,
+                    creation.time = Sys.time(),
+                    finish.time = NULL,
+                    previous.versions = list(),
+                    isInitialized = FALSE),
+          savefile = savefile, save.interval = save.interval)  # a delegated problem is a solved problem.
 }
 
 #' Continue automlr search from an \code{.rds} savefile, given as a character.
 #' 
 #' @rdname automlr
 #' @export
-automlr.character = function(task, budget=NULL, prior=NULL, savefile=task,
-                             save.interval=default.save.interval, new.seed=FALSE, ...) {
+automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
+                             save.interval = default.save.interval, new.seed = FALSE, ...) {
   assertString(task)
   truefilename = gsub('(\\.rds|)$', '.rds', task)
   if (!is.null(budget)) {
@@ -126,31 +126,31 @@ automlr.character = function(task, budget=NULL, prior=NULL, savefile=task,
   }
   if (!is.null(savefile)) {
     assertString(savefile)
-    assertNumber(save.interval, lower=0)
+    assertNumber(save.interval, lower = 0)
   }
   assertFlag(new.seed)
   assert(identical(list(...), list()))
   # yes, one could load an RDS file that contains a character(1) referring to another RDS file...
   automlr(readRDS(truefilename),
-          budget=budget,
-          prior=prior,
-          savefile=savefile,
-          save.interval=save.interval,
-          new.seed=new.seed)
+          budget = budget,
+          prior = prior,
+          savefile = savefile,
+          save.interval = save.interval,
+          new.seed = new.seed)
 }
 
 #' Continue automlr search from saved \code{AMState} object.
 #' 
 #' @rdname automlr
 #' @export
-automlr.AMState = function(task, budget=NULL, prior=NULL, savefile=NULL,
-                           save.interval=default.save.interval, new.seed=FALSE, ...) {
+automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
+                           save.interval = default.save.interval, new.seed = FALSE, ...) {
   if (!is.null(budget)) {
     checkBudgetParam(budget)
   }
   if (!is.null(savefile)) {
     assertString(savefile)
-    assertNumber(save.interval, lower=0)
+    assertNumber(save.interval, lower = 0)
   }
   assertFlag(new.seed)
   assert(identical(list(...), list()))
@@ -199,7 +199,7 @@ amfinish = function(amstate) {
 #' @param ... Ellipsis
 #' @method print AMObject
 #' @export
-print.AMObject = function(x, longform=FALSE, ...) {
+print.AMObject = function(x, longform = FALSE, ...) {
   allversions = c(x$previous.versions, list(x))
   catf("automlr %s.\nBackend: %s", ifelse("AMState" %in% class(x), "optimization state", "result"), x$backend)
   if (longform) {
@@ -211,12 +211,12 @@ print.AMObject = function(x, longform=FALSE, ...) {
     if (length(allversions) > 1) {
       cat("All invocations using this object:\n")
       # the following does a few gymnastics with do.call(c, ...) to keep the POSIXct type.
-      allversionsdf = data.frame(invocation.time=do.call(c, extractSubList(allversions, "creation.time", simplify=FALSE)),
-                                 return.time=do.call(c, extractSubList(allversions, "finish.time", simplify=FALSE)))
+      allversionsdf = data.frame(invocation.time = do.call(c, extractSubList(allversions, "creation.time", simplify = FALSE)),
+                                 return.time = do.call(c, extractSubList(allversions, "finish.time", simplify = FALSE)))
       spentmatrix = t(sapply(allversions, function(v) v$spent[names(x$spent)]))
       budgetmatrix = t(sapply(allversions, function(v) v$budget[names(x$spent)]))
-      colnames(spentmatrix) = paste("sp", names(x$spent), sep=".")
-      colnames(budgetmatrix) = paste("bg", names(x$spent), sep=".")
+      colnames(spentmatrix) = paste("sp", names(x$spent), sep = ".")
+      colnames(budgetmatrix) = paste("bg", names(x$spent), sep = ".")
       print(cbind(allversionsdf, budgetmatrix, spentmatrix))
     }
     cat("*****\nMeasure:\n")

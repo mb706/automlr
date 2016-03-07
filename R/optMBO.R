@@ -34,8 +34,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
     if (mboSaveMode) {
       x = complicateParams(x, learner$searchspace)
     }
-    l = setHyperPars(learner, par.vals=x)
-    resample(l, task, resDesc, list(measure), show.info=FALSE)$aggr
+    l = setHyperPars(learner, par.vals = x)
+    resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
   }
   
   if (mboSaveMode) {
@@ -45,38 +45,38 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   }
   resDesc = makeResampleDesc("Holdout")
   objective = smoof::makeSingleObjectiveFunction(
-      name="automlr learner optimization",
-      id="automlr.objective",
-      has.simple.signature=FALSE,
-      vectorized=FALSE,
-      noisy=TRUE,
-      minimize=measure$minimize,
-      par.set=usedParset,
-      fn=objectiveFun)
+      name = "automlr learner optimization",
+      id = "automlr.objective",
+      has.simple.signature = FALSE,
+      vectorized = FALSE,
+      noisy = TRUE,
+      minimize = measure$minimize,
+      par.set = usedParset,
+      fn = objectiveFun)
   
   imputeval = generateRealisticImputeVal(measure, learner, task)
   imputefun = function(x, y, opt.path) imputeval
 
-  control = mlrMBO::makeMBOControl(impute.y.fun=imputefun)
-  control = mlrMBO::setMBOControlInfill(control, opt="focussearch", opt.focussearch.points = 1000)
-  control = mlrMBO::setMBOControlTermination(control, iters=NULL, more.stop.conds=list(function(opt.state) {
+  control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
+  control = mlrMBO::setMBOControlInfill(control, opt = "focussearch", opt.focussearch.points = 1000)
+  control = mlrMBO::setMBOControlTermination(control, iters = NULL, more.stop.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
-              list(term=TRUE, message="automlr term", code="iter")
+              list(term = TRUE, message = "automlr term", code = "iter")
             } else {
-              list(term=FALSE, message=NA_character_, code="iter")
+              list(term = FALSE, message = NA_character_, code = "iter")
             }
           }))
   
 
   
   mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
-  mboLearner$config = list(on.learner.error="stop", on.learner.warning="warn", show.learner.output=TRUE)
-  mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor="distinct", ppa.impute.numeric="median")
+  mboLearner$config = list(on.learner.error = "stop", on.learner.warning = "warn", show.learner.output = TRUE)
+  mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor = "distinct", ppa.impute.numeric = "median")
   
   myMBO = mlrMBO::mbo
-  environment(myMBO) = new.env(parent=asNamespace("mlrMBO"))
+  environment(myMBO) = new.env(parent = asNamespace("mlrMBO"))
   environment(myMBO)$mboFinalize2 = identity
-  env$opt.state = myMBO(objective, learner=mboLearner, control=control, show.info=TRUE)
+  env$opt.state = myMBO(objective, learner = mboLearner, control = control, show.info = TRUE)
   rm(myMBO)
   
   rm(prior, env)
@@ -86,10 +86,10 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
 amresult.ammbo = function(env) {
   mboResult = mlrMBO:::mboFinalize2(env$opt.state)
   
-  list(opt.point=removeMissingValues(mboResult$x),
-      opt.val=mboResult$y,
-      opt.path=mboResult$opt.path,
-      result=mboResult)
+  list(opt.point = removeMissingValues(mboResult$x),
+      opt.val = mboResult$y,
+      opt.path = mboResult$opt.path,
+      result = mboResult)
 }
 
 # now this is where the fun happens
@@ -111,7 +111,7 @@ amoptimize.ammbo = function(env, stepbudget) {
 
 spentBudget = function(opt.state, zero) {
   spent = numeric(0)
-  spent["walltime"] = as.numeric(opt.state$time.used, units="secs") - zero$zeroWalltime
+  spent["walltime"] = as.numeric(opt.state$time.used, units = "secs") - zero$zeroWalltime
   spent["cputime"] = spent["walltime"] * zero$numcpus
   spent["modeltime"] = sum(getOptPathExecTimes(opt.state$opt.path)) - zero$zeroModeltime
   spent["evals"] = getOptPathLength(opt.state$opt.path) - zero$zeroEvals
@@ -166,8 +166,8 @@ mboRequirements = function(searchspace) {
     if (param$type %nin% c("discrete", "discretevector", "logical", "logicalvector")) {
       next
     }
-    fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
-    substituendum =  list(fullObject=fullObject, index=asQuoted(param$id))
+    fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep = ""))
+    substituendum =  list(fullObject = fullObject, index = asQuoted(param$id))
     if (param$type %in% c("discretevector")) {
       # index is a list -- we turn it into a vector and index into fullObject to get a list
       substituens = quote(fullObject[unlist(index)])

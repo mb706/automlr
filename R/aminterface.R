@@ -1,7 +1,7 @@
 # the interface between frontend ('automlr()') and backend (inside the optXXX.R files)
 
-aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
-                       save.interval=default.save.interval, new.seed=FALSE, ...) {
+aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
+                       save.interval = default.save.interval, new.seed = FALSE, ...) {
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
@@ -52,7 +52,7 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   if (!new.seed) {
     if (!exists(".Random.seed", .GlobalEnv))
       set.seed(NULL)
-    assign(".Random.seed", amstate$seed, envir=.GlobalEnv)
+    assign(".Random.seed", amstate$seed, envir = .GlobalEnv)
   }
   
   ## TODO How does autoWEKA remember info about similar parameters? The answer might be 'not at all'.
@@ -74,7 +74,7 @@ aminterface = function(amstate, budget=NULL, prior=NULL, savefile=NULL,
   # reduces complexity at some marginal performance cost.
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
-    stepbudget['walltime'] = min(stepbudget['walltime'], save.interval, na.rm=TRUE)
+    stepbudget['walltime'] = min(stepbudget['walltime'], save.interval, na.rm = TRUE)
     usedbudget = amoptimize(amstate$backendprivatedata, stepbudget)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     assert(!anyNA(amstate$spent))  # this may happen if usedbudget does not contain all names that it should contain.

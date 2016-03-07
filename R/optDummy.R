@@ -51,7 +51,7 @@ amoptimize.amdummy = function(env, stepbudget) {
   print(stepbudget)
   env$evals = env$evals + 1
   env$prior = env$prior + 1
-  c(walltime=10, cputime=10, modeltime=10, evals=1)
+  c(walltime = 10, cputime = 10, modeltime = 10, evals = 1)
 }
 
 #' must return a named list which will be inserted into the result object.
@@ -64,6 +64,6 @@ amoptimize.amdummy = function(env, stepbudget) {
 #' @param env The private data of this backend.
 amresult.amdummy = function(env) {
   cat("Called 'result'\n")
-  list(opt.val=0, opt.point=removeMissingValues(sampleValue(env$learner$searchspace, trafo=TRUE)),
-      opt.path=makeOptPathDF(env$learner$searchspace, "y", env$measure$minimize))
+  list(opt.val = 0, opt.point = removeMissingValues(sampleValue(env$learner$searchspace, trafo = TRUE)),
+      opt.path = makeOptPathDF(env$learner$searchspace, "y", env$measure$minimize))
 }

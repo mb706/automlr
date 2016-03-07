@@ -55,13 +55,13 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("penalty", "cat", c("adaptive.lasso", "ao", "bridge", "enet", "fused.lasso", "genet", "icb", "lasso", "licb", "oscar", "penalreg", "ridge", "scad", "weighted.fusion")),
-            sp("lambda", "real", c(.001, 100), "exp", req=quote(penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad"))),
-            sp("gamma", "real", c(1.0001, 100), "exp", req=quote(penalty %in% c("ao", "bridge", "genet", "weighted.fusion"))),
-            sp("alpha", "real", c(.001, 100), "exp", req=quote(penalty == "genet")),
-            sp("c", "real", c(.001, 100), "exp", req=quote(penalty == "oscar")),
-            sp("a", "real", c(2, 100), "exp", req=quote(penalty == "scad")),
-            sp("lambda1", "real", c(.001, 100), "exp", req=quote(penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion"))),
-            sp("lambda2", "real", c(.001, 100), "exp", req=quote(penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion"))),
+            sp("lambda", "real", c(.001, 100), "exp", req = quote(penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad"))),
+            sp("gamma", "real", c(1.0001, 100), "exp", req = quote(penalty %in% c("ao", "bridge", "genet", "weighted.fusion"))),
+            sp("alpha", "real", c(.001, 100), "exp", req = quote(penalty == "genet")),
+            sp("c", "real", c(.001, 100), "exp", req = quote(penalty == "oscar")),
+            sp("a", "real", c(2, 100), "exp", req = quote(penalty == "scad")),
+            sp("lambda1", "real", c(.001, 100), "exp", req = quote(penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion"))),
+            sp("lambda2", "real", c(.001, 100), "exp", req = quote(penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion"))),
             sp("method", "cat", c("lqa.update2", "ForwardBoost", "GBlockBoost")),
 # ** dp
             sp("var.eps", "def", .Machine$double.eps),
@@ -82,18 +82,18 @@ autolearners = makeNamedAlList(
     autolearner("classif.lda",
         list(
 # ** vp
-            sp("method", "cat", c("moment", "mle", "mve", "t"), id="da.method"),
-            sp("nu", "real", c(2, 64), "exp", id="da.nu", req=quote(method=='t')),
-            sp("predict.method", "cat", c("plug-in", "predictive", "debiased"), id="da.pm"),
+            sp("method", "cat", c("moment", "mle", "mve", "t"), id = "da.method"),
+            sp("nu", "real", c(2, 64), "exp", id = "da.nu", req = quote(method=='t')),
+            sp("predict.method", "cat", c("plug-in", "predictive", "debiased"), id = "da.pm"),
 # ** dp
             sp("tol", "def", .0001),
             sp("CV", "def", FALSE))),
     autolearner("classif.qda",
         list(
 # ** vp
-            sp("method", "cat", c("moment", "mle", "mve", "t"), id="da.method"),
-            sp("nu", "real", c(2, 64), "exp", id="da.nu", req=quote(method=='t')),
-            sp("predict.method", "cat", c("plug-in", "predictive", "debiased"), id="da.pm"))),
+            sp("method", "cat", c("moment", "mle", "mve", "t"), id = "da.method"),
+            sp("nu", "real", c(2, 64), "exp", id = "da.nu", req = quote(method=='t')),
+            sp("predict.method", "cat", c("plug-in", "predictive", "debiased"), id = "da.pm"))),
     autolearner("classif.linDA",
         list(
 # ** dp
@@ -120,16 +120,16 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("kernel", "cat", c("rectangular", "triangular", "epanechnikov", "biweight", "triweight", "cos", "inv", "gaussian")),
-            sp("crossval", "bool", req=quote(fold > 1)),
-            sp("crossval.AMLRFIX1", "cat", c("FALSE"), req=quote(fold == 1)),
+            sp("crossval", "bool", req = quote(fold > 1)),
+            sp("crossval.AMLRFIX1", "cat", c("FALSE"), req = quote(fold == 1)),
             sp("train.fraction", "real", c(0.1, 0.9)),
             sp("fold", "int", c(1, 32), "exp"),
-            sp("K", "int", c(30, 3000), "exp", req=quote(SimAnn == TRUE && schedule == 1)),
-            sp("alpha", "real", c(1, 4), req=quote(SimAnn == TRUE && schedule == 2)),
-            sp("zero.temp", "real", c(.001, 0.1), "exp", req=quote(SimAnn == TRUE && schedule == 1)),
-            sp("halflife", "real", c(5, 1000), "exp", req=quote(SimAnn == TRUE && schedule == 1)),
-            sp("T.start", "real", c(.01, 100), "exp", req=quote(SimAnn == TRUE)),
-            sp("schedule", "cat", c(1, 2), req=quote(SimAnn == FALSE)),
+            sp("K", "int", c(30, 3000), "exp", req = quote(SimAnn == TRUE && schedule == 1)),
+            sp("alpha", "real", c(1, 4), req = quote(SimAnn == TRUE && schedule == 2)),
+            sp("zero.temp", "real", c(.001, 0.1), "exp", req = quote(SimAnn == TRUE && schedule == 1)),
+            sp("halflife", "real", c(5, 1000), "exp", req = quote(SimAnn == TRUE && schedule == 1)),
+            sp("T.start", "real", c(.01, 100), "exp", req = quote(SimAnn == TRUE)),
+            sp("schedule", "cat", c(1, 2), req = quote(SimAnn == FALSE)),
             sp("trafo", "bool"),
             sp("SimAnn", "bool"),
 # ** cp
@@ -182,17 +182,17 @@ autolearners = makeNamedAlList(
     autolearner("classif.quaDA",
         list(
 # ** vp
-            sp("do.validation", "bool", id="da.val", special="dummy"),
-            sp("validation", "cat", c("crossval"), req=quote(do.validation == TRUE)))),
+            sp("do.validation", "bool", id = "da.val", special = "dummy"),
+            sp("validation", "cat", c("crossval"), req = quote(do.validation == TRUE)))),
     autolearner("classif.geoDA",
         list(
 # ** vp
-            sp("do.validation", "bool", id="da.val", special="dummy"),
-            sp("validation", "cat", c("crossval"), req=quote(do.validation == TRUE)))),
+            sp("do.validation", "bool", id = "da.val", special = "dummy"),
+            sp("validation", "cat", c("crossval"), req = quote(do.validation == TRUE)))),
     autolearner("classif.kknn",
         list(
 # ** vp
-            sp("k", "int", c(1, 100), "exp", id="knn.k"),
+            sp("k", "int", c(1, 100), "exp", id = "knn.k"),
             sp("distance", "real", c(0.5, 4), "exp"),
             sp("kernel", "cat", c("triangular", "rectangular", "epanechnikov", "biweight", "triweight", "cos", "inv", "gaussian")),
 # ** cp
@@ -200,7 +200,7 @@ autolearners = makeNamedAlList(
     autolearner("classif.knn",
         list(
 # ** vp
-            sp("k", "int", c(1, 100), "exp", id="knn.k"),
+            sp("k", "int", c(1, 100), "exp", id = "knn.k"),
 # ** dp
             sp("l", "def", 0),
             sp("prob", "def", FALSE),
@@ -217,7 +217,7 @@ autolearners = makeNamedAlList(
     autolearner("classif.fnn",
         list(
 # ** vp
-            sp("k", "int", c(1, 100), "exp", id="knn.k"),
+            sp("k", "int", c(1, 100), "exp", id = "knn.k"),
             sp("algorithm", "cat", c("cover_tree", "kd_tree", "brute")),
 # ** dp
             sp("prob", "def", FALSE))),
@@ -225,8 +225,8 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("I", "bool"),
-            sp("F", "bool", req=quote(I == FALSE)),
-            sp("K", "int", c(1, 100), "exp", id="knn.k"),
+            sp("F", "bool", req = quote(I == FALSE)),
+            sp("K", "int", c(1, 100), "exp", id = "knn.k"),
 # ** dp
             sp("X", "def", NULL),
             sp("E", "def", NULL),
@@ -238,12 +238,12 @@ autolearners = makeNamedAlList(
 # ** vp
             sp("teststat", "cat", c("quad", "max")),
             sp("testtype", "cat", c("Bonferroni", "MonteCarlo", "Univariate", "Teststatistic")),
-            sp("mincriterion", "real", c(0.5, 0.99), req=quote(testtype != "Teststatistic")),
-            sp("mincriterion.AMLRFIX1", "real", c(0.1, 1), req=quote(testtype == "Teststatistic")),
+            sp("mincriterion", "real", c(0.5, 0.99), req = quote(testtype != "Teststatistic")),
+            sp("mincriterion.AMLRFIX1", "real", c(0.1, 1), req = quote(testtype == "Teststatistic")),
             sp("maxsurrogate", "int", c(0, 5)),
-            sp("limitmtry", "bool", special="dummy"),
-            sp("mtry", "int", c(3, 20), req=quote(limitmtry == TRUE)),
-            sp("minbucket", "int", c(1, 32), "exp", id="tree.m"),
+            sp("limitmtry", "bool", special = "dummy"),
+            sp("mtry", "int", c(3, 20), req = quote(limitmtry == TRUE)),
+            sp("minbucket", "int", c(1, 32), "exp", id = "tree.m"),
             sp("minsplit", "int", c(2, 64), "exp"),
             sp("stump", "bool"),
 # ** cp
@@ -254,15 +254,15 @@ autolearners = makeNamedAlList(
     autolearner("classif.J48",
         list(
 # ** vp
-            sp("U", "bool", id="tree.u"),
+            sp("U", "bool", id = "tree.u"),
             sp("O", "bool"),
-            sp("C", "real", c(0.1, .9), id="tree.c", req=quote(U == FALSE && R == FALSE)),
-            sp("M", "int", c(1, 32), "exp", id="tree.m"),
-            sp("R", "bool", id="tree.r", req=quote(U == FALSE)),
-            sp("N", "int", c(2, 8), id="tree.n", req=quote(U == FALSE && R == TRUE)),
-            sp("B", "bool", id="tree.b"),
-            sp("S", "bool", req=quote(U == FALSE)),
-            sp("J", "bool", id="tree.j"),
+            sp("C", "real", c(0.1, .9), id = "tree.c", req = quote(U == FALSE && R == FALSE)),
+            sp("M", "int", c(1, 32), "exp", id = "tree.m"),
+            sp("R", "bool", id = "tree.r", req = quote(U == FALSE)),
+            sp("N", "int", c(2, 8), id = "tree.n", req = quote(U == FALSE && R == TRUE)),
+            sp("B", "bool", id = "tree.b"),
+            sp("S", "bool", req = quote(U == FALSE)),
+            sp("J", "bool", id = "tree.j"),
 # ** cp
             sp("L", "fix", FALSE),
             sp("A", "fix", FALSE),
@@ -272,13 +272,13 @@ autolearners = makeNamedAlList(
     autolearner("classif.PART",
         list(
 # ** vp
-            sp("C", "real", c(0.1, 0.9), id="tree.c", req=quote(R == FALSE)),
-            sp("M", "int", c(1, 32), "exp", id="tree.m"),
-            sp("R", "bool", id="tree.r"),
-            sp("N", "int", c(2, 8), id="tree.n", req=quote(R == TRUE)),
-            sp("B", "bool", id="tree.b"),
-            sp("U", "bool", id="tree.u"),
-            sp("J", "bool", id="tree.j"),
+            sp("C", "real", c(0.1, 0.9), id = "tree.c", req = quote(R == FALSE)),
+            sp("M", "int", c(1, 32), "exp", id = "tree.m"),
+            sp("R", "bool", id = "tree.r"),
+            sp("N", "int", c(2, 8), id = "tree.n", req = quote(R == TRUE)),
+            sp("B", "bool", id = "tree.b"),
+            sp("U", "bool", id = "tree.u"),
+            sp("J", "bool", id = "tree.j"),
 # ** dp
             sp("Q", "def", NULL),
             sp("output-debug-info", "def", FALSE))),
@@ -300,7 +300,7 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("minsplit", "int", c(2, 64), "exp"),
-            sp("minbucket", "int", c(1, 32), "exp", id="tree.m"),
+            sp("minbucket", "int", c(1, 32), "exp", id = "tree.m"),
             sp("cp", "real", c(1e-4, 0.5), "exp"),
             sp("usesurrogate", "cat", c(0, 1, 2)),
             sp("surrogatestyle", "cat", c(0, 1)),
@@ -318,7 +318,7 @@ autolearners = makeNamedAlList(
             sp("alpha", "real", c(0, 1)),
             sp("beta", "real", c(1, 3)),
             sp("k", "real", c(1, 4)),
-            sp("mh_prob_steps", "real", c(0.00000001, 1), dim=3),
+            sp("mh_prob_steps", "real", c(0.00000001, 1), dim = 3),
 # ** cp
             sp("run_in_sample", "fix", FALSE),
             sp("verbose", "fix", FALSE),
@@ -341,10 +341,10 @@ autolearners = makeNamedAlList(
     autolearner("classif.randomForest",
         list(
 # ** vp
-            sp("ntree", "int", c(100, 4000), "exp", id="rf.numtree"),
-            sp("mtry", "int", c(3, 40), id="rf.mtry"),
-            sp("replace", "bool", id="rf.replace"),
-            sp("nodesize", "int", c(1, 32), "exp", id="rf.nodesize"),
+            sp("ntree", "int", c(100, 4000), "exp", id = "rf.numtree"),
+            sp("mtry", "int", c(3, 40), id = "rf.mtry"),
+            sp("replace", "bool", id = "rf.replace"),
+            sp("nodesize", "int", c(1, 32), "exp", id = "rf.nodesize"),
 # ** dp
             sp("classwt", "def", NULL),
             sp("cutoff", "def", NULL),
@@ -358,13 +358,13 @@ autolearners = makeNamedAlList(
     autolearner("classif.extraTrees",
         list(
 # ** vp
-            sp("ntree", "int", c(100, 4000), "exp", id="rf.numtree"),
-            sp("mtry", "int", c(3, 40), id="rf.mtry"),
-            sp("nodesize", "int", c(1, 32), "exp", id="rf.nodesize"),
+            sp("ntree", "int", c(100, 4000), "exp", id = "rf.numtree"),
+            sp("mtry", "int", c(3, 40), id = "rf.mtry"),
+            sp("nodesize", "int", c(1, 32), "exp", id = "rf.nodesize"),
             sp("numRandomCuts", "int", c(1, 16), "exp"),
             sp("evenCuts", "bool"),
-            sp("subsetSizesIsNull", "bool", special="dummy"),
-            sp("subsetSizes", "int", c(10, 1000), "exp", req=quote(subsetSizesIsNull == FALSE)),
+            sp("subsetSizesIsNull", "bool", special = "dummy"),
+            sp("subsetSizes", "int", c(10, 1000), "exp", req = quote(subsetSizesIsNull == FALSE)),
 # ** cp
             sp("na.action", "fix", "fuse"),
 # ** dp
@@ -376,9 +376,9 @@ autolearners = makeNamedAlList(
     autolearner("classif.randomForestSRC",
         list(
 # ** vp
-            sp("ntree", "int", c(100, 4000), "exp", id="rf.numtree"),
-            sp("mtry", "int", c(3, 40), id="rf.mtry"),
-            sp("nodesize", "int", c(1, 32), "exp", id="rf.nodesize"),
+            sp("ntree", "int", c(100, 4000), "exp", id = "rf.numtree"),
+            sp("mtry", "int", c(3, 40), id = "rf.mtry"),
+            sp("nodesize", "int", c(1, 32), "exp", id = "rf.nodesize"),
             sp("nsplit", "int", c(0, 32), "exp"),
 # ** cp
             sp("bootstrap", "fix", "none"),
@@ -395,10 +395,10 @@ autolearners = makeNamedAlList(
     autolearner("classif.ranger",
         list(
 # ** vp
-            sp("num.trees", "int", c(100, 4000), "exp", id="rf.numtree"),
-            sp("mtry", "int", c(3, 40), id="rf.mtry"),
-            sp("min.node.size", "int", c(1, 32), "exp", id="rf.nodesize"),
-            sp("replace", "bool", id="rf.replace"),
+            sp("num.trees", "int", c(100, 4000), "exp", id = "rf.numtree"),
+            sp("mtry", "int", c(3, 40), id = "rf.mtry"),
+            sp("min.node.size", "int", c(1, 32), "exp", id = "rf.nodesize"),
+            sp("replace", "bool", id = "rf.replace"),
 # ** cp
             sp("respect.unordered.factors", "fix", TRUE),
             sp("num.threads", "fix", 1),
@@ -423,15 +423,15 @@ autolearners = makeNamedAlList(
     autolearner("classif.rotationForest",
         list(
 # ** vp
-            sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
+            sp("K", "int", c(2, 40), trafo = function(x) max(1, round(sum(info$n.feat) / x))),
             sp("L", "int", c(25, 100)))),
     autolearner("classif.ada",
         list(
 # ** vp
             sp("loss", "cat", c("exponential", "logistic")),
             sp("type", "cat", c("discrete", "real", "gentle")),
-            sp("iter", "int", c(25, 400), "exp", id="boostree.iter"),
-            sp("nu", "real", c(0.001, 0.3), "exp", id="boostree.nu"),
+            sp("iter", "int", c(25, 400), "exp", id = "boostree.iter"),
+            sp("nu", "real", c(0.001, 0.3), "exp", id = "boostree.nu"),
             sp("model.coef", "bool"),
 # ** cp
             sp("max.iter", "fix", 40),
@@ -453,15 +453,15 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("family", "cat", c("AdaExp", "Binomial")),
-            sp("mstop", "int", c(25, 400), "exp", id="boostree.iter"),
-            sp("nu", "real", c(.001, 0.3), "exp", id="boostree.nu"),
+            sp("mstop", "int", c(25, 400), "exp", id = "boostree.iter"),
+            sp("nu", "real", c(.001, 0.3), "exp", id = "boostree.nu"),
             sp("teststat", "cat", c("quad", "max")),
             sp("testtype", "cat", c("Bonferroni", "MonteCarlo", "Univariate", "Teststatistic")),
-            sp("mincriterion", "real", c(0.5, 0.99), req=quote(testtype != "Teststatistic")),
-            sp("mincriterion.AMLRFIX1", "real", c(0.1, 1), req=quote(testtype == "Teststatistic")),
+            sp("mincriterion", "real", c(0.5, 0.99), req = quote(testtype != "Teststatistic")),
+            sp("mincriterion.AMLRFIX1", "real", c(0.1, 1), req = quote(testtype == "Teststatistic")),
             sp("maxsurrogate", "int", c(0, 5)),
-            sp("limitmtry", "bool", special="dummy"),
-            sp("mtry", "int", c(3, 20), req=quote(limitmtry == TRUE)),
+            sp("limitmtry", "bool", special = "dummy"),
+            sp("mtry", "int", c(3, 20), req = quote(limitmtry == TRUE)),
             sp("minbucket", "int", c(1, 32), "exp"),
             sp("minsplit", "int", c(2, 64), "exp"),
             sp("stump", "bool"),
@@ -505,10 +505,10 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("family", "cat", c("AdaExp", "Binomial")),
-            sp("mstop", "int", c(25, 400), "exp", req=quote(m == "mstop")),
-            sp("mstop.AMLRFIX1", "cat", c(400), req=quote(m != "mstop")),
+            sp("mstop", "int", c(25, 400), "exp", req = quote(m == "mstop")),
+            sp("mstop.AMLRFIX1", "cat", c(400), req = quote(m != "mstop")),
             sp("nu", "real", c(.001, .3), "exp"),
-            sp("risk", "cat", c("inbag", "oobag", "none"), req=quote(m != "aic")),
+            sp("risk", "cat", c("inbag", "oobag", "none"), req = quote(m != "aic")),
             sp("stopintern", "bool"),
             sp("m", "cat", c("mstop", "cv", "aic")),
 # ** dp
@@ -518,16 +518,16 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("booster", "cat", c("gbtree", "gblinear")),
-            sp("eta", "real", c(0, 1), req=quote(booster == "gbtree")),
-            sp("gamma", "real", c(.0001, 1), "exp", req=quote(booster == "gbtree")),
-            sp("max_depth", "int", c(1, 32), "exp", req=quote(booster == "gbtree")),
-            sp("min_child_weight", "int", c(1, 32), "exp", req=quote(booster == "gbtree")),
-            sp("subsample", "real", c(.3, 1), req=quote(booster == "gbtree")),
-            sp("colsample_bytree", "real", c(.3, 1), req=quote(booster == "gbtree")),
-            sp("num_parallel_tree", "int", c(1, 100), "exp", req=quote(booster == "gbtree")),
-            sp("lambda", "real", c(.001, 10), "exp", req=quote(booster == "gblinear")),
-            sp("lambda_bias", "real", c(.001, 10), "exp", req=quote(booster == "gblinear")),
-            sp("alpha", "real", c(.001, 10), "exp", req=quote(booster == "gblinear")),
+            sp("eta", "real", c(0, 1), req = quote(booster == "gbtree")),
+            sp("gamma", "real", c(.0001, 1), "exp", req = quote(booster == "gbtree")),
+            sp("max_depth", "int", c(1, 32), "exp", req = quote(booster == "gbtree")),
+            sp("min_child_weight", "int", c(1, 32), "exp", req = quote(booster == "gbtree")),
+            sp("subsample", "real", c(.3, 1), req = quote(booster == "gbtree")),
+            sp("colsample_bytree", "real", c(.3, 1), req = quote(booster == "gbtree")),
+            sp("num_parallel_tree", "int", c(1, 100), "exp", req = quote(booster == "gbtree")),
+            sp("lambda", "real", c(.001, 10), "exp", req = quote(booster == "gblinear")),
+            sp("lambda_bias", "real", c(.001, 10), "exp", req = quote(booster == "gblinear")),
+            sp("alpha", "real", c(.001, 10), "exp", req = quote(booster == "gblinear")),
             sp("base_score", "real", c(0, 1)),
             sp("nrounds", "int", c(1, 16), "exp"),
 # ** cp
@@ -548,7 +548,7 @@ autolearners = makeNamedAlList(
             sp("kernel", "cat", c(1, 2, 3)),
             sp("max.levels", "int", c(1, 32), "exp"),
             sp("final.training", "bool"),
-            sp("cluster.method", "cat", c("kmeans", "kernkmeans"), id="svm.cluster"),
+            sp("cluster.method", "cat", c("kmeans", "kernkmeans"), id = "svm.cluster"),
 # ** cp
             sp("m", "fix", 1000),
 # ** dp
@@ -568,7 +568,7 @@ autolearners = makeNamedAlList(
             sp("lambda", "real", c(0.5, 4), "exp"),
             sp("type", "cat", c(1, 2, 3, 5)),
             sp("cost", "real", c(0.1, 10), "exp"),
-            sp("cluster.method", "cat", c("kmeans", "kernkmeans"), id="svm.cluster"),
+            sp("cluster.method", "cat", c("kmeans", "kernkmeans"), id = "svm.cluster"),
 # ** dp
             sp("cluster.object", "def", NULL),
             sp("sparse", "def", TRUE),
@@ -586,16 +586,16 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("type", "cat", c("C-svc", "nu-svc", "C-bsvc", "spoc-svc", "kbb-svc")),
-            sp("kernel", "cat", c("vanilladot", "polydot", "rbfdot", "tanhdot", "laplacedot", "besseldot", "anovadot", "splinedot"), id="svm.kernel"),
-            sp("C", "real", c(.125, 8), "exp", id="svm.c", req=quote(type %in% c("C-svc", "C-bsvc", "spoc-svc", "kbb-svc"))),
-            sp("nu", "real", c(.001, .1), "exp", id="svm.nu", req=quote(type == "nu-svc")),
-            sp("epsilon", "real", c(.001, .5), "exp", req=quote(type %in% c("eps-svr", "nu-svr", "eps-bsvm"))),
-            sp("sigma", "real", c(.001, 100), "exp", req=quote(kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot"))),
-            sp("degree", "int", c(1, 10), "exp", id="svm.degree", req=quote(kernel %in% c("polydot", "anovadot", "besseldot"))),
-            sp("scale", "real", c(.001, 100), "exp", id="svm.scale", req=quote(kernel %in% c("polydot", "tanhdot"))),
-            sp("offset", "real", c(0, 4), id="svm.offset", req=quote(kernel %in% c("polydot", "tanhdot"))),
-            sp("order", "int", c(0, 6), id="svm.order", req=quote(kernel == "besseldot")),
-            sp("shrinking", "bool", id="svm.shrink"),
+            sp("kernel", "cat", c("vanilladot", "polydot", "rbfdot", "tanhdot", "laplacedot", "besseldot", "anovadot", "splinedot"), id = "svm.kernel"),
+            sp("C", "real", c(.125, 8), "exp", id = "svm.c", req = quote(type %in% c("C-svc", "C-bsvc", "spoc-svc", "kbb-svc"))),
+            sp("nu", "real", c(.001, .1), "exp", id = "svm.nu", req = quote(type == "nu-svc")),
+            sp("epsilon", "real", c(.001, .5), "exp", req = quote(type %in% c("eps-svr", "nu-svr", "eps-bsvm"))),
+            sp("sigma", "real", c(.001, 100), "exp", req = quote(kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot"))),
+            sp("degree", "int", c(1, 10), "exp", id = "svm.degree", req = quote(kernel %in% c("polydot", "anovadot", "besseldot"))),
+            sp("scale", "real", c(.001, 100), "exp", id = "svm.scale", req = quote(kernel %in% c("polydot", "tanhdot"))),
+            sp("offset", "real", c(0, 4), id = "svm.offset", req = quote(kernel %in% c("polydot", "tanhdot"))),
+            sp("order", "int", c(0, 6), id = "svm.order", req = quote(kernel == "besseldot")),
+            sp("shrinking", "bool", id = "svm.shrink"),
 # ** cp
             sp("scaled", "fix", FALSE),
             sp("cache", "fix", 400),
@@ -623,14 +623,14 @@ autolearners = makeNamedAlList(
     autolearner("classif.lssvm",
         list(
 # ** vp
-            sp("kernel", "cat", c("vanilladot", "polydot", "rbfdot", "tanhdot", "laplacedot", "besseldot", "anovadot", "splinedot"), id="svm.kernel"),
+            sp("kernel", "cat", c("vanilladot", "polydot", "rbfdot", "tanhdot", "laplacedot", "besseldot", "anovadot", "splinedot"), id = "svm.kernel"),
             sp("tau", "real", c(.001, .100), "exp"),
             sp("reduced", "bool"),
-            sp("sigma", "real", c(.001, 100), "exp", req=quote(kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot"))),
-            sp("degree", "int", c(1, 10), "exp", id="svm.degree", req=quote(kernel %in% c("polydot", "anovadot", "besseldot"))),
-            sp("scale", "real", c(.001, 100), "exp", id="svm.scale", req=quote(kernel %in% c("polydot", "tanhdot"))),
-            sp("offset", "real", c(0, 4), id="svm.offset", req=quote(kernel %in% c("polydot", "tanhdot"))),
-            sp("order", "int", c(0, 6), id="svm.order", req=quote(kernel == "besseldot")),
+            sp("sigma", "real", c(.001, 100), "exp", req = quote(kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot"))),
+            sp("degree", "int", c(1, 10), "exp", id = "svm.degree", req = quote(kernel %in% c("polydot", "anovadot", "besseldot"))),
+            sp("scale", "real", c(.001, 100), "exp", id = "svm.scale", req = quote(kernel %in% c("polydot", "tanhdot"))),
+            sp("offset", "real", c(0, 4), id = "svm.offset", req = quote(kernel %in% c("polydot", "tanhdot"))),
+            sp("order", "int", c(0, 6), id = "svm.order", req = quote(kernel == "besseldot")),
 # ** cp
             sp("scaled", "fix", FALSE),
             sp("fitted", "fix", FALSE),
@@ -640,13 +640,13 @@ autolearners = makeNamedAlList(
         list(
 # ** vp
             sp("type", "cat", c("C-classification", "nu-classification")),
-            sp("cost", "real", c(.125, 8), "exp", id="svm.c", req=quote(type == "C-classification")),
-            sp("nu", "real", c(.001, .1), "exp", id="svm.nu", req=quote(type == "nu-classification")),
+            sp("cost", "real", c(.125, 8), "exp", id = "svm.c", req = quote(type == "C-classification")),
+            sp("nu", "real", c(.001, .1), "exp", id = "svm.nu", req = quote(type == "nu-classification")),
             sp("kernel", "cat", c("linear", "polynomial", "radial", "sigmoid")),
-            sp("degree", "int", c(1, 10), "exp", id="svm.degree", req=quote(kernel == "polynomial")),
-            sp("coef0", "real", c(0, 4), id="svm.offset", req=quote(kernel == "polynomial" || kernel == "sigmoid")),
-            sp("gamma", "real", c(.001, 100), "exp", id="svm.scale", req=quote(kernel != "linear")),
-            sp("shrinking", "bool", id="svm.shrink"),
+            sp("degree", "int", c(1, 10), "exp", id = "svm.degree", req = quote(kernel == "polynomial")),
+            sp("coef0", "real", c(0, 4), id = "svm.offset", req = quote(kernel == "polynomial" || kernel == "sigmoid")),
+            sp("gamma", "real", c(.001, 100), "exp", id = "svm.scale", req = quote(kernel != "linear")),
+            sp("shrinking", "bool", id = "svm.shrink"),
 # ** cp
             sp("cachesize", "fix", 400),
             sp("fitted", "fix", FALSE),
@@ -658,27 +658,27 @@ autolearners = makeNamedAlList(
     autolearner("classif.dbnDNN",
         list(
 # ** vp
-            sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", special="dummy"),
-            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id="nn.h5", req=quote(numlayers==5), dim=5),
-            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id="nn.h7", req=quote(numlayers==7), dim=7),
-            sp("activationfun", "cat", c("sigm", "linear", "tanh"), id="nn.afun"),
-            sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate"),
-            sp("momentum", "real", c(0, 0.8), id="nn.momentum"),
-            sp("learningrate_scale", "real", c(0.2, 1), "exp", id="nn.lrs"),
-            sp("numepochs", "int", c(1, 6), id="nn.epochs"),
-            sp("batchsize", "int", c(5, 500), "exp", id="nn.bs"),
-            sp("hidden_dropout", "real", c(0.5, 1), id="nn.dropout"),
-            sp("output", "cat", c("sigm", "linear", "softmax"), id="nn.output"),
+            sp("numlayers", "cat", c(2, 5, 7), id = "nn.nlayer", special = "dummy"),
+            sp("hidden", "int", c(3, 100), "exp", id = "nn.h2", req = quote(numlayers==2), dim = 2),
+            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id = "nn.h5", req = quote(numlayers==5), dim = 5),
+            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id = "nn.h7", req = quote(numlayers==7), dim = 7),
+            sp("activationfun", "cat", c("sigm", "linear", "tanh"), id = "nn.afun"),
+            sp("learningrate", "real", c(0.01, 2), "exp", id = "nn.lrate"),
+            sp("momentum", "real", c(0, 0.8), id = "nn.momentum"),
+            sp("learningrate_scale", "real", c(0.2, 1), "exp", id = "nn.lrs"),
+            sp("numepochs", "int", c(1, 6), id = "nn.epochs"),
+            sp("batchsize", "int", c(5, 500), "exp", id = "nn.bs"),
+            sp("hidden_dropout", "real", c(0.5, 1), id = "nn.dropout"),
+            sp("output", "cat", c("sigm", "linear", "softmax"), id = "nn.output"),
             sp("cd", "int", c(1, 5)),
 # ** dp
             sp("visible_dropout", "def", 0))),
     autolearner("classif.multinom",
         list(
 # ** vp
-            sp("decay", "real", c(0.0001, 0.3), "exp", id="nn.shallowdecay"),
-            sp("maxit", "int", c(50, 400), "exp", id="nn.shallowmaxit"),
-            sp("MaxNWts", "cat", c(100000), special="inject"),
+            sp("decay", "real", c(0.0001, 0.3), "exp", id = "nn.shallowdecay"),
+            sp("maxit", "int", c(50, 400), "exp", id = "nn.shallowmaxit"),
+            sp("MaxNWts", "cat", c(100000), special = "inject"),
 # ** dp
             sp("Hess", "def", FALSE),
             sp("summ", "def", 0),
@@ -693,8 +693,8 @@ autolearners = makeNamedAlList(
 # ** vp
             sp("size", "int", c(3, 200), "exp"),
             sp("skip", "bool"),
-            sp("decay", "real", c(0.0001, 0.3), "exp", id="nn.shallowdecay"),
-            sp("maxit", "int", c(50, 400), "exp", id="nn.shallowmaxit"),
+            sp("decay", "real", c(0.0001, 0.3), "exp", id = "nn.shallowdecay"),
+            sp("maxit", "int", c(50, 400), "exp", id = "nn.shallowmaxit"),
 # ** cp
             sp("MaxNWts", "fix", 100000),
 # ** dp
@@ -706,18 +706,18 @@ autolearners = makeNamedAlList(
     autolearner("classif.nnTrain",
         list(
 # ** vp
-            sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", special="dummy"),
-            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id="nn.h5", req=quote(numlayers==5), dim=5),
-            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id="nn.h7", req=quote(numlayers==7), dim=7),
-            sp("activationfun", "cat", c("sigm", "linear", "tanh"), id="nn.afun"),
-            sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate"),
-            sp("momentum", "real", c(0, 0.8), id="nn.momentum"),
-            sp("learningrate_scale", "real", c(0.2, 1), "exp", id="nn.lrs"),
-            sp("numepochs", "int", c(1, 6), id="nn.epochs"),
-            sp("batchsize", "int", c(5, 500), "exp", id="nn.bs"),
-            sp("hidden_dropout", "real", c(0.5, 1), id="nn.dropout"),
-            sp("output", "cat", c("sigm", "linear", "softmax"), id="nn.output"),
+            sp("numlayers", "cat", c(2, 5, 7), id = "nn.nlayer", special = "dummy"),
+            sp("hidden", "int", c(3, 100), "exp", id = "nn.h2", req = quote(numlayers==2), dim = 2),
+            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id = "nn.h5", req = quote(numlayers==5), dim = 5),
+            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id = "nn.h7", req = quote(numlayers==7), dim = 7),
+            sp("activationfun", "cat", c("sigm", "linear", "tanh"), id = "nn.afun"),
+            sp("learningrate", "real", c(0.01, 2), "exp", id = "nn.lrate"),
+            sp("momentum", "real", c(0, 0.8), id = "nn.momentum"),
+            sp("learningrate_scale", "real", c(0.2, 1), "exp", id = "nn.lrs"),
+            sp("numepochs", "int", c(1, 6), id = "nn.epochs"),
+            sp("batchsize", "int", c(5, 500), "exp", id = "nn.bs"),
+            sp("hidden_dropout", "real", c(0.5, 1), id = "nn.dropout"),
+            sp("output", "cat", c("sigm", "linear", "softmax"), id = "nn.output"),
 # ** dp
             sp("initW", "def", NULL),
             sp("initB", "def", NULL),
@@ -725,17 +725,17 @@ autolearners = makeNamedAlList(
     autolearner("classif.neuralnet",
         list(
 # ** vp
-            sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", special="dummy"),
-            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id="nn.h5", req=quote(numlayers==5), dim=5),
-            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id="nn.h7", req=quote(numlayers==7), dim=7),
+            sp("numlayers", "cat", c(2, 5, 7), id = "nn.nlayer", special = "dummy"),
+            sp("hidden", "int", c(3, 100), "exp", id = "nn.h2", req = quote(numlayers==2), dim = 2),
+            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id = "nn.h5", req = quote(numlayers==5), dim = 5),
+            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id = "nn.h7", req = quote(numlayers==7), dim = 7),
             sp("threshold", "real", c(.0001, .1), "exp"),
             sp("stepmax", "int", c(50, 400), "exp"),
             sp("rep", "int", c(1, 16), "exp"),
             sp("algorithm", "cat", c("backprop", "rprop+", "rprop-", "sag", "slr")),
-            sp("learningrate.limit", "real", c(.01, 2), "exp", req=quote(algorithm != "backprop"), dim=2),
-            sp("learningrate.factor", "real", c(.01, 2), "exp", req=quote(algorithm != "backprop"), dim=2),
-            sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate", req=quote(algorithm == "backprop")),
+            sp("learningrate.limit", "real", c(.01, 2), "exp", req = quote(algorithm != "backprop"), dim = 2),
+            sp("learningrate.factor", "real", c(.01, 2), "exp", req = quote(algorithm != "backprop"), dim = 2),
+            sp("learningrate", "real", c(0.01, 2), "exp", id = "nn.lrate", req = quote(algorithm == "backprop")),
             sp("err.fct", "cat", c("sse", "ce")),
             sp("act.fct", "cat", c("logistic", "tanh")),
 # ** dp
@@ -749,32 +749,32 @@ autolearners = makeNamedAlList(
     autolearner("classif.saeDNN",
         list(
 # ** vp
-            sp("numlayers", "cat", c(2, 5, 7), id="nn.nlayer", special="dummy"),
-            sp("hidden", "int", c(3, 100), "exp", id="nn.h2", req=quote(numlayers==2), dim=2),
-            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id="nn.h5", req=quote(numlayers==5), dim=5),
-            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id="nn.h7", req=quote(numlayers==7), dim=7),
-            sp("activationfun", "cat", c("sigm", "linear", "tanh"), id="nn.afun"),
-            sp("learningrate", "real", c(0.01, 2), "exp", id="nn.lrate"),
-            sp("momentum", "real", c(0, 0.8), id="nn.momentum"),
-            sp("learningrate_scale", "real", c(0.2, 1), "exp", id="nn.lrs"),
-            sp("numepochs", "int", c(1, 6), id="nn.epochs"),
-            sp("batchsize", "int", c(5, 500), "exp", id="nn.bs"),
-            sp("hidden_dropout", "real", c(0.5, 1), id="nn.dropout"),
-            sp("output", "cat", c("sigm", "linear", "softmax"), id="nn.output"),
+            sp("numlayers", "cat", c(2, 5, 7), id = "nn.nlayer", special = "dummy"),
+            sp("hidden", "int", c(3, 100), "exp", id = "nn.h2", req = quote(numlayers==2), dim = 2),
+            sp("hidden.AMLRFIX1", "int", c(3, 100), "exp", id = "nn.h5", req = quote(numlayers==5), dim = 5),
+            sp("hidden.AMLRFIX2", "int", c(3, 100), "exp", id = "nn.h7", req = quote(numlayers==7), dim = 7),
+            sp("activationfun", "cat", c("sigm", "linear", "tanh"), id = "nn.afun"),
+            sp("learningrate", "real", c(0.01, 2), "exp", id = "nn.lrate"),
+            sp("momentum", "real", c(0, 0.8), id = "nn.momentum"),
+            sp("learningrate_scale", "real", c(0.2, 1), "exp", id = "nn.lrs"),
+            sp("numepochs", "int", c(1, 6), id = "nn.epochs"),
+            sp("batchsize", "int", c(5, 500), "exp", id = "nn.bs"),
+            sp("hidden_dropout", "real", c(0.5, 1), id = "nn.dropout"),
+            sp("output", "cat", c("sigm", "linear", "softmax"), id = "nn.output"),
             sp("sae_output", "cat", c("sigm", "linear", "softmax")),
 # ** dp
             sp("visible_dropout", "def", 0))),
     autolearner("classif.bdk",
         list(
 # ** vp
-            sp("xdim", "int", c(5, 100), "exp", id="koho.x"),
-            sp("ydim", "int", c(5, 100), "exp", id="koho.y"),
-            sp("topo", "cat", c("rectangular", "hexagonal"), id="koho.topo"),
-            sp("rlen", "int", c(50, 400), "exp", id="koho.rlen"),
-            sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2),
-            sp("xweight", "real", c(0.5, 0.9), id="koho.xweight"),
-            sp("n.hood", "cat", c("circular", "square"), id="koho.shape"),
-            sp("toroidal", "bool", id="koho.toro"),
+            sp("xdim", "int", c(5, 100), "exp", id = "koho.x"),
+            sp("ydim", "int", c(5, 100), "exp", id = "koho.y"),
+            sp("topo", "cat", c("rectangular", "hexagonal"), id = "koho.topo"),
+            sp("rlen", "int", c(50, 400), "exp", id = "koho.rlen"),
+            sp("alpha", "real", c(0, 1), id = "koho.alpha", trafo = function(x) c(.02, .001) * 20^x, dim = 2),
+            sp("xweight", "real", c(0.5, 0.9), id = "koho.xweight"),
+            sp("n.hood", "cat", c("circular", "square"), id = "koho.shape"),
+            sp("toroidal", "bool", id = "koho.toro"),
 # ** cp
             sp("contin", "fix", FALSE),
 # ** dp
@@ -805,14 +805,14 @@ autolearners = makeNamedAlList(
     autolearner("classif.xyf",
         list(
 # ** vp
-            sp("xdim", "int", c(5, 100), "exp", id="koho.x"),
-            sp("ydim", "int", c(5, 100), "exp", id="koho.y"),
-            sp("topo", "cat", c("rectangular", "hexagonal"), id="koho.topo"),
-            sp("rlen", "int", c(50, 400), "exp", id="koho.rlen"),
-            sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2),
-            sp("xweight", "real", c(0.5, 0.9), id="koho.xweight"),
-            sp("n.hood", "cat", c("circular", "square"), id="koho.shape"),
-            sp("toroidal", "bool", id="koho.toro"),
+            sp("xdim", "int", c(5, 100), "exp", id = "koho.x"),
+            sp("ydim", "int", c(5, 100), "exp", id = "koho.y"),
+            sp("topo", "cat", c("rectangular", "hexagonal"), id = "koho.topo"),
+            sp("rlen", "int", c(50, 400), "exp", id = "koho.rlen"),
+            sp("alpha", "real", c(0, 1), id = "koho.alpha", trafo = function(x) c(.02, .001) * 20^x, dim = 2),
+            sp("xweight", "real", c(0.5, 0.9), id = "koho.xweight"),
+            sp("n.hood", "cat", c("circular", "square"), id = "koho.shape"),
+            sp("toroidal", "bool", id = "koho.toro"),
 # ** cp
             sp("contin", "fix", FALSE),
 # ** dp

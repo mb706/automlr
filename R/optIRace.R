@@ -38,14 +38,14 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       firstTest = firstTest,
       eachTest = 1L,
       testType = "friedman",
-      confidence=0.95,
+      confidence = 0.95,
       nbIterations = -1L,  # so that we enter the main loop even though remainingBudget is 0
       maxExperiments = 100000L,  # some seed matrix is generated in the beginning, so this limits the number of experiments possible with this object absolutely.
       nbExperimentsPerIteration = expPerIter,
       impute.val = generateRealisticImputeVal(measure, learner, task),
       n.instances = 100,
       show.irace.output = TRUE,
-      log.fun=logFunQuiet)  # make our life easy for now
+      log.fun = logFunQuiet)  # make our life easy for now
   
   ## we do the following to imitade mlr::tuneParams()
   env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace, list(env$measure), include.extra = (env$ctrl$tune.threshold))
@@ -54,15 +54,15 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   iraceFunction = irace::irace
   env$iraceOriginal = iraceFunction
   
-  environment(iraceFunction) = new.env(parent=asNamespace("irace"))
+  environment(iraceFunction) = new.env(parent = asNamespace("irace"))
   environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix  # breaking more rules than a maths teacher with anger management problems
   
   numcpus = parallelGetOptions()$settings$cpus  # this is assuming we don't use the irace package's parallel functionality.
   numcpus[is.na(numcpus)] = 1
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(tunerConfig, parameters, ...) {
-    modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm=TRUE)
-    if (exists("tunerResults", envir=env)) {  # this is the backendprivatedata env
+    modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE)
+    if (exists("tunerResults", envir = env)) {  # this is the backendprivatedata env
       # if tunerResults is in the environment then we are continuing, so we load the optimization state into the recover file
       tunerResults = env$tunerResults
       tunerResults$tunerConfig$logFile = tunerConfig$logFile  # use the newly generated file
@@ -96,13 +96,13 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
     tunerConfig$recoveryFile = tunerConfig$logFile
     while (TRUE) {
       tunerResults$state$remainingBudget = 1  # arbitrary positive number
-      save(tunerResults, file=tunerConfig$logFile)
+      save(tunerResults, file = tunerConfig$logFile)
       
       res = iraceFunction(tunerConfig, parameters, ...)
       
       load(tunerConfig$logFile)
       env$usedbudget['evals'] = tunerResults$state$experimentsUsedSoFar - evals.zero
-      env$usedbudget['modeltime'] = sum(getOptPathExecTimes(env$opt.path), na.rm=TRUE) - modeltime.zero
+      env$usedbudget['modeltime'] = sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE) - modeltime.zero
       env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
       env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpus
       
@@ -121,25 +121,25 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
 
 amresult.amirace = function(env) {
   res = env$tuneresult
-  list(opt.point=removeMissingValues(res$x),
-      opt.val=res$y,
-      opt.path=res$opt.path,
-      result=res)
+  list(opt.point = removeMissingValues(res$x),
+      opt.val = res$y,
+      opt.path = res$opt.path,
+      result = res)
 }
 
 # now this is where the fun happens
 amoptimize.amirace = function(env, stepbudget) {
   env$starttime = Sys.time()
   env$stepbudget = stepbudget
-  env$usedbudget = c(walltime=0, cputime=0, modeltime=0, evals=0)
+  env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
   # install the wrapper and make sure it gets removed as soon as we exit
-  on.exit(assignInNamespace("irace", env$iraceOriginal, ns="irace"))
-  assignInNamespace("irace", env$iraceWrapper, ns="irace")
+  on.exit(assignInNamespace("irace", env$iraceOriginal, ns = "irace"))
+  assignInNamespace("irace", env$iraceWrapper, ns = "irace")
   
   myTuneIrace = mlr:::tuneIrace
-  environment(myTuneIrace) = new.env(parent=asNamespace("mlr"))
+  environment(myTuneIrace) = new.env(parent = asNamespace("mlr"))
   environment(myTuneIrace)$convertParamSetToIrace = function(par.set) {  # I stopped caring long ago
-    irace::readParameters(text=convertParamSetToIrace(iraceRequirements(par.set), as.chars=TRUE), digits=.Machine$integer.max)
+    irace::readParameters(text = convertParamSetToIrace(iraceRequirements(par.set), as.chars = TRUE), digits = .Machine$integer.max)
   }
   
   env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc, list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
@@ -154,31 +154,31 @@ iraceRequirements = function(searchspace) {
   replacements = list()
   for (param in searchspace$pars) {
     if (param$type %in% c("discrete", "discretevector")) {
-      if (param$type == "discrete" && all(sapply(param$values, test_character, any.missing=FALSE))) {
+      if (param$type == "discrete" && all(sapply(param$values, test_character, any.missing = FALSE))) {
         # irace handles character discrete vectors well, so go right through
         next
       }
-      assertList(param$values, names="named")
-      fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep=""))
+      assertList(param$values, names = "named")
+      fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep = ""))
       if (param$type == "discrete") {
-        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject=fullObject, index=asQuoted(param$id)))
+        replacements[[param$id]] = substitute(fullObject[[index]], list(fullObject = fullObject, index = asQuoted(param$id)))
       } else { # discretevector
-        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
+        if (!test_numeric(param$len, len = 1, lower = 1, any.missing = FALSE)) {
           stopf("Parameter '%s' is a vector param with undefined length'", param$id)
         }
-        paramvec = asQuoted(sprintf("c(%s)", paste0(param$id, seq_len(param$len), collapse=", ")))
-        replacements[[param$id]] = substitute(fullObject[index], list(fullObject=fullObject, index=paramvec))
+        paramvec = asQuoted(sprintf("c(%s)", paste0(param$id, seq_len(param$len), collapse = ", ")))
+        replacements[[param$id]] = substitute(fullObject[index], list(fullObject = fullObject, index = paramvec))
       }
     } else {
       replacePattern = switch(param$type,
-          numeric=NULL,
-          numericvector="c(%s)",
-          integer="as.integer(%s)",
-          integervector="as.integer(c(%s))",
-          logical="(%s == TRUE)",
-          logicalvector="(c(%s) == TRUE)",
+          numeric = NULL,
+          numericvector = "c(%s)",
+          integer = "as.integer(%s)",
+          integervector = "as.integer(c(%s))",
+          logical = "(%s == TRUE)",
+          logicalvector = "(c(%s) == TRUE)",
                                    # the following code should not be reachable as of yet
-          charactervector="c(%s)", # since we don't generate character vectors
+          charactervector = "c(%s)", # since we don't generate character vectors
           if (param$type %nin% c("function", "untyped")) { # ditto, hopefully
             stopf("Unknown type '%s' of parameter '%s'.", param$type, param$id)
           })
@@ -187,10 +187,10 @@ iraceRequirements = function(searchspace) {
         next
       }
       if (param$type %in% c("numericvector", "integervector", "logicalvector", "charactervector")) {
-        if (!test_numeric(param$len, len=1, lower=1, any.missing=FALSE)) {
+        if (!test_numeric(param$len, len = 1, lower = 1, any.missing = FALSE)) {
           stopf("Parameter '%s' is a vector param with undefined length'", param$id)
         }
-        replaceStr = sprintf(replacePattern, paste0(param$id, seq_len(param$len), collapse=", "))
+        replaceStr = sprintf(replacePattern, paste0(param$id, seq_len(param$len), collapse = ", "))
       } else {
         replaceStr = sprintf(replacePattern, param$id)
       }

@@ -24,11 +24,11 @@ amsetup.amrandom = function(env, prior, learner, task, measure) {
 
 amresult.amrandom = function(env) {
   res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace, list(env$measure),
-      makeTuneControlRandom(maxit=100), env$opt.path)
-  list(opt.point=removeMissingValues(res$x),
-       opt.val=res$y,
-       opt.path=res$opt.path,
-       result=res)
+      makeTuneControlRandom(maxit = 100), env$opt.path)
+  list(opt.point = removeMissingValues(res$x),
+       opt.val = res$y,
+       opt.path = res$opt.path,
+       result = res)
 }
 
 # now this is where the fun happens
@@ -40,10 +40,10 @@ amoptimize.amrandom = function(env, stepbudget) {
   on.exit(do.call(configureMlr, oldOpts))
 
   learner = env$learner
-  learner$am.env = new.env(parent=emptyenv())
+  learner$am.env = new.env(parent = emptyenv())
 
   learner$am.env$starttime = Sys.time()
-  learner$am.env$usedbudget = c(walltime=0, cputime=0, modeltime=0, evals=0)
+  learner$am.env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
   learner$am.env$stepbudget = stepbudget
   learner$am.env$outofbudget = FALSE
   learner$am.env$untouched = TRUE
@@ -52,17 +52,17 @@ amoptimize.amrandom = function(env, stepbudget) {
   
   numcpus = parallelGetOptions()$settings$cpus
 
-  while (!checkoutofbudget(learner$am.env, numcpus, il=TRUE)) {
+  while (!checkoutofbudget(learner$am.env, numcpus, il = TRUE)) {
     iterations = min(ifelse('evals' %in% names(stepbudget), stepbudget['evals'] - learner$am.env$usedbudget['evals'], Inf), 100)
-    ctrl = makeTuneControlRandom(maxit=iterations, log.fun=logFunQuiet)  # chop up 'evals' budget into 1000s
-    tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure), par.set=learner$searchspace, control=ctrl, show.info=FALSE)
+    ctrl = makeTuneControlRandom(maxit = iterations, log.fun = logFunQuiet)  # chop up 'evals' budget into 1000s
+    tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure), par.set = learner$searchspace, control = ctrl, show.info = FALSE)
     do.call(configureMlr, oldOpts)  # we call this here, in case we loop around. Whenever the error is not an 'out of budget' error we want the usual behaviour.
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     wasOOB = (!is.na(errorsvect)) & (errorsvect == out.of.budget.string)
     performediterations = sum(!wasOOB)
     learner$am.env$usedbudget['evals'] = learner$am.env$usedbudget['evals'] + performediterations
-    mlrModeltime = mlrModeltime + sum(getOptPathExecTimes(tuneresult$opt.path)[!wasOOB], na.rm=TRUE)
+    mlrModeltime = mlrModeltime + sum(getOptPathExecTimes(tuneresult$opt.path)[!wasOOB], na.rm = TRUE)
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
     } else {
@@ -93,7 +93,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   if (checkoutofbudget(.learner$am.env, parallelGetOptions()$settings$cpus)) {
     return(addClasses(out.of.budget.string, c("outOfBudgetError", "error")))  # stop("out of budget"), only we don't use the try() function's way of telling us what we already know
   }
-  evaltime = system.time(result <- NextMethod("trainLearner"), gcFirst=FALSE)
+  evaltime = system.time(result <- NextMethod("trainLearner"), gcFirst = FALSE)
   .learner$am.env$usedbudget['modeltime'] = .learner$am.env$usedbudget['modeltime'] + evaltime[3]
   result
 }
@@ -125,7 +125,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
 #    configureMlr(on.learner.error = "quiet")
 #    stop(out.of.budget.string)
 #  }
-  evaltime = system.time(result <- NextMethod("predictLearner"), gcFirst=FALSE)
+  evaltime = system.time(result <- NextMethod("predictLearner"), gcFirst = FALSE)
 
   if (checkoutofbudget(env, numcpus, evaltime[3])) {
     configureMlr(on.learner.error = "quiet")
@@ -134,7 +134,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
   result
 }
 
-checkoutofbudget = function(env, numcpus, evaltime=0, il=FALSE) {
+checkoutofbudget = function(env, numcpus, evaltime = 0, il = FALSE) {
   if (env$outofbudget) {
     return(env$outofbudget)
   }
