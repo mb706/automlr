@@ -25,8 +25,9 @@
 #' 
 #' @return An object that can be used with \code{predict} to transform new data. If \code{keep.data} is \code{TRUE},
 #'         the slot \code{$data} will contain the transformed data.
-preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.factor = 0, univariate.trafo = "off",
-    impute.numeric = "off", impute.factor = "off", multivariate.trafo = "off", feature.filter = "off",
+preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
+    nzv.cutoff.factor = 0, univariate.trafo = "off", impute.numeric = "off",
+    impute.factor = "off", multivariate.trafo = "off", feature.filter = "off",
     feature.filter.thresh = 0, keep.data = FALSE) {
   # TODO: handle ordered factors
   # TODO: /maybe/ add a "ignore these columns" parameter
@@ -35,16 +36,22 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
 
   assertNumber(nzv.cutoff.numeric, lower = 0)
   assertNumber(nzv.cutoff.factor, lower = 0, upper = 1)
-  assertChoice(univariate.trafo, c("off", "center", "scale", "centerscale", "range"))
-  assertChoice(impute.numeric, c("off", "remove.na", "mean", "median", "hist"))
-  assertChoice(impute.factor, c("off", "remove.na", "distinct", "mode", "hist"))
-  assertChoice(multivariate.trafo, c("off", "pca", "ica"))
-  assertChoice(feature.filter, c("off", "information.gain", "chi.squared", "rf.importance"))
+  assertChoice(univariate.trafo,
+      c("off", "center", "scale", "centerscale", "range"))
+  assertChoice(impute.numeric,
+      c("off", "remove.na", "mean", "median", "hist"))
+  assertChoice(impute.factor,
+      c("off", "remove.na", "distinct", "mode", "hist"))
+  assertChoice(multivariate.trafo,
+      c("off", "pca", "ica"))
+  assertChoice(feature.filter,
+      c("off", "information.gain", "chi.squared", "rf.importance"))
   if (feature.filter != "off") {
     assertNumber(feature.filter.thresh)
   }
-  
-  ppobject = addClasses(as.list(environment()), "ampreproc")  # collect all arguments given
+
+  # collect all arguments given
+  ppobject = addClasses(as.list(environment()), "ampreproc")
   ppobject$data = NULL
 
   hasTarget = !is.null(target) && length(target) > 0
@@ -61,18 +68,24 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
   naToZero = function(x) ifelse(is.na(x), 0, x)
   
   # drop cols that have low variance
-  nzv.drop.numeric = naToZero(sapply(data[cols.numeric], var, na.rm = TRUE)) <= nzv.cutoff.numeric  # TODO: is this kosher with NAs?
+  # FIXME: does this work with NAs?
+  var.numeric = naToZero(sapply(data[cols.numeric], var, na.rm = TRUE))
+  nzv.drop.numeric = var.numeric <= nzv.cutoff.numeric  
   ndsplit = split(cols.numeric, nzv.drop.numeric)
   nzv.drop.numeric = ndsplit$`TRUE`
   cols.numeric = ndsplit$`FALSE`
   
-  highestFactorFrequency = function(x) sort(table(x, useNA = "ifany"), TRUE)[1] / length(x)
-  nzv.drop.factor = sapply(data[cols.factor], highestFactorFrequency) >= 1 - nzv.cutoff.factor
+  highestFactorFrequency = function(x){
+    sort(table(x, useNA = "ifany"), TRUE)[1] / length(x)
+  }
+  var.factor = sapply(data[cols.factor], highestFactorFrequency)
+  nzv.drop.factor = var.factor >= 1 - nzv.cutoff.factor
   ndsplit = split(cols.factor, nzv.drop.factor)
   nzv.drop.factor = ndsplit$`TRUE`
   cols.factor = ndsplit$`FALSE`
-  
-  ppobject$dropcols = c(character(0), nzv.drop.factor, nzv.drop.numeric)  # need to prevent this from being NULL!
+
+  # need to prevent this from being NULL!
+  ppobject$dropcols = c(character(0), nzv.drop.factor, nzv.drop.numeric)
   ppobject$cols.factor = cols.factor
   ppobject$cols.numeric = cols.numeric
   
@@ -120,10 +133,12 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
             }
             res
           })  # TODO: maybe do rounding for mean / median and integers
-      if (length(ppobject$pop.numeric) == 0) {  # this /shouldn't/ happen, but just in case
+      if (length(ppobject$pop.numeric) == 0) {
+        # this /shouldn't/ happen, but just in case
         ppobject$pop.numeric = 0
       }
-      data[cols.numeric] = mapply(imputeRandom, data[cols.numeric], ppobject$pop.numeric, SIMPLIFY = FALSE)
+      data[cols.numeric] = mapply(imputeRandom, data[cols.numeric],
+          ppobject$pop.numeric, SIMPLIFY = FALSE)
     }
   }
   
@@ -137,11 +152,14 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
     } else if (impute.factor == "distinct") {
       data[cols.factor] = lapply(data[cols.factor], function(f) {
             ret = addNA(f, ifany = FALSE)
-            # if the level name is `NA`, it will removed when copying which crashes some learners.
-            # therefore we give it a 'unique' name here. If preprocess is called like this twice in a row,
-            # this adds an empty new NA level first (since all NAs were removed already) and then
-            # unified with the existing automlr.auxlevel.NA, so everything works as it should.
-            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA', levels(ret))
+            # if the level name is `NA`, it will removed when copying which
+            # crashes some learners. Therefore we give it a 'unique' name here.
+            # If preprocess is called like this twice in a row, this adds an
+            # empty new NA level first (since all NAs were removed already) and
+            # then unified with the existing automlr.auxlevel.NA, so everything
+            # works as it should.
+            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA',
+                levels(ret))
             ret
           })
     } else {
@@ -149,7 +167,8 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
             res = switch(impute.factor, 
             mode = {
               ftab = sort(table(x), TRUE)
-              names(ftab)[ftab==ftab[1]]  # if there is a tie, get all tieing levels
+              # if there is a tie, get all tieing levels
+              names(ftab)[ftab==ftab[1]]
             },
             hist = x[!is.na(x)])
             if (length(res) == 0) {
@@ -160,7 +179,8 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
       if (length(ppobject$pop.factor) == 0) {
         ppobject$pop.factor = levels
       }
-      data[cols.factor] = mapply(imputeRandom, data[cols.factor], ppobject$pop.factor, SIMPLIFY = FALSE)
+      data[cols.factor] = mapply(imputeRandom, data[cols.factor],
+          ppobject$pop.factor, SIMPLIFY = FALSE)
     }
   }
 
@@ -171,7 +191,8 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
       ppobject$rotation = pcr$rotation
     } else if (multivariate.trafo == "ica") {
       requirePackages("fastICA", why = "preProcess", default.method = "load")
-      ica = fastICA::fastICA(data[cols.numeric], length(cols.numeric), method = "C")
+      ica = fastICA::fastICA(data[cols.numeric],
+          length(cols.numeric), method = "C")
       data[cols.numeric] = ica$S
       ppobject$rotation = ica$K %*% ica$W
     }
@@ -182,34 +203,42 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0, nzv.cutoff.fa
   }
 
   if (hasTarget && feature.filter != "off") {
-    ## If feature.filter ever works with empty target, dummy.task would need to be "cluster".
+    ## If feature.filter ever works with empty target, dummy.task would need to
+    # be "cluster". 
     #if (length(target) == 0) {  # target is empty --> cluster task.
     #  dummyTask = makeClusterTask("dummy", data)
     #} else 
-    if (length(target) == 1) {  # target is numeric --> regression task; otherwise classification
+    if (length(target) == 1) {
+      # target is numeric --> regression task; otherwise classification
       if (is.numeric(targetData[[1]])) {
         dummyTask = makeRegrTask("dummy", data, target)
       } else {
-        dummyTask = makeClassifTask("dummy", data, target)  # if data is not numeric, logical nor factorial an error is thrown.
+        # if data is not numeric, logical nor factorial an error is thrown.
+        dummyTask = makeClassifTask("dummy", data, target)
       }
     } else {
-      # two target columns, first numeric, second numeric or logical -> survival task
+      # two target columns, first numeric, second numeric or
+      # logical -> survival task
       if (length(target) == 2 && is.numeric(targetData[[1]]) &&
           (is.numeric(targetData[[2]]) || is.logical(targetData[[2]]))) {
-        dummyTask = makeSurvTask("dummy", data, target, ifelse(is.numeric(targetData[[2]]), "icens", "rcens"))
+        dummyTask = makeSurvTask("dummy", data, target,
+            ifelse(is.numeric(targetData[[2]]), "icens", "rcens"))
       } else {
-        # last default: multilabel. If target is not logical, this will throw an error.
+        # last default: multilabel. If target is not logical, this will throw an
+        # error.
         dummyTask = makeMultilabelTask("dummy", data, target)
       }
     }
     # missing: costsens. The preprocessWrapper interface does not allow us
     # to distinguish cost sensitive tasks from clustering tasks.
 
-    filteredTask = filterFeatures(dummyTask, method = feature.filter, threshold = feature.filter.thresh)
+    filteredTask = filterFeatures(dummyTask, method = feature.filter,
+        threshold = feature.filter.thresh)
 
     oldcols = colnames(data)
     data = getTaskData(filteredTask)
-    # now we populate 'dropcols2': the columns that get dropped *after* rotation etc.
+    # now we populate 'dropcols2': the columns that get dropped *after*
+    # rotation etc.
     ppobject$dropcols2 = c(ppobject$dropcols, setdiff(oldcols, colnames(data)))
   }
 
@@ -229,18 +258,21 @@ predict.ampreproc = function(object, newdata, ...) {
   if (length(object$cols.numeric) > 0) {
     if (object$univariate.trafo != "off") {
       ndata = as.matrix(newdata[object$cols.numeric])
-      ndata = scale(ndata, center = coalesce(object$center, FALSE), scale = coalesce(object$scale, FALSE))
+      ndata = scale(ndata, center = coalesce(object$center, FALSE),
+          scale = coalesce(object$scale, FALSE))
       newdata[object$cols.numeric] = ndata
     }
 
     if (object$impute.numeric == "remove.na") {
       newdata = newdata[!naRows(newdata, object$cols.numeric), ]
     } else if (object$impute.numeric != "off") {
-      newdata[object$cols.numeric] = mapply(imputeRandom, newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY = FALSE)
+      newdata[object$cols.numeric] = mapply(imputeRandom,
+          newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY = FALSE)
     }
 
     if (object$multivariate.trafo != "off") {
-      newdata[object$cols.numeric] = as.matrix(newdata[object$cols.numeric]) %*% object$rotation
+      newdata[object$cols.numeric] =
+          as.matrix(newdata[object$cols.numeric]) %*% object$rotation
     }
   }
 
@@ -248,14 +280,17 @@ predict.ampreproc = function(object, newdata, ...) {
     if (object$impute.factor == "remove.na") {
       newdata = newdata[!naRows(newdata, object$cols.factor), ]
     } else if (object$impute.factor == "distinct") {
-      newdata[object$cols.factor] = lapply(newdata[object$cols.factor], function(f) {
+      newdata[object$cols.factor] = lapply(newdata[object$cols.factor],
+          function(f) {
             ret = addNA(f, ifany = FALSE)
-            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA', levels(ret))
+            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA',
+                levels(ret))
             ret
           })
       
     } else if (object$impute.factor != "off"){
-      newdata[object$cols.factor] = mapply(imputeRandom, newdata[object$cols.factor], object$pop.factor, SIMPLIFY = FALSE)
+      newdata[object$cols.factor] = mapply(imputeRandom,
+          newdata[object$cols.factor], object$pop.factor, SIMPLIFY = FALSE)
     }
   }
 
@@ -290,13 +325,21 @@ imputeRandom = function(x, pop) {
 makePreprocWrapperAm = function (learner, ...) {
   par.set = makeParamSet(
     makeNumericLearnerParam("ppa.nzv.cutoff.numeric", lower = 0, default = 0),
-    makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower = 0, upper = 1, default = 0),
-    makeDiscreteLearnerParam("ppa.univariate.trafo", c("off", "center", "scale", "centerscale", "range"), default = "off"),
-    makeDiscreteLearnerParam("ppa.impute.numeric", c("remove.na", "mean", "median", "hist", "off"), default = "off"),
-    makeDiscreteLearnerParam("ppa.impute.factor", c("remove.na", "distinct", "mode", "hist", "off"), default = "off"),
-    makeDiscreteLearnerParam("ppa.multivariate.trafo", c("off", "pca", "ica"), default = "off"),
-    makeDiscreteLearnerParam("ppa.feature.filter", c("off", "information.gain", "chi.squared", "rf.importance"), default = "off"),
-    makeNumericLearnerParam("ppa.feature.filter.thresh", lower = 0, default = 0, requires = quote(ppa.feature.filter != "off"))
+    makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower = 0, upper = 1,
+        default = 0),
+    makeDiscreteLearnerParam("ppa.univariate.trafo",
+        c("off", "center", "scale", "centerscale", "range"), default = "off"),
+    makeDiscreteLearnerParam("ppa.impute.numeric",
+        c("remove.na", "mean", "median", "hist", "off"), default = "off"),
+    makeDiscreteLearnerParam("ppa.impute.factor",
+        c("remove.na", "distinct", "mode", "hist", "off"), default = "off"),
+    makeDiscreteLearnerParam("ppa.multivariate.trafo",
+        c("off", "pca", "ica"), default = "off"),
+    makeDiscreteLearnerParam("ppa.feature.filter",
+        c("off", "information.gain", "chi.squared", "rf.importance"),
+        default = "off"),
+    makeNumericLearnerParam("ppa.feature.filter.thresh",
+        lower = 0, default = 0, requires = quote(ppa.feature.filter != "off"))
     #makeLogicalLearnerParam("keep.data", tunable = FALSE)
   )
   par.vals = getDefaults(par.set)
@@ -304,10 +347,12 @@ makePreprocWrapperAm = function (learner, ...) {
   
   trainfun = function(data, target, args) {
     names(args) = sub("ppa.", "", names(args), fixed = TRUE)
-    ppobject = do.call(preProcess, c(list(data = data, target = target, keep.data = TRUE), args))
+    ppobject = do.call(preProcess,
+        c(list(data = data, target = target, keep.data = TRUE), args))
     data = ppobject$data
     ppobject$data = NULL
-    if (ncol(data) == 2) {  # if it is 1, we just create a NoFeaturesLearner, a less interesting case.
+    if (ncol(data) == 2) {
+      # if it is 1, we just create a NoFeaturesLearner, a less interesting case.
       warning("preprocess returned only one column.")
     }
     list(data = data, control = ppobject)
@@ -325,7 +370,8 @@ makePreprocWrapperAm = function (learner, ...) {
 getLearnerProperties.PreprocWrapperAm = function(learner) {
   props = getLearnerProperties(learner$next.learner)
   par.vals = getHyperPars(learner)
-  props = union(props, c("missings", "factors", "ordered", "numerics"))  # this is only half a lie
+  # this is only half a lie:
+  props = union(props, c("missings", "factors", "ordered", "numerics"))
   props
 }
 

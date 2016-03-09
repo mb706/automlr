@@ -1,5 +1,6 @@
 
-#' List the backends currently implemented which can be passed to \code{\link{automlr}}.
+#' List the backends currently implemented which can be passed to
+#' \code{\link{automlr}}.
 #' 
 #' @param fenv should be NULL
 #' @examples
@@ -33,6 +34,6 @@ lsambackends = function(fenv = NULL) {
 isambackend = function(name) {
   searchstrings = paste(requiredBackendFunctions, name, sep = ".am")
   !any(sapply(mget(searchstrings, inherits = TRUE, mode = "function",
-                   ifnotfound = replicate(length(requiredBackendFunctions), NULL)),
-              is.null))
+              ifnotfound = replicate(length(requiredBackendFunctions), NULL)),
+          is.null))
 }

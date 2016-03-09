@@ -79,8 +79,9 @@ automlr = function(task, ...) {
 #' 
 #' @rdname automlr
 #' @export
-automlr.Task = function(task, measure = NULL, budget = 0, searchspace = autolearners, prior = NULL, savefile = NULL,
-                        save.interval = default.save.interval, backend, ...) {
+automlr.Task = function(task, measure = NULL, budget = 0,
+    searchspace = autolearners, prior = NULL, savefile = NULL,
+    save.interval = default.save.interval, backend, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
   if (is.null(measure)) {
@@ -90,27 +91,32 @@ automlr.Task = function(task, measure = NULL, budget = 0, searchspace = autolear
   }
   checkBudgetParam(budget)
   assertList(searchspace, types = "Autolearner", min.len = 1)
-  assert(any(extractSubList(searchspace, "stacktype") == "learner"))  # need at least one learner
+  # need at least one learner
+  assert(any(extractSubList(searchspace, "stacktype") == "learner"))
   if (!is.null(savefile)) {
     assertString(savefile)
     assertNumber(save.interval, lower = 0)
   }
   assert(identical(list(...), list()))
+  # a delegated problem is a solved problem.  
   automlr(makeS3Obj(c("AMState", "AMObject"),
                     task = task,
                     measure = coalesce(measure, getDefaultMeasure(task)),
                     budget = budget,
-                    spent = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0),
+                    spent = c(walltime = 0, cputime = 0, modeltime = 0,
+                        evals = 0),
                     searchspace = searchspace,
                     prior = prior,
                     backend = backend,
-                    backendprivatedata = setClasses(new.env(parent = emptyenv()), paste0("am", backend)),
+                    backendprivatedata = setClasses(
+                        new.env(parent = emptyenv()),
+                        paste0("am", backend)),
                     seed = .Random.seed,
                     creation.time = Sys.time(),
                     finish.time = NULL,
                     previous.versions = list(),
                     isInitialized = FALSE),
-          savefile = savefile, save.interval = save.interval)  # a delegated problem is a solved problem.
+          savefile = savefile, save.interval = save.interval)
 }
 
 #' Continue automlr search from an \code{.rds} savefile, given as a character.
@@ -118,7 +124,7 @@ automlr.Task = function(task, measure = NULL, budget = 0, searchspace = autolear
 #' @rdname automlr
 #' @export
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
-                             save.interval = default.save.interval, new.seed = FALSE, ...) {
+    save.interval = default.save.interval, new.seed = FALSE, ...) {
   assertString(task)
   truefilename = gsub('(\\.rds|)$', '.rds', task)
   if (!is.null(budget)) {
@@ -130,7 +136,8 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
   }
   assertFlag(new.seed)
   assert(identical(list(...), list()))
-  # yes, one could load an RDS file that contains a character(1) referring to another RDS file...
+  # yes, one could load an RDS file that contains a character(1) referring to
+  # another RDS file...
   automlr(readRDS(truefilename),
           budget = budget,
           prior = prior,
@@ -144,7 +151,7 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
 #' @rdname automlr
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
-                           save.interval = default.save.interval, new.seed = FALSE, ...) {
+    save.interval = default.save.interval, new.seed = FALSE, ...) {
   if (!is.null(budget)) {
     checkBudgetParam(budget)
   }
@@ -195,26 +202,40 @@ amfinish = function(amstate) {
 
 #' Give some cute info about a given AMState
 #' @param x what to print
-#' @param longform print detailed info
+#' @param verbose print detailed info
 #' @param ... Ellipsis
 #' @method print AMObject
 #' @export
-print.AMObject = function(x, longform = FALSE, ...) {
+print.AMObject = function(x, verbose = FALSE, ...) {
   allversions = c(x$previous.versions, list(x))
-  catf("automlr %s.\nBackend: %s", ifelse("AMState" %in% class(x), "optimization state", "result"), x$backend)
-  if (longform) {
-    catf("First created: %s\nLast finished: %s", allversions[[1]]$creation.time, x$finish.time)
+  catf("automlr %s.\nBackend: %s",
+      ifelse("AMState" %in% class(x), "optimization state", "result"),
+      x$backend)
+  if ("AMResult" %in% class(x)) {
+    catf("Optimum %s found: %f", x$measure$id, x$opt.val)
+    print(x$opt.point)
+  }  
+  if (verbose) {
+    catf("First created: %s\nLast finished: %s",
+        allversions[[1]]$creation.time, x$finish.time)
     cat("Total budget:\n")
     print(x$budget)
     cat("Total spent:\n")
     print(x$spent)
     if (length(allversions) > 1) {
       cat("All invocations using this object:\n")
-      # the following does a few gymnastics with do.call(c, ...) to keep the POSIXct type.
-      allversionsdf = data.frame(invocation.time = do.call(c, extractSubList(allversions, "creation.time", simplify = FALSE)),
-                                 return.time = do.call(c, extractSubList(allversions, "finish.time", simplify = FALSE)))
-      spentmatrix = t(sapply(allversions, function(v) v$spent[names(x$spent)]))
-      budgetmatrix = t(sapply(allversions, function(v) v$budget[names(x$spent)]))
+      # the following does a few gymnastics with do.call(c, ...)
+      # to keep the POSIXct type.
+      allversionsdf = data.frame(invocation.time = unlist(
+              extractSubList(allversions, "creation.time", simplify = FALSE),
+              recursive = FALSE),
+          return.time = unlist(
+              extractSubList(allversions, "finish.time", simplify = FALSE),
+              recursive = FALSE))
+      spentmatrix = t(sapply(allversions,
+              function(v) v$spent[names(x$spent)]))
+      budgetmatrix = t(sapply(allversions,
+              function(v) v$budget[names(x$spent)]))
       colnames(spentmatrix) = paste("sp", names(x$spent), sep = ".")
       colnames(budgetmatrix) = paste("bg", names(x$spent), sep = ".")
       print(cbind(allversionsdf, budgetmatrix, spentmatrix))
@@ -224,11 +245,5 @@ print.AMObject = function(x, longform = FALSE, ...) {
     cat("*****\nTask:\n")
     print(x$task)
     cat("*****\n")
-  }
-  if ("AMResult" %in% class(x)) {
-    catf("Optimum %s found: %f", x$measure$id, x$opt.val)
-    if (longform) {
-      print(x$opt.point)
-    }
   }
 }

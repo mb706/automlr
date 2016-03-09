@@ -1,5 +1,6 @@
 
-mboSaveMode = TRUE  # reduce types of parameter set to simple types to avoid mlrMBO bugs
+# reduce types of parameter set to simple types to avoid mlrMBO bugs
+mboSaveMode = TRUE  
 
 amaddprior.ammbo = function(env, prior) {
   NULL
@@ -12,7 +13,7 @@ amgetprior.ammbo = function(env) {
 amsetup.ammbo = function(env, prior, learner, task, measure) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
   requirePackages("smoof", why = "optMBO", default.method = "load")
-  # things to adapt:
+  # FIXME things that could be variable:
   #  resampling: holdout, cv, or something adaptive?
   #  infill control: focussearch, something else? how many points?
   env$runtimeEnv = environment()
@@ -20,10 +21,6 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   zeroWalltime = 0
   zeroModeltime = 0
   zeroEvals = 0
-  numcpus = parallelGetOptions()$settings$cpus
-  numcpus[is.na(numcpus)] = 1
-  
-  budget = 0
   
   isOutOfBudget = function(opt.state) {
     stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
@@ -37,12 +34,12 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
     l = setHyperPars(learner, par.vals = x)
     resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
   }
-  
+
+  usedParset = learner$searchspace
   if (mboSaveMode) {
-    usedParset = simplifyParams(mboRequirements(learner$searchspace))
-  } else {
-    usedParset = learner$searchspace
+    usedParset = simplifyParams(mboRequirements(usedParset))
   }
+
   resDesc = makeResampleDesc("Holdout")
   objective = smoof::makeSingleObjectiveFunction(
       name = "automlr learner optimization",
@@ -58,8 +55,10 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   imputefun = function(x, y, opt.path) imputeval
 
   control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
-  control = mlrMBO::setMBOControlInfill(control, opt = "focussearch", opt.focussearch.points = 1000)
-  control = mlrMBO::setMBOControlTermination(control, iters = NULL, more.stop.conds = list(function(opt.state) {
+  control = mlrMBO::setMBOControlInfill(control, opt = "focussearch",
+      opt.focussearch.points = 1000)
+  control = mlrMBO::setMBOControlTermination(control, iters = NULL,
+      more.stop.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
               list(term = TRUE, message = "automlr term", code = "iter")
             } else {
@@ -70,30 +69,31 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
 
   
   mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
-  mboLearner$config = list(on.learner.error = "stop", on.learner.warning = "warn", show.learner.output = TRUE)
-  mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor = "distinct", ppa.impute.numeric = "median")
+  mboLearner$config = list(on.learner.error = "stop",
+      on.learner.warning = "warn", show.learner.output = TRUE)
+  mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor = "distinct",
+      ppa.impute.numeric = "median")
   
   myMBO = mlrMBO::mbo
   environment(myMBO) = new.env(parent = asNamespace("mlrMBO"))
   environment(myMBO)$mboFinalize2 = identity
-  env$opt.state = myMBO(objective, learner = mboLearner, control = control, show.info = TRUE)
-  rm(myMBO)
-  
-  rm(prior, env)
+  env$opt.state = myMBO(objective, learner = mboLearner, control = control,
+      show.info = TRUE)
+  # clean up environment, it is used in objectiveFun().
+  rm(myMBO, prior, env)
 }
 
 
 amresult.ammbo = function(env) {
   mboResult = mlrMBO:::mboFinalize2(env$opt.state)
-  
   list(opt.point = removeMissingValues(mboResult$x),
       opt.val = mboResult$y,
       opt.path = mboResult$opt.path,
       result = mboResult)
 }
 
-# now this is where the fun happens
 amoptimize.ammbo = function(env, stepbudget) {
+  # initialize for spent budget computation
   zero = env$runtimeEnv
   zero$numcpus = parallelGetOptions()$settings$cpus
   zero$numcpus[is.na(zero$numcpus)] = 1
@@ -102,18 +102,20 @@ amoptimize.ammbo = function(env, stepbudget) {
   env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
 
   spent = spentBudget(env$opt.state, zero)
-  zero$zeroWalltime = zero$zeroWalltime + spent["walltime"]
-  zero$zeroModeltime = zero$zeroModeltime + spent["modeltime"]
-  zero$zeroEvals = zero$zeroEvals + spent["evals"]
+  zero$zeroWalltime %+=% spent["walltime"]
+  zero$zeroModeltime %+=% spent["modeltime"]
+  zero$zeroEvals %+=% spent["evals"]
 
   spent
 }
 
 spentBudget = function(opt.state, zero) {
   spent = numeric(0)
-  spent["walltime"] = as.numeric(opt.state$time.used, units = "secs") - zero$zeroWalltime
+  totalWallTime = as.numeric(opt.state$time.used, units = "secs")
+  totalModelTime = sum(getOptPathExecTimes(opt.state$opt.path))
+  spent["walltime"] = totalWallTime - zero$zeroWalltime
   spent["cputime"] = spent["walltime"] * zero$numcpus
-  spent["modeltime"] = sum(getOptPathExecTimes(opt.state$opt.path)) - zero$zeroModeltime
+  spent["modeltime"] = totalModelTime - zero$zeroModeltime
   spent["evals"] = getOptPathLength(opt.state$opt.path) - zero$zeroEvals
   spent
 }
@@ -125,12 +127,10 @@ simplifyParams = function(parset) {
         if (!is.null(par$values)) {
           par$values = as.list(names(par$values))
           names(par$values) = par$values
-        }
-        if (par$type == "logical") {
-          par$type = "discrete"
-        }
-        if (par$type == "logicalvector") {
-          par$type = "discretevector"
+          par$type = switch(par$type,
+              logical = "discrete",
+              logicalvector = "discretevector",
+              par$type)
         }
         par
       })
@@ -140,20 +140,18 @@ simplifyParams = function(parset) {
 # undo the 'simplifyParams' operation
 complicateParams = function(params, origparset) {
   ret = lapply(names(params), function(parname) {
-        if (origparset$pars[[parname]]$type == "logicalvector") {
-          params[[parname]] = unlist(params[[parname]])
+        par = params[[parname]]
+        if (is.null(vals)) {
+          # don't change anything
+          return(par)
         }
         vals = origparset$pars[[parname]]$values
-        if (!is.null(vals)) {
-          if (origparset$pars[[parname]]$type == "discretevector") {
-            return(lapply(params[[parname]], function(x) vals[[x]]))
-          }
-          if (origparset$pars[[parname]]$type == "discrete") {
-            return(vals[[params[[parname]]]])
-          }
-          return(unlist(vals[params[[parname]]]))
-        }
-        params[[parname]]
+        type = origparset$pars[[parname]]$type
+        switch(type,
+            logicalvector = unlist(vals[unlist(par)]),
+            logical = vals[[par]],
+            discretevector = lapply(par, function(x) vals[[x]]),
+            discrete = vals[[par]])
       })
   names(ret) = names(params)
   ret
@@ -163,30 +161,31 @@ complicateParams = function(params, origparset) {
 mboRequirements = function(searchspace) {
   replacements = list()
   for (param in searchspace$pars) {
-    if (param$type %nin% c("discrete", "discretevector", "logical", "logicalvector")) {
+    if (!isDiscrete(param)) {
       next
     }
-    fullObject = asQuoted(collapse(capture.output(dput(param$values)), sep = ""))
-    substituendum =  list(fullObject = fullObject, index = asQuoted(param$id))
-    if (param$type %in% c("discretevector")) {
-      # index is a list -- we turn it into a vector and index into fullObject to get a list
-      substituens = quote(fullObject[unlist(index)])
-    } else if (param$type == "logicalvector") {
-      # index is also a list because to mlrMBO, logicalvector looks like discretevector. however
-      # unlike for 'discretevector', we want to get a logical vector out of this.
-      substituens = quote(unlist(fullObject[unlist(index)]))
-    } else {  # param$type %in% c("locical", "discrete")
-      # index is a single element, and we want to get a single element.
-      substituens = quote(fullObject[[index]])
-    }
-    replacements[[param$id]] = do.call(substitute, list(substituens, substituendum))
+    fullObject = capture.output(dput(param$values))
+    fullObject = asQuoted(collapse(fullObject, sep = ""))
+    insert =  list(fullObject = fullObject, index = asQuoted(param$id))
+    template = switch(param$type,
+        # index is a list -- we turn it into a vector and index into fullObject
+        # to get a list
+        discretevector = quote(fullObject[unlist(index)]),
+        # index is also a list because to mlrMBO, logicalvector looks like
+        # discretevector. however unlike for 'discretevector', we want to get a
+        # logical vector out of this.
+        logicalvector =  quote(unlist(fullObject[unlist(index)])),
+        # index is a single element, and we want to get a single element.
+        quote(fullObject[[index]]))
+    replacements[[param$id]] = do.call(substitute, list(template, insert))
   }
   for (param in names(searchspace$pars)) {
     req = searchspace$pars[[param]]$requires
     if (is.null(req)) {
       next
     }
-    searchspace$pars[[param]]$requires = deExpression(replaceRequires(req, replacements))
+    newreq = replaceRequires(req, replacements)
+    searchspace$pars[[param]]$requires = deExpression(newreq)
   }
   searchspace
 }

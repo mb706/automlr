@@ -62,6 +62,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] other things?
   - [ ] simultaneous multiple task optimization
   - [ ] write a nicer readme **selfconscious**
+  - [ ] parallelMap is not required as dependency, make it optional.
 - [ ] release 0.3
   - [ ] regression learners
   - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)

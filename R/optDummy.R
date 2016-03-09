@@ -8,7 +8,8 @@
 #'        This is never null.
 amaddprior.amdummy = function(env, prior) {
   cat("Called 'combinepriors'.\n")
-  env$prior = env$prior + prior  # our cute prior mechanism
+  # our cute prior mechanism
+  env$prior = env$prior + prior
   invisible()
 }
 
@@ -64,6 +65,9 @@ amoptimize.amdummy = function(env, stepbudget) {
 #' @param env The private data of this backend.
 amresult.amdummy = function(env) {
   cat("Called 'result'\n")
-  list(opt.val = 0, opt.point = removeMissingValues(sampleValue(env$learner$searchspace, trafo = TRUE)),
-      opt.path = makeOptPathDF(env$learner$searchspace, "y", env$measure$minimize))
+  list(opt.val = 0,
+      opt.point = removeMissingValues(sampleValue(env$learner$searchspace,
+              trafo = TRUE)),
+      opt.path = makeOptPathDF(env$learner$searchspace, "y",
+          env$measure$minimize))
 }

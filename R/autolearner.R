@@ -16,8 +16,10 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
   assertChoice(stacktype, c("learner", "wrapper", "requiredwrapper"))
   names = extractSubList(searchspace, "name")
   if (any(duplicated(names))) {
-    stopf("Duplicated names %s for learner '%s'", paste(unique(names[duplicated(names)]), collapse = ", "),
-        if(is.character(learner)) learner else coalesce(learner$id, learner$name)) 
+    stopf("Duplicated names %s for learner '%s'",
+        paste(unique(names[duplicated(names)]), collapse = ", "),
+        ifelse(is.character(learner), learner,
+            coalesce(learner$id, learner$name))) 
   }
   makeS3Obj("Autolearner",
             learner = learner,
@@ -58,9 +60,10 @@ autoWrapper = function(name, constructor, conversion) {
 
 #' @export
 print.Autolearner = function(x, ...) {
-  cat(sprintf("<automlr learner '%s'>\n", ifelse(is.character(x$learner), x$learner, coalesce(x$learner$id, x$learner$name))))
+  cat(sprintf("<automlr learner '%s'>\n",
+          ifelse(is.character(x$learner), x$learner,
+              coalesce(x$learner$id, x$learner$name))))
 }
-# TODO: check that the AMLRFIX apparatus never overwrites things
 
 #' Define the searchspace parameter in a short form
 #' 
@@ -84,7 +87,8 @@ print.Autolearner = function(x, ...) {
 #' @param req A requirement for the variable to have effect
 #' @param dim the number of dimensions of this variable
 #' @export
-sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL, special = NULL, req = NULL, dim = 1) {
+sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
+    special = NULL, req = NULL, dim = 1) {
   assertChoice(type, c("real", "int", "cat", "bool", "fix", "def"))
 
   assertString(name)
@@ -134,13 +138,22 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL, speci
 
   assertInteger(dim, lower = 1, len = 1)
 
-  makeS3Obj("searchparam", name = name, values = values, type = type, trafo = trafo, id = id, special = special,
-      req = req, dim = dim)
+  makeS3Obj("searchparam",
+      name = name,
+      values = values,
+      type = type,
+      trafo = trafo,
+      id = id,
+      special = special,
+      req = req,
+      dim = dim)
 }
 
-makeNamedAlList = function(...) {  # make a named list, more convenient to use
+# make a named list, more convenient to use
+makeNamedAlList = function(...) {
   l = list(...)
-  n = sapply(l, function(item) ifelse(is.character(item$learner), item$learner, coalesce(item$learner$id, item$learner$name)))
+  n = sapply(l, function(item) ifelse(is.character(item$learner),
+            item$learner, coalesce(item$learner$id, item$learner$name)))
   names(l) = n
   l
 }
