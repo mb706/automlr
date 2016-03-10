@@ -24,7 +24,7 @@ amsetup.amrandom = function(env, prior, learner, task, measure) {
 amresult.amrandom = function(env) {
   res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace,
       list(env$measure), makeTuneControlRandom(maxit = 100), env$opt.path)
-  list(
+  list(learner = env$learner,
       opt.point = removeMissingValues(res$x),
       opt.val = res$y,
       opt.path = res$opt.path,
@@ -37,13 +37,13 @@ amoptimize.amrandom = function(env, stepbudget) {
   # we build a model wrapper around the learner, which, before checking, checks
   # the budget. if that was exceeded, we change the mlr settings so that errors
   # exit the tuner. then we throw an error, which we catch here.
-
+  
   # Save old mlr options, since predictLearner.amrand.wrapped may change it.
   oldOpts = getMlrOptions()
   on.exit(do.call(configureMlr, oldOpts))
-
+  
   learner = env$learner
-
+  
   am.env = new.env(parent = emptyenv())
   am.env$cpus = parallelGetOptions()$settings$cpus
   if (is.na(am.env$cpus)) {
@@ -55,11 +55,11 @@ amoptimize.amrandom = function(env, stepbudget) {
   am.env$outofbudget = FALSE
   am.env$untouched = TRUE
   learner$am.env = am.env
-
+  
   mlrModeltime = 0  # we count the modeltime that mlr gives us
   
   numcpus = parallelGetOptions()$settings$cpus
-
+  
   while (!checkoutofbudget(learner$am.env, numcpus, il = TRUE)) {
     # chop up 'evals' budget into 100s so we can stop when time runs out
     iterations = 100
@@ -68,7 +68,7 @@ amoptimize.amrandom = function(env, stepbudget) {
           iterations)
     }
     ctrl = makeTuneControlRandom(maxit = iterations, log.fun = logFunQuiet)
-
+    
     tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure),
         par.set = learner$searchspace, control = ctrl, show.info = FALSE)
     # we call configureMLR here, in case we loop around. Whenever the error is
@@ -153,7 +153,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
 #  }
   evaltime = system.time(result <- NextMethod("predictLearner"),
       gcFirst = FALSE)
-
+  
   if (checkoutofbudget(env, evaltime[3])) {
     # TODO: check this hack
     configureMlr(on.learner.error = "quiet")
@@ -168,10 +168,10 @@ checkoutofbudget = function(env, evaltime = 0, il = FALSE) {
   }
   env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime,
           units = "secs"))
-
+  
   env$usedbudget['cputime'] = env$usedbudget['walltime'] * env$cpus
   modeltime = env$usedbudget['modeltime'] + evaltime
-
+  
   # when doing parallel stuff, this is unknowable.
   if (env$untouched) {
     # either this is the first execution of predictLearner, or the whole thing
@@ -185,8 +185,8 @@ checkoutofbudget = function(env, evaltime = 0, il = FALSE) {
   if (stopcondition(env$stepbudget, env$usedbudget)) {
     env$outofbudget = TRUE
   }
-
+  
   env$usedbudget['modeltime'] = modeltime
   env$outofbudget
-
+  
 }

@@ -1,30 +1,48 @@
 
-#' preprocess the given data set
+#' @title preprocess the given data set
 #' 
+#' @description
 #' Do a set of transformation on the dataset depending on given parameters.
 #' 
-#' @param data The dataset, must be a data.frame
-#' @param target the name of the target column of the dataset; may be NULL if there is no data column.
-#' @param nzv.cutoff.numeric exclude numeric columns if their variance goes below this threshold
-#' @param nzv.cutoff.factor exclude factorial columns if the frequency of its most frequent level is
-#'        above 1-\code{nzv.cutoff.factor}.
-#' @param univariate.trafo The transformation to perform on numeric columns. Must be one of \code{"off"} (no trafo),
-#'        \code{"center"}, \code{"scale"}, \code{"centerscale"}, \code{"range"} (scaling so that all values lie
-#'        between 0 and 1.
-#' @param impute.numeric If and how to impute numeric missing values. Must be one of \code{"off"}, \code{"remove.na"}
-#'        (deleting rows with NAs), \code{"mean"}, \code{"median"}, \code{"hist"}.
-#' @param impute.factor If and how to impute factorial missing values. Must be one of \code{"off"}, \code{"remove.na"},
-#'        \code{"distinct"} (introduce new factor level), \code{"mode"}, \code{"hist"}.
-#' @param multivariate.trafo The multivariate transformation of numeric parameters to perform. Must be one
-#'        of \code{"off"}, \code{"pca"}, \code{"ica"}.
-#' @param feature.filter How to do feature filtering. Must be one of \code{"off"}, \code{"information.gain"},
-#'        \code{"chi.squared"}, \code{"rf.importance"}.
-#' @param feature.filter.thresh The threshold at which to exclude features when performing feature filtering.
-#'        Has no effect if \code{feature.filter} is set to \code{"off"}.
-#' @param keep.data Whether to include the transformed data in the returned object.
+#' @param data [\code{data.frame}]\cr
+#'   The dataset
+#' @param target [\code{character}]\cr
+#'   The name(s) of the target column(s) of the dataset; may be NULL if there is
+#'   no data column.
+#' @param nzv.cutoff.numeric [\code{numeric}]\cr
+#'   Exclude numeric columns if their variance goes below this threshold.
+#' @param nzv.cutoff.factor [\code{numeric}]\cr
+#'   Exclude factorial columns if the frequency of its most frequent level is
+#'   above 1-\code{nzv.cutoff.factor}.
+#' @param univariate.trafo [\code{character(1)}]\cr
+#'   The transformation to perform on numeric columns. Must be one of
+#'   \code{"off"} (no trafo), \code{"center"}, \code{"scale"},
+#'   \code{"centerscale"}, \code{"range"} (scaling so that all values lie 
+#'   between \code{0} and \code{1}.
+#' @param impute.numeric [\code{character(1)}]\cr
+#'   If and how to impute numeric missing values. Must be one of \code{"off"},
+#'   \code{"remove.na"} (deleting rows with NAs), \code{"mean"},
+#'   \code{"median"}, \code{"hist"}.
+#' @param impute.factor [\code{character(1)}]\cr
+#'   If and how to impute factorial missing values. Must be one of \code{"off"},
+#'   \code{"remove.na"}, \code{"distinct"} (introduce new factor level),
+#'   \code{"mode"}, \code{"hist"}.
+#' @param multivariate.trafo[\code{character(1)}]\cr
+#'   The multivariate transformation of numeric parameters to perform. Must be
+#'   one of \code{"off"}, \code{"pca"}, \code{"ica"}.
+#' @param feature.filter[\code{character(1)}]\cr
+#'   How to do feature filtering. Must be one of \code{"off"},
+#'   \code{"information.gain"}, \code{"chi.squared"}, \code{"rf.importance"}.
+#' @param feature.filter.thresh [\code{numeric}]\cr
+#'   The threshold at which to exclude features when performing feature
+#'   filtering. Has no effect if \code{feature.filter} is set to \code{"off"}.
+#' @param keep.data [\code{logical(1)}]\cr
+#'   Whether to include the transformed data in the returned object.
 #' 
-#' @return An object that can be used with \code{predict} to transform new data. If \code{keep.data} is \code{TRUE},
-#'         the slot \code{$data} will contain the transformed data.
+#' @return [\code{ampreproc}]\cr
+#' An object that can be used with \code{predict} to transform new data. If
+#' \code{keep.data} is \code{TRUE}, the slot \code{$data} will contain the
+#' transformed data.
 preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     nzv.cutoff.factor = 0, univariate.trafo = "off", impute.numeric = "off",
     impute.factor = "off", multivariate.trafo = "off", feature.filter = "off",
@@ -33,7 +51,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   # TODO: /maybe/ add a "ignore these columns" parameter
   # first: check arguments
   assertClass(data, classes = "data.frame")
-
+  
   assertNumber(nzv.cutoff.numeric, lower = 0)
   assertNumber(nzv.cutoff.factor, lower = 0, upper = 1)
   assertChoice(univariate.trafo,
@@ -49,11 +67,11 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   if (feature.filter != "off") {
     assertNumber(feature.filter.thresh)
   }
-
+  
   # collect all arguments given
   ppobject = addClasses(as.list(environment()), "ampreproc")
   ppobject$data = NULL
-
+  
   hasTarget = !is.null(target) && length(target) > 0
   if (hasTarget) {
     targetData = data[target]
@@ -83,38 +101,38 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   ndsplit = split(cols.factor, nzv.drop.factor)
   nzv.drop.factor = ndsplit$`TRUE`
   cols.factor = ndsplit$`FALSE`
-
+  
   # need to prevent this from being NULL!
   ppobject$dropcols = c(character(0), nzv.drop.factor, nzv.drop.numeric)
   ppobject$cols.factor = cols.factor
   ppobject$cols.numeric = cols.numeric
   
   data = data[names(data) %nin% ppobject$dropcols]
-
+  
   # univariate transformation (only on numerics)
   if (length(cols.numeric) > 0 && univariate.trafo != "off") {
     ndata = as.matrix(data[cols.numeric])
     if (univariate.trafo %in% c("center", "scale", "centerscale")) {
-
+      
       center = univariate.trafo %in% c("center", "centerscale")
       scale = univariate.trafo %in% c("scale", "centerscale")
-
+      
       ndata = scale(ndata, center = center, scale = scale)
-
+      
       ppobject$center = attr(ndata, "scaled:center")
       ppobject$scale = attr(ndata, "scaled:scale")
-
+      
     } else {  # univariate.trafo == "range"
       rng = apply(ndata, 2, range, na.rm = TRUE)
-
+      
       ppobject$scale = apply(rng, 2, diff)
       ppobject$center = apply(rng, 2, mean) - ppobject$scale / 2
-
+      
       ndata = scale(ndata, center = ppobject$center, scale = ppobject$scale)
     }
     data[cols.numeric] = ndata
   }
-
+  
   if (length(cols.numeric) > 0 && impute.numeric != "off") {
     if (impute.numeric == "remove.na") {
       delendum = naRows(data, cols.numeric)
@@ -125,9 +143,9 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     } else {
       ppobject$pop.numeric = lapply(data[cols.numeric], function(x) {
             res = switch(impute.numeric,
-            mean = mean(x, na.rm = TRUE),
-            median = median(x, na.rm = TRUE),
-            hist = x[!is.na(x)])
+                mean = mean(x, na.rm = TRUE),
+                median = median(x, na.rm = TRUE),
+                hist = x[!is.na(x)])
             if (length(res) == 0 || identical(res, NaN)) {
               res = 0
             }
@@ -165,12 +183,12 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     } else {
       ppobject$pop.factor = lapply(data[cols.factor], function(x) {
             res = switch(impute.factor, 
-            mode = {
-              ftab = sort(table(x), TRUE)
-              # if there is a tie, get all tieing levels
-              names(ftab)[ftab==ftab[1]]
-            },
-            hist = x[!is.na(x)])
+                mode = {
+                  ftab = sort(table(x), TRUE)
+                  # if there is a tie, get all tieing levels
+                  names(ftab)[ftab==ftab[1]]
+                },
+                hist = x[!is.na(x)])
             if (length(res) == 0) {
               res = levels(x)[1]
             }
@@ -183,7 +201,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
           ppobject$pop.factor, SIMPLIFY = FALSE)
     }
   }
-
+  
   if (length(cols.numeric) > 0) {
     if (multivariate.trafo == "pca") {
       pcr = prcomp(data[cols.numeric], center = FALSE)
@@ -201,7 +219,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   if (hasTarget) {
     data[target] = targetData
   }
-
+  
   if (hasTarget && feature.filter != "off") {
     ## If feature.filter ever works with empty target, dummy.task would need to
     # be "cluster". 
@@ -231,21 +249,21 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     }
     # missing: costsens. The preprocessWrapper interface does not allow us
     # to distinguish cost sensitive tasks from clustering tasks.
-
+    
     filteredTask = filterFeatures(dummyTask, method = feature.filter,
         threshold = feature.filter.thresh)
-
+    
     oldcols = colnames(data)
     data = getTaskData(filteredTask)
     # now we populate 'dropcols2': the columns that get dropped *after*
     # rotation etc.
     ppobject$dropcols2 = c(ppobject$dropcols, setdiff(oldcols, colnames(data)))
   }
-
+  
   if (keep.data) {
     ppobject$data = data
   }
-
+  
   ppobject
 }
 
@@ -253,7 +271,7 @@ predict.ampreproc = function(object, newdata, ...) {
   # all right lets go
   # drop low variance cols
   newdata = newdata[names(newdata) %nin% object$dropcols]
-
+  
   # univariate trafo
   if (length(object$cols.numeric) > 0) {
     if (object$univariate.trafo != "off") {
@@ -262,20 +280,20 @@ predict.ampreproc = function(object, newdata, ...) {
           scale = coalesce(object$scale, FALSE))
       newdata[object$cols.numeric] = ndata
     }
-
+    
     if (object$impute.numeric == "remove.na") {
       newdata = newdata[!naRows(newdata, object$cols.numeric), ]
     } else if (object$impute.numeric != "off") {
       newdata[object$cols.numeric] = mapply(imputeRandom,
           newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY = FALSE)
     }
-
+    
     if (object$multivariate.trafo != "off") {
       newdata[object$cols.numeric] =
           as.matrix(newdata[object$cols.numeric]) %*% object$rotation
     }
   }
-
+  
   if (length(object$cols.factor) > 0) {
     if (object$impute.factor == "remove.na") {
       newdata = newdata[!naRows(newdata, object$cols.factor), ]
@@ -293,7 +311,7 @@ predict.ampreproc = function(object, newdata, ...) {
           newdata[object$cols.factor], object$pop.factor, SIMPLIFY = FALSE)
     }
   }
-
+  
   newdata[names(newdata) %nin% object$dropcols2]
 }
 
@@ -308,39 +326,44 @@ imputeRandom = function(x, pop) {
 
 #' @title Wrap learner with preProcess function
 #' 
-#' @description Fuse the learner with the automlr preProcess function.
+#' @description
+#' Fuse the learner with the automlr preProcess function.
 #' 
 #' NOTE 1:\cr
-#' some of these arguments are useless dependent on the format of the data: If there are no numeric columns, the \code{*numeric-arguments} 
-#' have no effect etc.
+#' some of these arguments are useless dependent on the format of the data: If
+#' there are no numeric columns, the \code{*numeric-arguments} have no effect etc.
 #' 
 #' Note 2:\cr
-#' setting \code{ppa.nzv.cutoff.*} to their maximum values would effectively remove all numeric / factor columns, therefore allowing 
-#' conversion for learners that don't support some types.
+#' setting \code{ppa.nzv.cutoff.*} to their maximum values would effectively
+#' remove all numeric / factor columns, therefore allowing conversion for
+#' learners that don't support some types.
 #' 
-#' @param learner the mlr learner object
-#' @param ... Additional parameters passed to \code{\link{preProcess}}.
+#' @param learner [\code{Learner}]\cr
+#'   The mlr learner object
+#' @param ... [any]\cr
+#'   Additional parameters passed to \code{\link{preProcess}}.
 #' 
 #' @export
 makePreprocWrapperAm = function (learner, ...) {
   par.set = makeParamSet(
-    makeNumericLearnerParam("ppa.nzv.cutoff.numeric", lower = 0, default = 0),
-    makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower = 0, upper = 1,
-        default = 0),
-    makeDiscreteLearnerParam("ppa.univariate.trafo",
-        c("off", "center", "scale", "centerscale", "range"), default = "off"),
-    makeDiscreteLearnerParam("ppa.impute.numeric",
-        c("remove.na", "mean", "median", "hist", "off"), default = "off"),
-    makeDiscreteLearnerParam("ppa.impute.factor",
-        c("remove.na", "distinct", "mode", "hist", "off"), default = "off"),
-    makeDiscreteLearnerParam("ppa.multivariate.trafo",
-        c("off", "pca", "ica"), default = "off"),
-    makeDiscreteLearnerParam("ppa.feature.filter",
-        c("off", "information.gain", "chi.squared", "rf.importance"),
-        default = "off"),
-    makeNumericLearnerParam("ppa.feature.filter.thresh",
-        lower = 0, default = 0, requires = quote(ppa.feature.filter != "off"))
-    #makeLogicalLearnerParam("keep.data", tunable = FALSE)
+      makeNumericLearnerParam("ppa.nzv.cutoff.numeric", lower = 0,
+          default = 0),
+      makeNumericLearnerParam("ppa.nzv.cutoff.factor", lower = 0, upper = 1,
+          default = 0),
+      makeDiscreteLearnerParam("ppa.univariate.trafo",
+          c("off", "center", "scale", "centerscale", "range"), default = "off"),
+      makeDiscreteLearnerParam("ppa.impute.numeric",
+          c("remove.na", "mean", "median", "hist", "off"), default = "off"),
+      makeDiscreteLearnerParam("ppa.impute.factor",
+          c("remove.na", "distinct", "mode", "hist", "off"), default = "off"),
+      makeDiscreteLearnerParam("ppa.multivariate.trafo",
+          c("off", "pca", "ica"), default = "off"),
+      makeDiscreteLearnerParam("ppa.feature.filter",
+          c("off", "information.gain", "chi.squared", "rf.importance"),
+          default = "off"),
+      makeNumericLearnerParam("ppa.feature.filter.thresh",
+          lower = 0, default = 0, requires = quote(ppa.feature.filter != "off"))
+  #makeLogicalLearnerParam("keep.data", tunable = FALSE)
   )
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))

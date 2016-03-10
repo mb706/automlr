@@ -35,13 +35,14 @@ Currently the project is undergoing heavy development; while the spirit of the a
 - [-] release 0.1
   - [X] write preliminary readme
   - [ ] Tests pass
-  - [ ] adapt coding style to mlrOrg
-  - [ ] write documentation for entry points
-  - [ ] Adapt entry point docu to mlrOrg style
+  - [X] adapt coding style to mlrOrg
+  - [X] write documentation for entry points
+  - [X] Adapt entry point docu to mlrOrg style
   - [ ] finish writing wrappers
   - [ ] correct version dependencies 
   - [ ] argument for debug level
   - [ ] package build generate mlrLearners.R
+  - [ ] mlrLearners, mlrLearnersNoWrap variables
   - [ ] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend

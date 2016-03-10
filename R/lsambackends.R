@@ -1,10 +1,13 @@
 
-#' List the backends currently implemented which can be passed to
+#' @title List the backends currently implemented which can be passed to
 #' \code{\link{automlr}}.
 #' 
-#' @param fenv should be NULL
+#' @param fenv [\code{NULL}]\cr
+#'   Should be NULL
+#' 
 #' @examples
 #' lsambackends()
+#' 
 #' @export
 lsambackends = function(fenv = NULL) {
   # TODO: maybe this weird recursion listing is not a good idea
@@ -27,9 +30,10 @@ lsambackends = function(fenv = NULL) {
   c(results, lsambackends(parent.env(fenv)))
 }
 
-#' Check if the given name is a valid automlr backend
+#' @title Check if the given name is a valid automlr backend
 #' 
-#' @param name the name of the backend to check for.
+#' @param [\code{character(1)}]\cr
+#'   Name the name of the backend to check for.
 #' @export
 isambackend = function(name) {
   searchstrings = paste(requiredBackendFunctions, name, sep = ".am")

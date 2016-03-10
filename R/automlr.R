@@ -1,72 +1,126 @@
-#' Automatically choose a model with parameters to fit.
+#' @title Automatically choose a model with parameters to fit.
 #' 
+#' @description
 #' This is the main entry point of automlr.
 #' 
-#' @param task Either: the mlr Task object to fit a model on. Or: An \code{AMState} object, or a character(1)
-#'        containing the file name of an \code{.rds} file containing
-#'        such an object. The AMState usually contains progress of a past optimization run that was aborted by the
-#'        user, a crash, or which ran out of budget.
-#' @param measure the mlr Measure object to optimize for. If this is not given and the first argument is a
-#'        Task object, uses the task's default measure. If this is not given and the first argument is an AMState object
-#'        or a character referring to an AMState rds file, the measure of the AMState is used.
-#' @param budget a list or named vector with one or several of the entries \code{walltime} (time since invocation),
-#'        \code{cputime} (total cpu time of optimization process), \code{modeltime} (time spent executing model fits), 
-#'        \code{evals} (number of model fit evaluations). Time is always given in seconds. When any of the budget criteria
-#'        is exceeded, the optimization process will halt at the next possible point and return. In the current
-#'        implementation, this is only checked between model fits and evaluations, so the time budgets may be exceeded,
-#'        in some cases, substantially. If the first argument is an AMState object or a character referring to an
-#'        AMState rds file, this is optional and defaults to the AMState's budget \emph{minus the already used up
-#'        budget}. To continue an already finished run, therefore, one needs to pass a higher budget than during the
-#'        previous run. Passing 0 will return an AMState object without performing any optimization or touching the
-#'        file system.\\TODO ideally the budget should have an influence in the backends behaviour, so that it tries
-#'        to do many cheap, parallel evaluations if only \code{walltime} restriction is given, or few high information
-#'        gain evaluations if only \code{evals} restriction is given. If this ever happens, we may want to have an
-#'        additional parameter that has an influence on this orthogonal to providing a budget.
-#' @param searchspace a list of \code{Autolearner} objects which mainly wrap mlr \code{Learner} objects (see
-#'        \code{\link{autolearner}}. The \code{par.set} attribute will define the
-#'        hyperparameter search space for the individual learners. If not supplied, \code{\link{autolearners}} will
-#'        be used for the Task S3-method, and the AMState's searchspace will be used for the AMState and character S3
-#'        method. It is thus possible to expand or restrict the search space on subsequent calls to \code{automlr()};
-#'        if the models in a restricted search space perform less well than a previously found model, however, the
-#'        previous model not in the new search space any more may well be returned as an optimum.\\It is recommended 
-#'        to use a subset of \code{\link{autolearners}}. Only learners that fit the task type
-#'        will be used, the others will be ignored without notification.
-#' @param prior a black box that contains some form of knowledge about the world at large that may help speed
-#'        up the optimization process. Effect of this parameter depends on the backend implementation.
-#' @param savefile A file in which intermediate progress will be saved. This is will prevent date getting
-#'        lost in case of a crash. The data written is an \code{AMState} object in an \code{.rds} file that can be
-#'        read and run with \code{automlr()} to resume optimization.\\This may refer to a specific file name, in which
-#'        case the file will be created or overwritten \emph{without warning}, or it may refer to a directory (ending
-#'        with a '/'), in which
-#'        case a unique filename will be created that is guaranteed not to overwrite other files written by other
-#'        automlr processes, if such guarantee can be provided by the file system.\\If the first argument is an
-#'        \code{AMState} object, \code{savefile} will \emph{not} default to the \code{AMState}'s \emph{savefile}
-#'        but must be supplied again; this is to prevent accidental file overwrites. If the first argument
-#'        is a character, \code{savefile} defaults to \code{amstate} and therefore offers to seamlessly continue
-#'        optimization runs.
-#' @param backend A character(1) referring to the back end used for optimization. Must be one of \code{\link{lsambackends}}
-#'        results.
-#' @param save.interval the inteval, in seconds, in between which to save the intermediate result to \code{savefile}. Ignored
-#'        if savefile is NULL; set to 0 to only save at end of optimization run.
-#' @param new.seed if TRUE, the random seed saved in the AMState object will not be used; instead the rng state at time
-#'        of the invocation will be used. The default behaviour (FALSE) is to use the saved rng state so that invocations
-#'        with the same AMState object give a more deterministic result (insofar as execution time does not influence
-#'        behaviour).
-#' @param ... I don't know how to get rid of this warning, therefore I'm documenting the ellipsis here. TODO
-#'        there has to be a different way around this.
-#' @return AMState object containing the result as well as info about the run.
+#' @param task [\code{Task} | \code{AMState} | \code{character(1)}]\cr
+#'   Either: The mlr \code{Task} object to fit a model on. Or: An \code{AMState}
+#'   object, or a \code{character(1)} containing the file name of an \code{.rds}
+#'   file containing such an object. The AMState usually contains progress of a
+#'   past optimization run that was aborted by the user, a crash, or which ran
+#'   out of budget.
+#' @param measure [\code{Measure}]\cr
+#'   The mlr \code{Measure} object to optimize for. If this is not given and the
+#'   first argument is a \code{Task} object, uses the task's default measure.
+#' @param budget [\code{numeric} | list of \code{numeric}]\cr
+#'   A named list or named vector with one or several of the entries
+#'   \describe{
+#'     \item{\code{walltime}}{time since invocation}
+#'     \item{\code{cputime}}{total cpu time of optimization process}
+#'     \item{\code{modeltime}}{time spent executing model fits}
+#'     \item{\code{evals}}{number of model fit evaluations}
+#'   }
+#'   (Time is always given in seconds.)\cr
+#'   When any of the budget criteria is exceeded, the optimization process will
+#'   halt at the next possible point and return. In the current implementation,
+#'   this is only checked between model fits and evaluations, so the time
+#'   budgets may be exceeded, in some cases substantially. If the \code{taks}
+#'   argument is an \code{AMState} object or a \code{character(1)} referring to
+#'   an \code{AMState} rds-file, this is optional and defaults to the referenced
+#'   \code{AMState}'s budget \emph{minus the already used up budget}. To
+#'   continue an already finished run, therefore, one needs to pass a higher
+#'   budget than the \code{$spent} slot indicates. Passing \code{0} will return
+#'   an AMState object without performing any optimization or touching the file
+#'   system.
+#' @param searchspace [list of \code{Autolearner}]
+#'   Declaration of the searchspace: The mlr \code{Learner}s to use and the
+#'   parameter domains to consider for optimization. \code{Learner}s can be
+#'   chosen manually, either by creating custom \code{Autolearner} objects using
+#'   \code{\link{autolearner}}, using elements of the provided
+#'   \code{link{mlrLearners}} list, searching all implemented \code{Learner}s by
+#'   using \code{link{mlrLearners}} (default), or searching all \code{Learner}s
+#'   without considering preprocessing using \code{link{mlrLearnersNoWrap}}.\cr
+#'   From the provided list, only \code{Learner}s that fit the task
+#'   characteristics and type will be used, the others will be ignored without
+#'   notification.
+#' @param prior [any]\cr
+#'   A black box that contains some form of knowledge about the world at large
+#'   that may help speed up the optimization process. Effect of this parameter
+#'   depends on the backend implementation. Currently, this is ignored by all
+#'   backends.
+#' @param savefile [\code{character(1)}]
+#'   Name of a file or folder in which intermediate progress will be saved.
+#'   This is will prevent data getting lost in case of a crash. The data written
+#'   is an \code{AMState} object in an \code{.rds} file that can be read and run
+#'   with another \code{automlr} call to resume optimization.\cr
+#'   If \code{savefile} ends with a forward slash (\code{/}), it is assumed to
+#'   refer to a directory in which a new file will be created. Otherwise it is
+#'   assumed to refer to a specific file name, in which case the file will be
+#'   created or overwritten \emph{without warning}.\cr
+#'   If the \code{task} argument is an \code{AMState} object, \code{savefile}
+#'   will \emph{not} default to the \code{AMState}'s \emph{savefile} but must be
+#'   supplied again; this is to prevent accidental file overwrites. If the first
+#'   argument is a character, \code{savefile} defaults to \code{amstate} and
+#'   therefore offers to seamlessly continue optimization runs.
+#' @param backend [\code{character(1)}]\cr
+#'   Refers to the back end used for optimization. Currently implemented and
+#'   provided by automlr are \code{"random"}, \code{"irace"} and \code{"mbo"}.
+#'   To list all backends, run \code{\link{lsambackends}}.
+#' @param save.interval [code{numeric(1)}]\cr
+#'   The inteval, in seconds, in between which to save the intermediate result
+#'   to \code{savefile}. Ignored if \code{savefile} is \code{NULL}; set to
+#'   \code{0} to only save at the end of optimization runs.
+#' @param new.seed [\code{logical(1)}]\cr
+#'   If \code{TRUE}, the random seed saved in the AMState object will not be
+#'   used; instead the RNG state at time of the invocation will be used.
+#'   The default behaviour (\code{FALSE}) is to use the saved rng state so that
+#'   invocations with the same AMState object give a more deterministic result
+#'   (insofar as execution time does not influence behaviour).\cr
+#'   \emph{Warning}: This is not yet tested and likely does not work with
+#'   \code{Learner}s that use external RNGs.
+#' @param ... No further arguments should be given.
+#' 
+#' @return [\code{AMState}]\cr
+#' Object containing the result as well as info about the run. Use
+#' \code{\link{amfinish}} to extract the results.
+#' 
+#' Object members:
+#' \describe{
+#'   \item{task [\code{Task}]}{The task being trained for.}
+#'   \item{measure [\code{Measure}]}{The measure for which is being ptimized.}
+#'   \item{budget [\code{numeric}]}{The budget of the current run.}
+#'   \item{spent [\code{numeric(4)}]}{The budget already spent.}
+#'   \item{searchspace [list of \code{Autolearner}]{The \code{Learner}s being
+#'     considered for optimization.}
+#'   \item{prior [any]}{The prior of the current run. If the backend supports
+#'     this, the prior is being updated during a run and can be given to another
+#'     \code{automlr} invocation as an argument.}
+#'   \item{backend [\code{character(1)}]}{The backend of the optimization run.}
+#'   \item{creation.time [\code{numeric(1)}]}{The time at which the object was
+#'     created.}
+#'   \item{finish.time [\code{numeric(1)}]}{The time at which the object was
+#'     last touched by \code{automlr}; either by saving it on disk or by
+#'     returning a result.}
+#'   \item{previous.versions [list of \code{AMState}]}{Backlog of previous
+#'     invocations of \code{automlr} using this object. The objects in this list
+#'     are reduced instances of \code{AMState}.}
+#'   \item{seed [\code{numeric}]}{The value of \code{.Random.seed} which to use
+#'     for continuation.}
+#'  }
+#'     
 #' 
 #' @examples
 #' \dontrun{
 #' library(mlr)
 #' # almost minimal invocation. Will save progress to './iris.rds'.
-#' automlr(iris.task, budget = c(evals = 1000), backend = "random", savefile = "iris")
+#' automlr(iris.task, budget = c(evals = 1000), backend = "random",
+#'   savefile = "iris")
 #' > SOME RESULT YOU GUYS
 #' 
 #' # optimize for another 1000 evaluations, loading the 'iris.rds' savefile
 #' # automatically and saving back to it during evaluation.
 #' automlr("iris", budget = c(evals = 2000))
-#' > MORE RESULTS, THE WORLD IS BEAUTIFUL
+#' > MORE RESULTS
 #' }
 #' 
 #' @include mlrLearners.R lsambackends.R defaults.R
@@ -75,7 +129,7 @@ automlr = function(task, ...) {
   UseMethod("automlr")
 }
 
-#' Create an \code{AMState} object and run automlr.
+#' @title Create an \code{AMState} object and run automlr.
 #' 
 #' @rdname automlr
 #' @export
@@ -89,6 +143,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
   } else {
     assertClass(measure, "Measure")
   }
+  budget = unlist(budget, recursive = FALSE)
   checkBudgetParam(budget)
   assertList(searchspace, types = "Autolearner", min.len = 1)
   # need at least one learner
@@ -100,26 +155,27 @@ automlr.Task = function(task, measure = NULL, budget = 0,
   assert(identical(list(...), list()))
   # a delegated problem is a solved problem.  
   automlr(makeS3Obj(c("AMState", "AMObject"),
-                    task = task,
-                    measure = coalesce(measure, getDefaultMeasure(task)),
-                    budget = budget,
-                    spent = c(walltime = 0, cputime = 0, modeltime = 0,
-                        evals = 0),
-                    searchspace = searchspace,
-                    prior = prior,
-                    backend = backend,
-                    backendprivatedata = setClasses(
-                        new.env(parent = emptyenv()),
-                        paste0("am", backend)),
-                    seed = .Random.seed,
-                    creation.time = Sys.time(),
-                    finish.time = NULL,
-                    previous.versions = list(),
-                    isInitialized = FALSE),
-          savefile = savefile, save.interval = save.interval)
+          task = task,
+          measure = coalesce(measure, getDefaultMeasure(task)),
+          budget = budget,
+          spent = c(walltime = 0, cputime = 0, modeltime = 0,
+              evals = 0),
+          searchspace = searchspace,
+          prior = prior,
+          backend = backend,
+          backendprivatedata = setClasses(
+              new.env(parent = emptyenv()),
+              paste0("am", backend)),
+          seed = .Random.seed,
+          creation.time = Sys.time(),
+          finish.time = NULL,
+          previous.versions = list(),
+          isInitialized = FALSE),
+      savefile = savefile, save.interval = save.interval)
 }
 
-#' Continue automlr search from an \code{.rds} savefile, given as a character.
+#' @title Continue automlr search from an \code{.rds} savefile, given as a
+#' \code{character(1)}.
 #' 
 #' @rdname automlr
 #' @export
@@ -128,6 +184,7 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
   assertString(task)
   truefilename = gsub('(\\.rds|)$', '.rds', task)
   if (!is.null(budget)) {
+    budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)
   }
   if (!is.null(savefile)) {
@@ -139,20 +196,21 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
   # yes, one could load an RDS file that contains a character(1) referring to
   # another RDS file...
   automlr(readRDS(truefilename),
-          budget = budget,
-          prior = prior,
-          savefile = savefile,
-          save.interval = save.interval,
-          new.seed = new.seed)
+      budget = budget,
+      prior = prior,
+      savefile = savefile,
+      save.interval = save.interval,
+      new.seed = new.seed)
 }
 
-#' Continue automlr search from saved \code{AMState} object.
+#' @title Continue automlr search the result of a previous \code{automlr} run.
 #' 
 #' @rdname automlr
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, new.seed = FALSE, ...) {
   if (!is.null(budget)) {
+    budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)
   }
   if (!is.null(savefile)) {
@@ -164,27 +222,33 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
   aminterface(task, budget, prior, savefile, save.interval, new.seed)
 }
 
-#' Extract a prior from an AMState or AMResult object
+#' @title Converte the \code{AMState} object as returned by
+#'   \code{\link{automlr}} to an \code{AMResult} object.
 #' 
-#' The extracted prior can be used as an argument to further calls of \code{\link{automlr}}.
-#' @param amstate The AMState or AMResult object from which to extract the prior.
-#' @export
-extractprior = function(amstate) {
-  assertClass(amstate, "AMObject")
-  if (length(amstate$prior.backlog) > 0) {
-    assertClass(amstate, "AMState")
-    if (!amstate$isInitialized) {
-      stop("Object is not initialized but has prior backlog.")
-    }
-    updatePriors(amstate)
-  }
-  amstate$prior
-}
-
-#' Converte the AMState object as returned by \code{\link{automlr}} to a result object.
+#' @description
+#' The result object contains information about the solution that is relatively
+#' backend-independent.
 #' 
-#' The result object contains information about the solution that is relatively backend-independent.
-#' @param amstate The AMState object which is to be converted.
+#' @param amstate [\code{AMState}]\cr
+#'   The AMState object which is to be converted.
+#' 
+#' @returns [\code{AMResult}]\cr
+#' Object representing the optimum found by the \code{\link{automlr}} run.
+#' 
+#' Object members:
+#' \describe{
+#'   \item{learner [\code{Learner}]}{The (constructed) learner that achieved the
+#'     optimum.}
+#'   \item{opt.point [\code{list}]}{Optimal hyperparameters for learner.}
+#'   \item{opt.val [\code{numeric}]}{Optimum reached for the \code{AMState}'s
+#'     \code{measure}.}
+#'   \item{opt.path [\code{OptPath}]}{Information about all the evaluations
+#'     performed.}
+#'   \item{result [any]}{Furthe backend-dependent information about the
+#'     optimum.}
+#'   \item{... (further elements)}{Elements of the \code{AMState} object.}
+#'  }
+#' 
 #' @export
 amfinish = function(amstate) {
   assertClass(amstate, "AMState")
@@ -200,11 +264,16 @@ amfinish = function(amstate) {
   amstate
 }
 
-#' Give some cute info about a given AMState
-#' @param x what to print
-#' @param verbose print detailed info
-#' @param ... Ellipsis
+#' @title Give some cute info about a given AMState
+#' 
+#' @param x [\code{AMState}|\code{AMResult}]\cr
+#'   What to print
+#' @param verbose [\code{logical(1)}]\cr
+#'   Print detailed info
+#' @param ... ignored
+#' 
 #' @method print AMObject
+#' 
 #' @export
 print.AMObject = function(x, verbose = FALSE, ...) {
   allversions = c(x$previous.versions, list(x))

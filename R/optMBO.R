@@ -34,12 +34,12 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
     l = setHyperPars(learner, par.vals = x)
     resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
   }
-
+  
   usedParset = learner$searchspace
   if (mboSaveMode) {
     usedParset = simplifyParams(mboRequirements(usedParset))
   }
-
+  
   resDesc = makeResampleDesc("Holdout")
   objective = smoof::makeSingleObjectiveFunction(
       name = "automlr learner optimization",
@@ -53,7 +53,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   
   imputeval = generateRealisticImputeVal(measure, learner, task)
   imputefun = function(x, y, opt.path) imputeval
-
+  
   control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
   control = mlrMBO::setMBOControlInfill(control, opt = "focussearch",
       opt.focussearch.points = 1000)
@@ -66,7 +66,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
             }
           }))
   
-
+  
   
   mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
   mboLearner$config = list(on.learner.error = "stop",
@@ -86,7 +86,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
 
 amresult.ammbo = function(env) {
   mboResult = mlrMBO:::mboFinalize2(env$opt.state)
-  list(opt.point = removeMissingValues(mboResult$x),
+  list(learner = env$learner,
+      opt.point = removeMissingValues(mboResult$x),
       opt.val = mboResult$y,
       opt.path = mboResult$opt.path,
       result = mboResult)
@@ -98,14 +99,14 @@ amoptimize.ammbo = function(env, stepbudget) {
   zero$numcpus = parallelGetOptions()$settings$cpus
   zero$numcpus[is.na(zero$numcpus)] = 1
   zero$budget = stepbudget
-
+  
   env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
-
+  
   spent = spentBudget(env$opt.state, zero)
   zero$zeroWalltime %+=% spent["walltime"]
   zero$zeroModeltime %+=% spent["modeltime"]
   zero$zeroEvals %+=% spent["evals"]
-
+  
   spent
 }
 

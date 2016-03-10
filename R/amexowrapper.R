@@ -1,57 +1,89 @@
 
 
-#' Create an mlr learner object that smoothes out the parameter space.
+#' @title Create an mlr learner object that smoothes out the parameter space.
 #'
+#' @description
 #' So what are we doing here?
 #' The AMExoWrapper mostly handles parameter space magic. Specifically, this is:
 #' \itemize{
-#'  \item introduce a parameter that chooses which wrapper is used, and in which sequence
-#'  \item introduce parameters that control whether the wrapper(s) are used to facilitate compatibility of
-#'        learners with the data, i.e. remove missing values, remove or convert data types that are not supportet
-#'  \item set some special variable values that the `requires`-expressions of other parameters can use to specify
-#'        that some parameters are only relevant in the presence of certain data types.
-#'  \item remove parameters that always take on a single value (maybe dependent on a `requires` from the search space
-#'        and set them internally before calling the wrapped model.
-#'  \itemize{
-#'    \item bonus: if the fixed parameter name contains a suffix of .AMLRFIX#, where # is a number, it will be stripped
-#'        from the parameter name. This way it is possible to define alternative "defaults" for a parameter in case of
-#'        certain requirements being given.
+#'   \item introduce a parameter that chooses which wrapper is used, and in
+#'     which sequence
+#'   \item introduce parameters that control whether the wrapper(s) are used to
+#'     facilitate compatibility of learners with the data, i.e. remove missing
+#'     values, remove or convert data types that are not supportet
+#'   \item set some special variable values that the `requires`-expressions of
+#'     other parameters can use to specify that some parameters are only
+#'     relevant in the presence of certain data types.
+#'   \item remove parameters that always take on a single value (maybe dependent
+#'     on a `requires` from the search space and set them internally before
+#'     calling the wrapped model.
+#'   \itemize{
+#'     \item bonus: if the fixed parameter name contains a suffix of .AMLRFIX#,
+#'       where # is a number, it will be stripped from the parameter name. This
+#'       way it is possible to define alternative "defaults" for a parameter in
+#'       case of certain requirements being given.
 #'   }
 #' }
 #'
 #' The parameters that are introduced and exposed to the outside are:
 #' \itemize{
-#'  \item automlr.wrappersetup: which wrapper is used. It has the format \code{outermostWrapper$wrapper...$wrapper$innermostwrapper}.
-#'  \item automlr.remove.XXX where XXX is one of missings, factors, ordered. It controls whether one of the wrapper will
-#'    be set up to remove the property in question even if the underlying learner is able to use the data type.
-#'   \itemize{ 
-#'    \item NOTE: this may or may not be sensible for the data type in question and it is possible to set the respective value
-#'          to FALSE via setHyperPars() & exclude it from the search space. Who is AMExoWrapper to decide?
-#'    \item NOTE2: Only wrappers marked as "requiredwrapper" can respond to this; This is because otherwise the search
-#'          space gets too confusing.
-#'   }
-#'  \item automlr.wremoving.XXX where XXX is one of missings, factors, ordered. If more than one wrapper is present with the
-#'        capability of removing XXX from the data, this parameter chooses which one wrapper is responsible for removing it.
+#'   \item automlr.wrappersetup: which wrapper is used. It has the format
+#'     \code{outermostWrapper$wrapper...$wrapper$innermostwrapper}.
+#'   \item automlr.remove.XXX where XXX is one of missings, factors, ordered. It
+#'     controls whether one of the wrapper will be set up to remove the property
+#'     in question even if the underlying learner is able to use the data type.
+#'    \itemize{ 
+#'      \item NOTE: this may or may not be sensible for the data type in
+#'        question and it is possible to set the respective value to FALSE via
+#'        setHyperPars() & exclude it from the search space. Who is AMExoWrapper
+#'        to decide?
+#'      \item NOTE2: Only wrappers marked as "requiredwrapper" can respond to
+#'        this; This is because otherwise the search space gets too confusing.
+#'    }
+#'   \item automlr.wremoving.XXX where XXX is one of missings, factors, ordered.
+#'     If more than one wrapper is present with the capability of removing XXX
+#'     from the data, this parameter chooses which one wrapper is responsible
+#'     for removing it.
 #' }
 #'
-#' The following parameters can be used by wrappers and learners in their \code{$requires}-parameter; they will be replaced here:
+#' The following parameters can be used by wrappers and learners in their
+#' \code{$requires}-parameter; they will be replaced here:
 #' \itemize{
-#'  \item automlr.remove.XXX: Only used by wrappers, may only be used if the respective \code{$conversion()} call with "XXX" as parameter
-#'        returns a vector containing at least "numerics" or "". It indicates that this wrapper is responsible for removing
-#'        the XXX type. If XXX does not occurr in the data, autmlr.remove.XXX is always FALSE.
-#'  \item automlr.has.XXX: May be used by all wrappers and all learners: Indicates that the XXX type is present in the data.
-#'        Care is taken e.g. that when wrapperA comes before wrapperB which comes before wrapperC, and wrapperB removes missings, that inside
-#'        wrapperA (and wrapperB) the value of automlr.has.missings is TRUE, but for wrapperC (and all the learners) automlr.has.missings
-#'        evaluates to FALSE.
+#'   \item automlr.remove.XXX: Only used by wrappers, may only be used if the
+#'     respective \code{$conversion()} call with "XXX" as parameter returns a
+#'     vector containing at least "numerics" or "". It indicates that this
+#'     wrapper is responsible for removing the XXX type. If XXX does not occurr
+#'     in the data, autmlr.remove.XXX is always FALSE.
+#'   \item automlr.has.XXX: May be used by all wrappers and all learners:
+#'     Indicates that the XXX type is present in the data. Care is taken e.g.
+#'     that when wrapperA comes before wrapperB which comes before wrapperC, and
+#'     wrapperB removes missings, that inside wrapperA (and wrapperB) the value
+#'     of automlr.has.missings is TRUE, but for wrapperC (and all the learners)
+#'     automlr.has.missings evaluates to FALSE.
 #' }
-#' @param modelmultiplexer a modelmultiplexer object that should have a \code{$searchspace} element
-#' @param wrappers a named list of wrappers that have a \code{$required} element;
-#'        names must not contain \code{$}-character. Also: \code{$conversion}, \code{$searchspace}, \code{$constructor}
-#' @param taskdesc The taskDesc object of the task for which to build the learner
-#' @param idRef Object that indexes different parameter's IDs. TODO: This is to be implemented.
-#' @param canHandleX A named list that maps "missings", "factors", and "ordered" to a vector of learner names
-#'        that can handle the respective data.
-#' @param allLearners The list of all learner names.
+#' @param modelmultiplexer [\code{ModelMultiplexer}]\cr
+#'   A modelmultiplexer object that should have a \code{$searchspace} slot.
+#' @param wrappers [\code{list}]\cr
+#'   A named list of wrappers that have a \code{$required} element; names must
+#'   not contain \code{$}-character. Also: \code{$conversion},
+#'   \code{$searchspace}, \code{$constructor}.
+#' @param taskdesc [\code{TaskDesc}]\cr
+#'   The taskDesc object of the task for which to build the learner.
+#' @param idRef [\code{list}]\cr
+#'   Object that indexes different parameter's IDs.\cr
+#'   FIXME: This is to be implemented.
+#' @param canHandleX [\code{list}]\cr
+#'   A named list that maps "missings", "factors", and "ordered" to a vector of
+#'   learner names that can handle the respective data.
+#' @param allLearners [\code{character}]\cr
+#'   The list of all learner names.
+#' 
+#' @return [\code{AMExoWrapper}]\cr
+#' A \code{Learner} that incorporates the wrappers and learners suitable for mlr
+#' learners.
+#' 
+#' The slot \code{$searchspace} should be used as \code{ParamSet} to tune
+#' parameters over.
 makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
     canHandleX, allLearners) {
   
@@ -510,6 +542,7 @@ makeLearnerPars = function(learnerPars) {
   }
   learnerPars
 }
+
 
 extractStaticParams = function(completeSearchSpace, presetStatics) {
   # How the substitution mechanism works:

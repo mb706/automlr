@@ -2,7 +2,7 @@
 
 default.save.interval = 300
 
-requiredBackendFunctions = c("amcombinepriors", "amgetprior", "amsetup",
+requiredBackendFunctions = c("amaddprior", "amgetprior", "amsetup",
     "amoptimize", "amresult")
 
 # the default resample method to use during optimization.

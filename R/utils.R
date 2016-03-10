@@ -90,7 +90,7 @@ logFunDefault = function(learner, task, resampling, measures, par.set, control,
     diff.time = difftime(time1 = end.time,
         time2 = prev.stage$start.time, units = "mins")
     messagef("[%s] %i: %s; time: %.1f min",
-              prefixes[stage], dob, perfsToString(y), diff.time[[1]])
+        prefixes[stage], dob, perfsToString(y), diff.time[[1]])
     return(NULL)
   }
 }

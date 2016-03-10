@@ -12,6 +12,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     oldamstate$previous.versions = NULL
     oldamstate$prior.backlog = NULL
     oldamstate$prior = NULL
+    oldamstate$searchspace = NULL
     class(oldamstate) = "list"
     amstate$previous.versions = c(amstate$previous.versions, list(oldamstate))
     amstate$creation.time = Sys.time()
@@ -22,7 +23,8 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
 
   if (is.null(savefile) || save.interval == 0) {
     save.interval = Inf
-  } else {
+  }
+  if (!is.null(savefile)) {
     savefile = checkfile(savefile)
     savefile = gsub('(\\.rds|)$', '.rds', savefile)
     amstate$savefile = savefile
@@ -39,6 +41,9 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   amstate$backendprivatedata = deepcopy(amstate$backendprivatedata)
 
   amstate$prior.backlog = c(amstate$prior.backlog, list(prior))
+  if (!amstate$isInitialized) {
+    updatePrior(amstate)
+  }
 
   amstate$measure = coalesce(amstate$measure, getDefaultMeasure(amstate$task))
   
@@ -65,9 +70,9 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
         objectiveLearner, amstate$task, amstate$measure)
     amstate$prior.backlog[[1]] = NULL
     amstate$isInitialized = TRUE
+    updatePriors(amstate)
   }
   
-  updatePriors(amstate)
   
   # the writing out of intermediate results to `savefile` is done here and not
   # delegated to the backend functions. We call the backend with timeout until

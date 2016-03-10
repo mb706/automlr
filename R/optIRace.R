@@ -149,7 +149,8 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
 
 amresult.amirace = function(env) {
   res = env$tuneresult
-  list(opt.point = removeMissingValues(res$x),
+  list(learner = env$learner,
+      opt.point = removeMissingValues(res$x),
       opt.val = res$y,
       opt.path = res$opt.path,
       result = res)

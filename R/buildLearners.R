@@ -40,7 +40,7 @@
 #'        probability assignment instead of class.
 #' @export
 buildLearners = function(searchspace, task) {
-
+  
   # searchspace contains learners, wrappers and requiredwrappers.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
   wrappers = searchspace[extractSubList(searchspace, "stacktype") %in%
@@ -60,7 +60,7 @@ buildLearners = function(searchspace, task) {
   info.env = new.env(parent = baseenv())
   info.env$info = taskdesc
   idRef = list()
-
+  
   allcovtypes = c("factors", "ordered", "numerics")
   allcovproperties = c(allcovtypes, "missings")
   covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
@@ -91,7 +91,7 @@ buildLearners = function(searchspace, task) {
       maxcovtypes = union(maxcovtypes, setdiff(conv, c("", "missings")))
     }
   }
-
+  
   for (i in seq_along(learners)) {
     l = myCheckLearner(learners[[i]]$learner)
     
@@ -131,12 +131,12 @@ buildLearners = function(searchspace, task) {
     warning("No model fits the given task, returning NULL.")
     return(NULL)
   }
-
+  
   multiplexer = removeHyperPars(makeModelMultiplexer(learnerObjects),
       "selected.learner")
   
   
-
+  
   tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets,
       allParamNames)
   multiplexer$searchspace = tuneParamSet
@@ -275,7 +275,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         } else {
           stopf(paste0("Parameter '%s' as listed in search space has",
                   " infeasible bounds '%s' for learner '%s'."),
-            param$name, paste(param$values, collapse = "', '"), l$id)
+                          param$name, paste(param$values, collapse = "', '"), l$id)
         }
       }
       partype = lptypes[[origParamName]]
@@ -289,11 +289,11 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
       if ((partype != "untyped") &&
           ((param$type == "int" &&
               partype %nin% c("integer", "integervector")) ||
-           (param$type == "bool" &&
-             partype %nin% c("logical", "logicalvector")) ||
-           (param$type == "cat" &&
-             partype %nin% c("discrete", "discretevector", "character",
-                 "charactervector")))) {
+                       (param$type == "bool" &&
+                           partype %nin% c("logical", "logicalvector")) ||
+                       (param$type == "cat" &&
+                           partype %nin% c("discrete", "discretevector", "character",
+                                   "charactervector")))) {
         warningf(paste0("Parameter '%s' for learner '%s' is of type '%s' and",
                 " has different (but feasible) type '%s' listed in search",
                 " space."),
@@ -349,7 +349,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
           assignment = list(
               if (param$dim > 1) rep(param$values, param$dim) else param$values)
         }
-  
+          
         names(assignment) = origParamName
         l = setHyperPars(l, par.vals = assignment)
       }
@@ -367,7 +367,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
           idRef[[param$id]] = c(idRef[[param$id]],
               list(list(learner = l, param = newparam)))
         }
-
+        
         newparam$amlr.isNotCat = !is.null(param$amlr.isNotCat)
         tuneSearchSpace = c(tuneSearchSpace, list(newparam))
       }
@@ -434,10 +434,10 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
   surrogatetype = param$type
   if (param$type == "fix" && !forWrapper) {
     # don't warn for wrappers, for them fixed injects are the norm
-      warningf(paste0("Parameter '%s' for learner '%s' is marked",
-              " 'dummy/inject' and has type 'fix'; This usually does not make",
-              " sense."),
-          param$name, learnerid)
+    warningf(paste0("Parameter '%s' for learner '%s' is marked",
+            " 'dummy/inject' and has type 'fix'; This usually does not make",
+            " sense."),
+        param$name, learnerid)
     if (!is.null(param$values)) {
       if (is.numeric(param$values[1])) {
         surrogatetype = "real"
@@ -478,36 +478,36 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
           NULL)
     } else {
       constructor = switch(surrogatetype,
-              real = makeNumericParam,
-              int = makeIntegerParam,
-              cat = makeDiscreteParam,
-              bool = makeLogicalParam,
-              fix = makeDiscreteParam,
-              NULL)
+          real = makeNumericParam,
+          int = makeIntegerParam,
+          cat = makeDiscreteParam,
+          bool = makeLogicalParam,
+          fix = makeDiscreteParam,
+          NULL)
     }
     paramlist = list(id = param$name, requires = param$req)
   }
   paramlist = c(paramlist, switch(surrogatetype,
-      int = list(lower = pmin, upper = pmax, trafo = ptrafo),
-      real = list(lower = pmin, upper = pmax, trafo = ptrafo),
-      cat = list(values = {
-            x = param$values
-            if (!test_named(x)) {
-              names(x) = param$values
-            }
-            x}),
-      bool = list(),
-      fix = list(values = {
-            x = param$values
-            if (!test_named(x)) {
-              names(x) = param$values
-            }
-            x}),
-      def = stopf(paste0("Parameter '%s' for learner '%s' marked as 'inject'",
-              " must not have type 'def'."),
-          param$name, learnerid),
-      stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
-          param$name, learnerid)))
+                int = list(lower = pmin, upper = pmax, trafo = ptrafo),
+                real = list(lower = pmin, upper = pmax, trafo = ptrafo),
+                cat = list(values = {
+                            x = param$values
+                            if (!test_named(x)) {
+                                names(x) = param$values
+                            }
+                            x}),
+                bool = list(),
+                fix = list(values = {
+                            x = param$values
+                            if (!test_named(x)) {
+                                names(x) = param$values
+                            }
+                            x}),
+                def = stopf(paste0("Parameter '%s' for learner '%s' marked as 'inject'",
+                                " must not have type 'def'."),
+                        param$name, learnerid),
+                stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
+                        param$name, learnerid)))
   if (!facingOutside) {
     paramlist$trafo = NULL
   }
@@ -523,9 +523,10 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
   pobject
 }
 
-#' Turn learner id string into learner object, if necessary
+#' @title Turn learner id string into learner object, if necessary
 #' 
-#' @param learner a character scalar or learner object
+#' @param learner [\code{character(1)}|\code{Learner}]\cr
+#'   A character scalar or learner object.
 myCheckLearner = function (learner) {
   if (is.character(learner)) {
     learner = makeLearner(learner)
@@ -540,8 +541,8 @@ createTrafo = function(min, max, isint) {
     assert(min >= 0)
     addzero = if (min == 0) 0
     if (min == 0) {
-     min = 1
-   }
+           min = 1
+       }
     ratio = sqrt((min+1) / min)
     sequence = unique(c(addzero,
             round(min * ratio ^ (seq(from = 0,
@@ -550,20 +551,25 @@ createTrafo = function(min, max, isint) {
     return(list(trafo = function(x) ifelse(is.na(x), NA, sequence[x]),
             newmin = 1, newmax = length(sequence)))
   } else {
-    #  !!! We have to evaluate 'min' and 'max' here, otherwise they stay in the environment as 'promise' objects
-    # and weird stuff happens! 
+    force(min)
+    force(max)
     assert(min > 0)
     assert(max > 0)
-
+    
     return(list(trafo = function(x) min * (max / min)^x,
             newmin = 0, newmax = 1))
   }
 }
 
-#' Like mlr's mMMPS but respecting requirements.
+#' @title Like mlr's makeModelMultiplexerParamSet, but respecting requirements.
 #'
-#' @param multiplexer the model multiplexer to use to create the ParamSet
-#' @param modelParsets the list of param sets that are used to create the mmps.
+#' @param multiplexer [\code{ModelMultiplexer}]\cr
+#'   The model multiplexer to use to create the ParamSet.
+#' @param modelParsets [\code{ParamSet}]\cr
+#'   The list of param sets that are used to create the mmps.
+#' 
+#' @return [\code{ModelMultiplexer}]\cr
+#' The \code{ModelMultiplexer} with repaired requirements. 
 makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
     origParamNames) {
   searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer),
