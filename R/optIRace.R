@@ -41,7 +41,7 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       nbIterations = -1L,
       # some seed matrix is generated in the beginning, so maxExperiments limits
       # the number of experiments possible with this object absolutely.
-      maxExperiments = 100000L,  
+      maxExperiments = 100000L,
       nbExperimentsPerIteration = expPerIter,
       impute.val = generateRealisticImputeVal(measure, learner, task),
       n.instances = 100,
@@ -50,8 +50,8 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   
   # we do the following to imitade mlr::tuneParams()
   env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace,
-      list(env$measure), include.extra = (env$ctrl$tune.threshold))
-  
+      list(env$measure), include.extra = env$ctrl$tune.threshold)
+
   # the following generates the wrapper around irace::irace that checks our
   # budget constraints and ensures continuation
   iraceFunction = irace::irace
@@ -62,12 +62,12 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix
 
   # this is assuming we don't use the irace package's parallel functionality.
-  numcpus = parallelGetOptions()$settings$cpus  
+  numcpus = parallelGetOptions()$settings$cpus
   numcpus[is.na(numcpus)] = 1
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(tunerConfig, parameters, ...) {
     modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE)
-    if (exists("tunerResults", envir = env)) {  
+    if (exists("tunerResults", envir = env)) {
       # 'env' is the backendprivatedata env.
       # if tunerResults is in the environment then we are continuing, so we load
       # the optimization state into the recover file
@@ -111,8 +111,8 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       # timeUsedSoFar: arbitrary positive number
       tunerResults$state$timeUsedSoFar = 1
       # timeBudget: arbitrary positive number smaller than timeUsedSoFar
-      # --> we abort after one loop 
-      tunerResults$state$timeBudget = 0.5  
+      # --> we abort after one loop
+      tunerResults$state$timeBudget = 0.5
       evals.zero = 0
     }
 

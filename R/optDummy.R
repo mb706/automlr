@@ -103,5 +103,5 @@ amresult.amdummy = function(env) {
               trafo = TRUE)),
       opt.path = makeOptPathDF(env$learner$searchspace, "y",
           env$measure$minimize),
-      result=NULL)
+      result = NULL)
 }

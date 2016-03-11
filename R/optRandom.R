@@ -73,7 +73,7 @@ amoptimize.amrandom = function(env, stepbudget) {
         par.set = learner$searchspace, control = ctrl, show.info = FALSE)
     # we call configureMLR here, in case we loop around. Whenever the error is
     # not an 'out of budget' error we want the usual behaviour.
-    do.call(configureMlr, oldOpts)  
+    do.call(configureMlr, oldOpts)
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
@@ -94,7 +94,7 @@ amoptimize.amrandom = function(env, stepbudget) {
     learner$am.env$outofbudget = FALSE
   }
   if (learner$am.env$untouched) {
-    if ("modeltime" %in% names(stepbudget)) {  
+    if ("modeltime" %in% names(stepbudget)) {
       mlrModeltime = max(mlrModeltime, stepbudget["modeltime"])
     }
     learner$am.env$usedbudget["modeltime"] = mlrModeltime

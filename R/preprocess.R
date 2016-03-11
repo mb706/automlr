@@ -17,7 +17,7 @@
 #' @param univariate.trafo [\code{character(1)}]\cr
 #'   The transformation to perform on numeric columns. Must be one of
 #'   \code{"off"} (no trafo), \code{"center"}, \code{"scale"},
-#'   \code{"centerscale"}, \code{"range"} (scaling so that all values lie 
+#'   \code{"centerscale"}, \code{"range"} (scaling so that all values lie
 #'   between \code{0} and \code{1}.
 #' @param impute.numeric [\code{character(1)}]\cr
 #'   If and how to impute numeric missing values. Must be one of \code{"off"},
@@ -89,7 +89,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   # drop cols that have low variance
   # FIXME: does this work with NAs?
   var.numeric = naToZero(sapply(data[cols.numeric], var, na.rm = TRUE))
-  nzv.drop.numeric = var.numeric <= nzv.cutoff.numeric  
+  nzv.drop.numeric = var.numeric <= nzv.cutoff.numeric
   ndsplit = split(cols.numeric, nzv.drop.numeric)
   nzv.drop.numeric = ndsplit$`TRUE`
   cols.numeric = ndsplit$`FALSE`
@@ -183,11 +183,11 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
           })
     } else {
       ppobject$pop.factor = lapply(data[cols.factor], function(x) {
-            res = switch(impute.factor, 
+            res = switch(impute.factor,
                 mode = {
                   ftab = sort(table(x), TRUE)
                   # if there is a tie, get all tieing levels
-                  names(ftab)[ftab==ftab[1]]
+                  names(ftab)[ftab == ftab[1]]
                 },
                 hist = x[!is.na(x)])
             if (length(res) == 0) {
@@ -223,10 +223,10 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   
   if (hasTarget && feature.filter != "off") {
     ## If feature.filter ever works with empty target, dummy.task would need to
-    # be "cluster". 
+    # be "cluster".
     #if (length(target) == 0) {  # target is empty --> cluster task.
     #  dummyTask = makeClusterTask("dummy", data)
-    #} else 
+    #} else
     if (length(target) == 1) {
       # target is numeric --> regression task; otherwise classification
       if (is.numeric(targetData[[1]])) {
@@ -363,9 +363,9 @@ makePreprocWrapperAm = function (learner, ...) {
           c("off", "information.gain", "chi.squared", "rf.importance"),
           default = "off"),
       makeNumericLearnerParam("ppa.feature.filter.thresh",
-          lower = 0, default = 0, requires = quote(ppa.feature.filter != "off"))
-  #makeLogicalLearnerParam("keep.data", tunable = FALSE)
-  )
+          lower = 0, default = 0,
+          requires = quote(ppa.feature.filter != "off")))
+
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
   

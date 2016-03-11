@@ -106,8 +106,7 @@ logFunTune = function(learner, task, resampling, measures, par.set, control,
   
   logFunDefault(learner, task, resampling, measures, par.set, control, opt.path,
       dob, x.string, y, remove.nas, stage, prev.stage,
-      prefixes = c("Tune-x", "Tune-y")
-  )
+      prefixes = c("Tune-x", "Tune-y"))
 }
 
 # similarly copied from mlr logFunOpt.R

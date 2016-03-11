@@ -28,7 +28,7 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
     stopf("Duplicated names %s for learner '%s'",
         paste(unique(names[duplicated(names)]), collapse = ", "),
         ifelse(is.character(learner), learner,
-            coalesce(learner$id, learner$name))) 
+            coalesce(learner$id, learner$name)))
   }
   makeS3Obj("Autolearner",
             learner = learner,
@@ -147,7 +147,7 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
   }
 
   if (!is.null(trafo)) {
-    if (identical(trafo, "exp")) { 
+    if (identical(trafo, "exp")) {
       assert(type %in% c("real", "int"))
     } else {
       assertFunction(trafo, nargs = 1)

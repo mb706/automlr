@@ -43,7 +43,7 @@ amsetup= function(env, prior, learner, task, measure) {
   UseMethod("amsetup")
 }
 
-#' @title Perform optimization, respecting the given budget. 
+#' @title Perform optimization, respecting the given budget.
 #' 
 #' return a vector detailing the spent budget.
 #' 

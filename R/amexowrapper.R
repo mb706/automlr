@@ -32,7 +32,7 @@
 #'   \item automlr.remove.XXX where XXX is one of missings, factors, ordered. It
 #'     controls whether one of the wrapper will be set up to remove the property
 #'     in question even if the underlying learner is able to use the data type.
-#'    \itemize{ 
+#'    \itemize{
 #'      \item NOTE: this may or may not be sensible for the data type in
 #'        question and it is possible to set the respective value to FALSE via
 #'        setHyperPars() & exclude it from the search space. Who is AMExoWrapper
@@ -98,7 +98,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
       aux$completeSearchSpace)
 
   # automlr.hasXXX replaces the parameters that are external-only.
-  propertiesReplace = aux$replaces  
+  propertiesReplace = aux$replaces
   shadowparams = c(
       aux$shadowparams,
       extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy),
@@ -265,7 +265,7 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   # setting the LearnerParam$when = train / test value.
   # The learner.model we are given is just an mlr WrappedModel that we can use
   # predict on.
-  getPredictionResponse(predict(.model$learner.model, newdata = .newdata))  
+  getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
 }
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {
@@ -306,7 +306,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
   # automlr.wremoving.XXX
   allTypes = c("missings", "factors", "ordered", "numerics")
   # removers maps type -> all wrappers that are able to remove the type
-  removers = list()  
+  removers = list()
   for (type in allTypes) {
     if (type %nin% properties) {
       next
@@ -330,7 +330,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
     if (length(canHandleX[[type]]) > 0) {
       if (setequal(allLearners, canHandleX[[type]])) {
         # if all learners can handle the type, the variable is always valid.
-        requires = NULL  
+        requires = NULL
       } else {
         requires = substitute(selected.learner %in% x,
             list(x = canHandleX[[type]]))
@@ -363,7 +363,7 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
   #  - add the requirement that the wrapper is actually present
 
 # the empty string for building replaceList for nonwrappers
-  for (w in c(names(wrappers), "")) {  
+  for (w in c(names(wrappers), "")) {
     replaceList = list()
     for (type in allTypes) {
       if (type %nin% properties) {
@@ -475,7 +475,7 @@ listWrapperCombinations = function(ids, required) {
   if (all(!required)) {
     # all wrappers are optional --> add "no wrappers" option. The empty string
     # causes errors, however.
-    result = c("$", result)  
+    result = c("$", result)
   }
   unlist(result)
 }
@@ -507,7 +507,7 @@ makeLearnerPars = function(learnerPars) {
     if (!is.null(learnerPars$pars[[p]]$trafo) &&
         learnerPars$pars[[p]]$type %in%
         c("numeric", "numericvector", "integer", "integervector")) {
-      # there is a trafo --> need to change limits  
+      # there is a trafo --> need to change limits
       if (is.null(learnerPars$pars[[p]]$amlr.origValues)) {
         learnerPars$pars[[p]]$lower = -Inf
         learnerPars$pars[[p]]$upper = Inf
@@ -537,7 +537,7 @@ makeLearnerPars = function(learnerPars) {
         learnerPars$pars[[p]]$requires = req[[1]]
       } else {
         learnerPars$pars[[p]]$requires = substitute(eval(x), list(x = req))
-      } 
+      }
     }
   }
   learnerPars
@@ -576,14 +576,14 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
   #                       other substitutions were done. This is to prevent
   #                       endless recursion.
   # completeSearchSpace :: The search space that will be given externally.
-  #   
+  #
 
   # all parameters that have only a single value
   staticParams = lapply(names(presetStatics), function(n)
         list(id = n, value = presetStatics[[n]], requires = NULL))
   # substitution that will be used instead of the param inside of other
   # parameter's $requires.
-  substitutions = list()  
+  substitutions = list()
   finalSubstitutions = presetStatics
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
@@ -603,7 +603,7 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
           rep(unname(curpar$values[1]), curpar$len)
         }
       } else {
-        assert(all(curpar$lower[1] == curpar$lower))  
+        assert(all(curpar$lower[1] == curpar$lower))
         curpar$lower
       }
       completeSearchSpace$pars[[param]] = NULL
@@ -639,7 +639,7 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
       } else {
         substitutions[[parid]] = subst
       }
-    } else {  
+    } else {
       # FIXME: the following is half a copy of the code above. maybe it is
       # possible to clean it up at some point.
       if (parid != curpar$id) {

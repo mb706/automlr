@@ -153,7 +153,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
     assertNumber(save.interval, lower = 0)
   }
   assert(identical(list(...), list()))
-  # a delegated problem is a solved problem.  
+  # a delegated problem is a solved problem.
   automlr(makeS3Obj(c("AMState", "AMObject"),
           task = task,
           measure = coalesce(measure, getDefaultMeasure(task)),
@@ -283,7 +283,7 @@ print.AMObject = function(x, verbose = FALSE, ...) {
   if ("AMResult" %in% class(x)) {
     catf("Optimum %s found: %f", x$measure$id, x$opt.val)
     print(x$opt.point)
-  }  
+  }
   if (verbose) {
     catf("First created: %s\nLast finished: %s",
         allversions[[1]]$creation.time, x$finish.time)

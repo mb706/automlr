@@ -50,7 +50,7 @@ buildLearners = function(searchspace, task) {
   modelTuneParsets = list()
   # need to keep track of all the parameter names, even the "fix" ones that
   # won't be in the SS
-  allParamNames = list()  
+  allParamNames = list()
   taskdesc = getTaskDescription(task)
   
   if (taskdesc$has.weights) {
@@ -245,7 +245,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
                   learnerid = l$id, do.trafo = FALSE, facingOutside = FALSE)))
       lp = getParamSet(l)
       lpids = getParamIds(lp)
-      # recreate lptypes here, since it may have changed 
+      # recreate lptypes here, since it may have changed
       lptypes = getParamTypes(lp, use.names = TRUE)
     } else if (identical(param$special, "dummy")) {
       if (origParamName %in% getParamIds(getParamSet(l))) {
@@ -543,10 +543,10 @@ createTrafo = function(min, max, isint) {
     if (min == 0) {
            min = 1
        }
-    ratio = sqrt((min+1) / min)
+    ratio = sqrt((min + 1) / min)
     sequence = unique(c(addzero,
             round(min * ratio ^ (seq(from = 0,
-                          to = floor(log(max/min, base = ratio))))),
+                          to = floor(log(max / min, base = ratio))))),
             max))
     return(list(trafo = function(x) ifelse(is.na(x), NA, sequence[x]),
             newmin = 1, newmax = length(sequence)))
@@ -569,7 +569,7 @@ createTrafo = function(min, max, isint) {
 #'   The list of param sets that are used to create the mmps.
 #' 
 #' @return [\code{ModelMultiplexer}]\cr
-#' The \code{ModelMultiplexer} with repaired requirements. 
+#' The \code{ModelMultiplexer} with repaired requirements.
 makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
     origParamNames) {
   searchspace = do.call(makeModelMultiplexerParamSet, c(list(multiplexer),

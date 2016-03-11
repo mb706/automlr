@@ -19,7 +19,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   }
 
   # if amstate$spent contains NAs everything breaks...
-  assert(!anyNA(amstate$spent))  
+  assert(!anyNA(amstate$spent))
 
   if (is.null(savefile) || save.interval == 0) {
     save.interval = Inf
@@ -86,7 +86,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     # if usedbudget does not contain all names that it should contain and the
     # backend is buggy, amstate$spent could contain NAs
-    assert(!anyNA(amstate$spent))  
+    assert(!anyNA(amstate$spent))
 
     if (!exists(".Random.seed", .GlobalEnv))
       set.seed(NULL)

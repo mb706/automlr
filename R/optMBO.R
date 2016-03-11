@@ -1,6 +1,6 @@
 
 # reduce types of parameter set to simple types to avoid mlrMBO bugs
-mboSaveMode = TRUE  
+mboSaveMode = TRUE
 
 amaddprior.ammbo = function(env, prior) {
   NULL
