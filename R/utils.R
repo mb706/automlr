@@ -3,7 +3,7 @@
 # syntactic sugar
 
 `%+=%` = function(t, s) eval.parent(substitute(t <- t + s))
-`%-=%` = function(t, m) eval.parent(substitute(t <- t + m))
+`%-=%` = function(t, m) eval.parent(substitute(t <- t - m))
 
 # return 'budget' - 'spent', respecting the budget==0 special case
 remainingbudget = function(budget, spent) {
@@ -38,7 +38,7 @@ checkfile = function(filename, basename) {
           filename)
     }
     basepath = filename
-    filename = tempfile(paste0(basename, '_'), basepath, ".rds")
+    filename = tempfile(paste0(basename, "_"), basepath, ".rds")
     messagef("Will be saving to file %s", filename)
   } else {
     if (givenAsDir) {
@@ -59,7 +59,7 @@ writefile = function(filename, object, basename) {
     # to ensure 'tempfile' doesnt give something in the root directory.
     basepath = "."
   }
-  outfile = tempfile(paste0(basename, '_'), basepath, ".rds")
+  outfile = tempfile(paste0(basename, "_"), basepath, ".rds")
   saveRDS(object, outfile)
   file.rename(outfile, filename)
   invisible()
@@ -67,8 +67,8 @@ writefile = function(filename, object, basename) {
 
 # append opt path op2 to opt path op1. This happens in-place.
 appendOptPath = function(op1, op2) {
-  # TODO: handle extra: is a LIST
-  # TODO: check equality of par.set etc.
+  # FIXME: handle extra: is a LIST
+  # FIXME: check equality of par.set etc.
   for (vect in c("error.message", "exec.time", "dob", "eol")) {
     op1$env[[vect]] = c(op1$env[[vect]], op2$env[[vect]])
   }

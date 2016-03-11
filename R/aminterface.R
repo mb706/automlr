@@ -26,7 +26,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   }
   if (!is.null(savefile)) {
     savefile = checkfile(savefile)
-    savefile = gsub('(\\.rds|)$', '.rds', savefile)
+    savefile = gsub("(\\.rds|)$", ".rds", savefile)
     amstate$savefile = savefile
   }
   # basename gives an informative filename in case savefile is a directory
@@ -80,8 +80,8 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   # performance cost.
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
-    nextstop = min(stepbudget['walltime'], save.interval, na.rm = TRUE)
-    stepbudget['walltime'] = nextstop
+    nextstop = min(stepbudget["walltime"], save.interval, na.rm = TRUE)
+    stepbudget["walltime"] = nextstop
     usedbudget = amoptimize(amstate$backendprivatedata, stepbudget)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     # if usedbudget does not contain all names that it should contain and the

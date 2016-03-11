@@ -61,10 +61,10 @@ amoptimize.amrandom = function(env, stepbudget) {
   numcpus = parallelGetOptions()$settings$cpus
   
   while (!checkoutofbudget(learner$am.env, numcpus, il = TRUE)) {
-    # chop up 'evals' budget into 100s so we can stop when time runs out
+    # chop up "evals" budget into 100s so we can stop when time runs out
     iterations = 100
-    if ('evals' %in% names(stepbudget)) {
-      iterations = min(stepbudget['evals'] - learner$am$usedbudget['evals'],
+    if ("evals" %in% names(stepbudget)) {
+      iterations = min(stepbudget["evals"] - learner$am$usedbudget["evals"],
           iterations)
     }
     ctrl = makeTuneControlRandom(maxit = iterations, log.fun = logFunQuiet)
@@ -77,7 +77,7 @@ amoptimize.amrandom = function(env, stepbudget) {
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
-    learner$am.env$usedbudget['evals'] %+=% sum(notOOB)
+    learner$am.env$usedbudget["evals"] %+=% sum(notOOB)
     mlrModeltime %+=% sum(getOptPathExecTimes(tuneresult$opt.path)[notOOB],
         na.rm = TRUE)
     if (is.null(env$opt.path)) {
@@ -94,14 +94,14 @@ amoptimize.amrandom = function(env, stepbudget) {
     learner$am.env$outofbudget = FALSE
   }
   if (learner$am.env$untouched) {
-    if ('modeltime' %in% names(stepbudget)) {  
-      mlrModeltime = max(mlrModeltime, stepbudget['modeltime'])
+    if ("modeltime" %in% names(stepbudget)) {  
+      mlrModeltime = max(mlrModeltime, stepbudget["modeltime"])
     }
-    learner$am.env$usedbudget['modeltime'] = mlrModeltime
+    learner$am.env$usedbudget["modeltime"] = mlrModeltime
     if (!stopcondition(stepbudget, learner$am.env$usedbudget)) {
-      # if 'modeltime' is the decisive constraint, we need to lie a little here,
+      # if "modeltime" is the decisive constraint, we need to lie a little here,
       # otherwise amoptimize() gets called again and we are in an endless loop.
-      learner$am.env$usedbudget['modeltime'] = stepbudget['modeltime']
+      learner$am.env$usedbudget["modeltime"] = stepbudget["modeltime"]
     }
   }
   learner$am.env$usedbudget
@@ -115,7 +115,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
     return(addClasses(out.of.budget.string, c("outOfBudgetError", "error")))
   }
   evaltime = system.time(result <- NextMethod("trainLearner"), gcFirst = FALSE)
-  .learner$am.env$usedbudget['modeltime'] %+=% evaltime[3]
+  .learner$am.env$usedbudget["modeltime"] %+=% evaltime[3]
   result
 }
 
@@ -146,7 +146,7 @@ as.character.outOfBudgetError = function(x, ...) {
 #' @export
 predictLearner.amrandomWrapped = function(.learner, ...) {
   env = .learner$am.env
-  # TODO: what is this?
+  # FIXME: what is this?
 #  if (checkoutofbudget(env, numcpus)) {
 #    configureMlr(on.learner.error = "quiet")
 #    stop(out.of.budget.string)
@@ -155,7 +155,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
       gcFirst = FALSE)
   
   if (checkoutofbudget(env, evaltime[3])) {
-    # TODO: check this hack
+    # FIXME: check this hack
     configureMlr(on.learner.error = "quiet")
   }
   env$untouched = FALSE
@@ -166,11 +166,11 @@ checkoutofbudget = function(env, evaltime = 0, il = FALSE) {
   if (env$outofbudget) {
     return(env$outofbudget)
   }
-  env$usedbudget['walltime'] = as.numeric(difftime(Sys.time(), env$starttime,
+  env$usedbudget["walltime"] = as.numeric(difftime(Sys.time(), env$starttime,
           units = "secs"))
   
-  env$usedbudget['cputime'] = env$usedbudget['walltime'] * env$cpus
-  modeltime = env$usedbudget['modeltime'] + evaltime
+  env$usedbudget["cputime"] = env$usedbudget["walltime"] * env$cpus
+  modeltime = env$usedbudget["modeltime"] + evaltime
   
   # when doing parallel stuff, this is unknowable.
   if (env$untouched) {
@@ -178,15 +178,15 @@ checkoutofbudget = function(env, evaltime = 0, il = FALSE) {
     # is being parallelized and the state of env is forgotten. We make the
     # assumption that the modeltime budget is not smaller than the time required
     # from initialization until here.
-    env$usedbudget['modeltime'] = env$usedbudget['cputime']
+    env$usedbudget["modeltime"] = env$usedbudget["cputime"]
   } else {
-    env$usedbudget['modeltime'] = modeltime
+    env$usedbudget["modeltime"] = modeltime
   }
   if (stopcondition(env$stepbudget, env$usedbudget)) {
     env$outofbudget = TRUE
   }
   
-  env$usedbudget['modeltime'] = modeltime
+  env$usedbudget["modeltime"] = modeltime
   env$outofbudget
   
 }

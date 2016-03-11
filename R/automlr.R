@@ -182,7 +182,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
     save.interval = default.save.interval, new.seed = FALSE, ...) {
   assertString(task)
-  truefilename = gsub('(\\.rds|)$', '.rds', task)
+  truefilename = gsub("(\\.rds|)$", ".rds", task)
   if (!is.null(budget)) {
     budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)

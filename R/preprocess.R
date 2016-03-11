@@ -47,8 +47,9 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     nzv.cutoff.factor = 0, univariate.trafo = "off", impute.numeric = "off",
     impute.factor = "off", multivariate.trafo = "off", feature.filter = "off",
     feature.filter.thresh = 0, keep.data = FALSE) {
-  # TODO: handle ordered factors
-  # TODO: /maybe/ add a "ignore these columns" parameter
+  # FIXME: handle ordered factors
+  # FIXME: /maybe/ add a "ignore these columns" parameter
+
   # first: check arguments
   assertClass(data, classes = "data.frame")
   
@@ -150,7 +151,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
               res = 0
             }
             res
-          })  # TODO: maybe do rounding for mean / median and integers
+          })  # FIXME: maybe do rounding for mean / median and integers
       if (length(ppobject$pop.numeric) == 0) {
         # this /shouldn't/ happen, but just in case
         ppobject$pop.numeric = 0
@@ -176,7 +177,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
             # empty new NA level first (since all NAs were removed already) and
             # then unified with the existing automlr.auxlevel.NA, so everything
             # works as it should.
-            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA',
+            levels(ret) = ifelse(is.na(levels(ret)), "automlr.auxlevel.NA",
                 levels(ret))
             ret
           })
@@ -301,7 +302,7 @@ predict.ampreproc = function(object, newdata, ...) {
       newdata[object$cols.factor] = lapply(newdata[object$cols.factor],
           function(f) {
             ret = addNA(f, ifany = FALSE)
-            levels(ret) = ifelse(is.na(levels(ret)), 'automlr.auxlevel.NA',
+            levels(ret) = ifelse(is.na(levels(ret)), "automlr.auxlevel.NA",
                 levels(ret))
             ret
           })

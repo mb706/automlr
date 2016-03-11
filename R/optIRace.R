@@ -124,13 +124,13 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       res = iraceFunction(tunerConfig, parameters, ...)
       
       load(tunerConfig$logFile)
-      env$usedbudget['evals'] =
+      env$usedbudget["evals"] =
           tunerResults$state$experimentsUsedSoFar - evals.zero
-      env$usedbudget['modeltime'] =
+      env$usedbudget["modeltime"] =
           sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE) - modeltime.zero
-      env$usedbudget['walltime'] =
+      env$usedbudget["walltime"] =
           as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
-      env$usedbudget['cputime'] = env$usedbudget['walltime'] * numcpus
+      env$usedbudget["cputime"] = env$usedbudget["walltime"] * numcpus
       
       env$tunerResults = tunerResults
       

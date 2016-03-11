@@ -582,7 +582,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
     # oldnames: the names as in the original model
     oldnames = origParamNames[[modeliter]]
     # newnames: the name that was assigned in mm$searchspace
-    newnames = paste(modelid, oldnames, sep = '.')
+    newnames = paste(modelid, oldnames, sep = ".")
     # substitution is a list(oldname = quote(newname))
     substitution = lapply(newnames, asQuoted)
     names(substitution) = oldnames
@@ -592,7 +592,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
       cpname = names(origpars)[paramiter]
       cprequires = cp$requires
       # newname: the name fo the current Param within mm$searchspace
-      newname = paste(modelid, cpname, sep = '.')
+      newname = paste(modelid, cpname, sep = ".")
       newrequires = searchspace$pars[[newname]]$requires
       searchspace$pars[[newname]]$amlr.learnerName = modelid
       if (is.null(cprequires)) {

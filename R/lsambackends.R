@@ -10,7 +10,7 @@
 #' 
 #' @export
 lsambackends = function(fenv = NULL) {
-  # TODO: maybe this weird recursion listing is not a good idea
+  # FIXME: maybe this weird recursion listing is not a good idea
   if (is.null(fenv)) {
     fenv = parent.env(environment())
   }
