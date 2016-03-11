@@ -190,25 +190,25 @@ iraceRequirements = function(searchspace) {
       # irace handles character discrete vectors well, so go right through
       next
     }
-    replacePattern = switch(type,
+    replaceStr = switch(type,
         numeric = "%s",
         numericvector = "c(%s)",
         integer = "as.integer(%s)",
         integervector = "as.integer(c(%s))",
-        logical = "(%s == TRUE)",
-        logicalvector = "(c(%s) == TRUE)",
+        logical = "(%s == 'TRUE')",
+        logicalvector = "(c(%s) == 'TRUE')",
         discrete = "%s",
         discretevector = "c(%s)",
         stopf("Unsupported type '%s' of parameter '%s'.", type, param$id))
-    if (isVector(param)) {
+    if (ParamHelpers:::isVector(param)) {
       if (!test_numeric(param$len, len = 1, lower = 1, any.missing = FALSE)) {
         stopf("Parameter '%s' is a vector param with undefined length'",
             param$id)
       }
-      replaceStr = sprintf(replacePattern,
+      replaceStr = sprintf(replaceStr,
           paste0(param$id, seq_len(param$len), collapse = ", "))
     } else {
-      replaceStr = sprintf(replacePattern, param$id)
+      replaceStr = sprintf(replaceStr, param$id)
     }
     replaceQuote = asQuoted(replaceStr)
 

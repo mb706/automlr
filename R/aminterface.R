@@ -42,7 +42,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
 
   amstate$prior.backlog = c(amstate$prior.backlog, list(prior))
   if (!amstate$isInitialized) {
-    updatePrior(amstate)
+    updatePriors(amstate)
   }
 
   amstate$measure = coalesce(amstate$measure, getDefaultMeasure(amstate$task))

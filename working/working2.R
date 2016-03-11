@@ -259,7 +259,16 @@ td = train(makeLearner("regr.randomForest"), nf)
 predict(td, nf)
 
 
+l = buildLearners(list(noiseCL), pid.task)
 
+par.set = l$searchspace
+
+simplePar = automlr:::simplifyParams(simplePar)
+
+devecPar = automlr:::unvectorParams(devecPar)
+
+sam = sampleValue(automlr:::simplifyParams(l$searchspace), trafo=TRUE)
+dfRowToList(as.data.frame(sam), l$searchspace)
 
 
 l <- buildLearners(list(noiseCL), pid.task)

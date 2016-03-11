@@ -21,14 +21,22 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   zeroModeltime = 0
   zeroEvals = 0
   
+  # the following must be set here since mbo() creates the initial design,
+  # which queries the budget an numcpus.
+  numcpus = parallelGetOptions()$settings$cpus
+  numcpus[is.na(numcpus)] = 1
+  
+  budget = 0
+  
   isOutOfBudget = function(opt.state) {
     stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
   }
   
   objectiveFun = function(x) {
-    x = removeMissingValues(x)
     if (mboSaveMode) {
       x = complicateParams(x, learner$searchspace)
+    } else {
+      x = removeMissingValues(x)
     }
     l = setHyperPars(learner, par.vals = x)
     resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
@@ -36,7 +44,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   
   usedParset = learner$searchspace
   if (mboSaveMode) {
-    usedParset = simplifyParams(mboRequirements(usedParset))
+    usedParset = simplifyParams(usedParset)
   }
   
   resDesc = makeResampleDesc("Holdout")
@@ -122,7 +130,7 @@ spentBudget = function(opt.state, zero) {
 
 # convert discrete to discrete-string parameters
 # also convert logical to discrete parameters
-simplifyParams = function(parset) {
+untypeParams = function(parset) {
   parset$pars = lapply(parset$pars, function(par) {
         if (!is.null(par$values)) {
           par$values = as.list(names(par$values))
@@ -137,16 +145,66 @@ simplifyParams = function(parset) {
   parset
 }
 
+# convert vector parameters to multiple nonvector parameters
+unvectorParams = function(parset) {
+  parset$pars = unlist(recursive = FALSE, lapply(parset$pars, function(par) {
+            if (!ParamHelpers:::isVector(par)) {
+              return(list(par))
+            }
+            lapply(seq_len(par$len), function(i) {
+                  parcpy = par
+                  parcpy$len = 1L
+                  parcpy$id = paste0(parcpy$id, i)
+                  if (!is.null(parcpy$lower)) {
+                    parcpy$lower = parcpy$lower[i]
+                  }
+                  if (!is.null(parcpy$upper)) {
+                    parcpy$upper = parcpy$upper[i]
+                  }
+                  parcpy$type = switch(parcpy$type,
+                      integervector = "integer",
+                      numericvector = "numeric",
+                      discretevector = "discrete",
+                      stopf("Unsupported parameter type '%s'", parcpy$type))
+                  parcpy
+                })
+          }))
+  parset
+}
+
+simplifyParams = function(parset) {
+  parset = mboRequirements(parset)
+  parset = untypeParams(parset)
+  parset = unvectorParams(parset)
+  parset
+}
+
 # undo the 'simplifyParams' operation
 complicateParams = function(params, origparset) {
+  simpleTypeOrig = untypeParams(origparset)
+  
+  types = getParamTypes(simpleTypeOrig, df.cols = TRUE)
+  for (parin in seq_along(params)) {
+    params[[parin]] = switch(types[parin],
+        integer = as.integer,
+        numeric = as.numeric,
+        factor = as.character,
+        stop("complicateParam got bad type"))(params[[parin]])
+  }
+  
+  params = as.data.frame(params, stringsAsFactors = FALSE)
+  params = dfRowsToList(params, simpleTypeOrig)[[1]]
+  
+  params = removeMissingValues(params)
+  
   ret = lapply(names(params), function(parname) {
+        vals = origparset$pars[[parname]]$values
+        type = origparset$pars[[parname]]$type
         par = params[[parname]]
         if (is.null(vals)) {
           # don't change anything
           return(par)
         }
-        vals = origparset$pars[[parname]]$values
-        type = origparset$pars[[parname]]$type
         switch(type,
             logicalvector = unlist(vals[unlist(par)]),
             logical = vals[[par]],
@@ -161,23 +219,39 @@ complicateParams = function(params, origparset) {
 mboRequirements = function(searchspace) {
   replacements = list()
   for (param in searchspace$pars) {
-    if (!isDiscrete(param)) {
+    type = param$type
+    if (type %in% c("numeric", "integer") ||
+        (type == "discrete" &&
+          all(sapply(param$values, test_character, any.missing = FALSE)))) {
+      # int, num and character nonvector were not affected
       next
     }
-    fullObject = capture.output(dput(param$values))
-    fullObject = asQuoted(collapse(fullObject, sep = ""))
-    insert =  list(fullObject = fullObject, index = asQuoted(param$id))
-    template = switch(param$type,
-        # index is a list -- we turn it into a vector and index into fullObject
-        # to get a list
-        discretevector = quote(fullObject[unlist(index)]),
-        # index is also a list because to mlrMBO, logicalvector looks like
-        # discretevector. however unlike for 'discretevector', we want to get a
-        # logical vector out of this.
-        logicalvector =  quote(unlist(fullObject[unlist(index)])),
-        # index is a single element, and we want to get a single element.
-        quote(fullObject[[index]]))
-    replacements[[param$id]] = do.call(substitute, list(template, insert))
+    replaceStr = "c(%s)"
+    if (ParamHelpers:::isVector(param)) {
+      if (!test_integer(param$len, len = 1, lower = 1, any.missing = FALSE)) {
+        stopf("Parameter '%s' is a vector param with undefined length'",
+            param$id)
+      }
+      replaceStr = sprintf(replaceStr,
+          paste0(param$id, seq_len(param$len), collapse = ", "))
+    } else {
+      replaceStr = sprintf(replaceStr, param$id)
+    }
+    replaceQuote = asQuoted(replaceStr)
+    if (isDiscrete(param)) {
+      fullObject = capture.output(dput(param$values))
+      fullObject = asQuoted(collapse(fullObject, sep = ""))
+      insert =  list(fullObject = fullObject, index = replaceQuote)
+      template = switch(type,
+          # we index into fullObject to get a list
+          discretevector = quote(fullObject[index]),
+          # unlike for 'discretevector', we want to get a vector out of this.
+          logicalvector =  quote(unlist(fullObject[index])),
+          # index is a single element, and we want to get a single element.
+          quote(fullObject[[index]]))
+      replaceQuote = do.call(substitute, list(template, insert))
+    }
+    replacements[[param$id]] = replaceQuote
   }
   for (param in names(searchspace$pars)) {
     req = searchspace$pars[[param]]$requires
