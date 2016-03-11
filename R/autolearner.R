@@ -59,7 +59,7 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
 #'   their parameter requirements (see \code{\link{makeAMExoWrapper}}).\cr
 #'   \emph{Currently, only removal of features is supported; therefore, this
 #'   should only return its argument and possibly \code{""}. Otherwise, the
-#'   behaviour is buggy.
+#'   behaviour is buggy.}
 #' 
 #' @export
 autoWrapper = function(name, constructor, conversion) {

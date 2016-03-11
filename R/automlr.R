@@ -90,7 +90,7 @@
 #'   \item{measure [\code{Measure}]}{The measure for which is being ptimized.}
 #'   \item{budget [\code{numeric}]}{The budget of the current run.}
 #'   \item{spent [\code{numeric(4)}]}{The budget already spent.}
-#'   \item{searchspace [list of \code{Autolearner}]{The \code{Learner}s being
+#'   \item{searchspace [list of \code{Autolearner}]}{The \code{Learner}s being
 #'     considered for optimization.}
 #'   \item{prior [any]}{The prior of the current run. If the backend supports
 #'     this, the prior is being updated during a run and can be given to another
@@ -232,7 +232,7 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
 #' @param amstate [\code{AMState}]\cr
 #'   The AMState object which is to be converted.
 #' 
-#' @returns [\code{AMResult}]\cr
+#' @return [\code{AMResult}]\cr
 #' Object representing the optimum found by the \code{\link{automlr}} run.
 #' 
 #' Object members:
