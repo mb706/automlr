@@ -1,7 +1,4 @@
 
-irace.nbIterations = 10
-irace.newpopulation = 2
-
 amaddprior.amirace = function(env, prior) {
   NULL
 }

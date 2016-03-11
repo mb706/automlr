@@ -1,6 +1,4 @@
 
-out.of.budget.string = "out of budget"
-
 # 'random' has no prior, so do nothing here
 amaddprior.amrandom = function(env, prior) {
   NULL
