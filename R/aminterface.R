@@ -3,7 +3,7 @@
 
 aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
                        save.interval = default.save.interval, new.seed = FALSE,
-                       ...) {
+                       verbose, ...) {
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
@@ -65,7 +65,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   
   # set backendprivatedata. This gets called once per amstate lifetime.
   if (!amstate$isInitialized) {
-    objectiveLearner = buildLearners(amstate$searchspace, amstate$task)
+    objectiveLearner = buildLearners(amstate$searchspace, amstate$task, verbose)
     amsetup(amstate$backendprivatedata, amstate$prior.backlog[[1]],
         objectiveLearner, amstate$task, amstate$measure)
     amstate$prior.backlog[[1]] = NULL

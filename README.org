@@ -5,9 +5,9 @@ Automlr is an R-package for *automatically* configuring *mlr* machine learning a
 * Usage
 To run a small example, execute
 #+BEGIN_SRC R
-amrun = automlr(pid.task, backend="random", budget=c(evals=10))
+amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
 result = amfinish(amrun)
-print(result, longform=TRUE)
+print(result, verbose = TRUE)
 #+END_SRC
 This example already shows the mandatory arguments of ~automlr~: The task for which to optimize, the backend to use (may be "random", "irace" or "mbo"), and a computational budget. The resulting object can be given to another ~automlr~ call with a different budget to continue optimizing, or to ~amfinish~ to finalize the run.
 
@@ -38,9 +38,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] adapt coding style to mlrOrg
   - [X] write documentation for entry points
   - [X] Adapt entry point docu to mlrOrg style
-  - [ ] finish writing wrappers
+  - [X] finish writing wrappers
   - [ ] correct version dependencies 
-  - [ ] argument for debug level
+  - [X] argument for debug level
   - [ ] package build generate mlrLearners.R
   - [ ] mlrLearners, mlrLearnersNoWrap variables
   - [ ] write NEWS

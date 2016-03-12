@@ -78,6 +78,8 @@
 #'   (insofar as execution time does not influence behaviour).\cr
 #'   \emph{Warning}: This is not yet tested and likely does not work with
 #'   \code{Learner}s that use external RNGs.
+#' @param verbose [\code{logical(1)}]\cr
+#'   Give detailed warnings and messages that would otherwise be suppressed.
 #' @param ... No further arguments should be given.
 #' 
 #' @return [\code{AMState}]\cr
@@ -135,7 +137,7 @@ automlr = function(task, ...) {
 #' @export
 automlr.Task = function(task, measure = NULL, budget = 0,
     searchspace = autolearners, prior = NULL, savefile = NULL,
-    save.interval = default.save.interval, backend, ...) {
+    save.interval = default.save.interval, backend, verbose = FALSE, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
   if (is.null(measure)) {
@@ -171,7 +173,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
           finish.time = NULL,
           previous.versions = list(),
           isInitialized = FALSE),
-      savefile = savefile, save.interval = save.interval)
+      savefile = savefile, save.interval = save.interval, verbose = verbose)
 }
 
 #' @title Continue automlr search from an \code{.rds} savefile, given as a
@@ -180,7 +182,8 @@ automlr.Task = function(task, measure = NULL, budget = 0,
 #' @rdname automlr
 #' @export
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
-    save.interval = default.save.interval, new.seed = FALSE, ...) {
+    save.interval = default.save.interval, new.seed = FALSE, verbose = FALSE,
+    ...) {
   assertString(task)
   truefilename = gsub("(\\.rds|)$", ".rds", task)
   if (!is.null(budget)) {
@@ -200,7 +203,8 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
       prior = prior,
       savefile = savefile,
       save.interval = save.interval,
-      new.seed = new.seed)
+      new.seed = new.seed,
+      verbose = verbose)
 }
 
 #' @title Continue automlr search the result of a previous \code{automlr} run.
@@ -208,7 +212,8 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
 #' @rdname automlr
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
-    save.interval = default.save.interval, new.seed = FALSE, ...) {
+    save.interval = default.save.interval, new.seed = FALSE, verbose = FALSE,
+    ...) {
   if (!is.null(budget)) {
     budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)
@@ -219,7 +224,7 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
   }
   assertFlag(new.seed)
   assert(identical(list(...), list()))
-  aminterface(task, budget, prior, savefile, save.interval, new.seed)
+  aminterface(task, budget, prior, savefile, save.interval, new.seed, verbose)
 }
 
 #' @title Converte the \code{AMState} object as returned by

@@ -33,13 +33,16 @@
 
 #' Take a list of autolearners and create a (big) mlr Learner object
 #' 
-#' @param searchspace list of autolearners.
-#' @param task the task that the searchspace is being created.
-#'        \code{buildLearners} respects the task type, presence of NAs and type
-#'        of covariates. Currently not supported: weights, request of
-#'        probability assignment instead of class.
+#' @param searchspace [list of \code{Autolearner}]\cr
+#'   List of autolearners.
+#' @param task [\code{Task}]\cr
+#'   The task that the searchspace is being created. \code{buildLearners}
+#'   respects the task type, presence of NAs and type of covariates. Currently
+#'   not supported: weights, request of probability assignment instead of class.
+#' @param verbose [\code{logical(1)}]\cr
+#'   Give detailed warnings.
 #' @export
-buildLearners = function(searchspace, task) {
+buildLearners = function(searchspace, task, verbose) {
   
   # searchspace contains learners, wrappers and requiredwrappers.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
@@ -125,7 +128,7 @@ buildLearners = function(searchspace, task) {
     learnerObjects = c(learnerObjects, list(aux$l))
     idRef = aux$idRef
   }
-  checkParamIds(idRef)
+  checkParamIds(idRef, verbose)
   
   if (length(learnerObjects) == 0) {
     warning("No model fits the given task, returning NULL.")
@@ -145,13 +148,15 @@ buildLearners = function(searchspace, task) {
       allLearners)
 }
 
-checkParamIds = function(idRef) {
+checkParamIds = function(idRef, verbose) {
   # check that the IDs match.
   for (parid in names(idRef)) {
     if (length(idRef[[parid]]) == 1) {
-      warningf(paste0("Parameter '%s' of learner '%s' is the only one with",
-              " parameter id '%s'."),
-          idRef[[parid]][[1]]$param$id, idRef[[parid]][[1]]$learner$id, parid)
+      if (verbose) {
+        warningf(paste0("Parameter '%s' of learner '%s' is the only one with",
+                " parameter id '%s'."),
+            idRef[[parid]][[1]]$param$id, idRef[[parid]][[1]]$learner$id, parid)
+      }
       next
     }
     needstomatch = c("type", "len", "lower", "upper", "values", "allow.inf")
