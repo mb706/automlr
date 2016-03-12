@@ -259,16 +259,28 @@ td = train(makeLearner("regr.randomForest"), nf)
 predict(td, nf)
 
 
-l = buildLearners(list(noiseCL), pid.task)
+l = buildLearners(list(reqsCL), pid.task)
+
+l$searchspace$pars$noiseClassif.often$requires
+nr$pars$noiseClassif.often$requires
+
+nr = automlr:::mboRequirements(l$searchspace)
 
 par.set = l$searchspace
 
-simplePar = automlr:::simplifyParams(simplePar)
+simplePar = automlr:::simplifyParams(par.set)
 
-devecPar = automlr:::unvectorParams(devecPar)
+sampled = sampleValue(simplePar, trafo=TRUE)
 
-sam = sampleValue(automlr:::simplifyParams(l$searchspace), trafo=TRUE)
-dfRowToList(as.data.frame(sam), l$searchspace)
+orig = automlr:::complicateParams(sampled, par.set)
+
+orig
+
+orig
+
+getParamTypes(simplePar, df.cols = TRUE)
+
+automlr(pid.task, budget=c(evals=10), backend="random")
 
 
 l <- buildLearners(list(noiseCL), pid.task)
@@ -280,6 +292,8 @@ class(l$searchspace$pars$noiseClassif.often$requires)
 ps = removeMissingValues(sampleValues(l$searchspace, 1)[[1]])
 tl = train(setHyperPars(l, par.vals=ps), pid.task)
 predict(tl, pid.task)
+
+debugonce(automlr:::complicateParams)
 
 aobj = automlr(pid.task, searchspace=list(noiseCL), backend="random")
 

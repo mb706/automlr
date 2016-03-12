@@ -2,6 +2,16 @@
 * Introduction
 Automlr is an R-package for *automatically* configuring *mlr* machine learning algorithms. It is designed for simplicity of use and supposed to run with minimal user intervention.
 
+* Installation
+
+#+BEGIN_SRC R
+devtools::install_github("mlr-org/automlr")
+#+END_SRC
+To use the "mbo" backend, automlr relies on *mlrMBO*, which itself relies on a *ParamHelpers* version that is not on CRAN yet. To install these, run
+#+BEGIN_SRC R
+devtools::install_github("berndbischl/ParamHelpers")
+devtools::install_github("mlr-org/mlrMBO")
+#+END_SRC
 * Usage
 To run a small example, execute
 #+BEGIN_SRC R

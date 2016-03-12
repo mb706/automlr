@@ -1,0 +1,15 @@
+#!/bin/sh
+
+sourcepath=$(dirname "$(readlink -f "$0")")
+
+cd working
+./searchspaceconvert.py
+cd ..
+
+${R_HOME}/bin/R --vanilla <<EOF
+library(checkmate)
+library(roxygen2)
+roxygenise()
+EOF
+
+

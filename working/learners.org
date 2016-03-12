@@ -352,6 +352,7 @@
 *** classif.bartMachine
 - Bayesian Additive Regression Trees
 **** Variable Parameters:
+   - currentlyNotImplemented :: MANUAL
    - num_trees :: int 25..200 exponential: number of trees to grow
    - alpha :: 0..1: nonterminal node probability parameter
    - beta :: 1..3: nonterminal node probability parameter
@@ -993,3 +994,4 @@ x
 ** cluster.XMeans
 * multilabel
 ** multilabel.rFerns
+   
