@@ -78,7 +78,7 @@
 #' @param allLearners [\code{character}]\cr
 #'   The list of all learner names.
 #' 
-#' @return [\code{AMExoWrapper}]\cr
+#' @return [\code{AMExoWrapper}]
 #' A \code{Learner} that incorporates the wrappers and learners suitable for mlr
 #' learners.
 #' 

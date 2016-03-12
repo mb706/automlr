@@ -2,7 +2,7 @@
 
 sourcepath=$(dirname "$(readlink -f "$0")")
 
-cd working
+cd tools
 ./searchspaceconvert.py
 cd ..
 

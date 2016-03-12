@@ -2,6 +2,10 @@
 #' @title List the backends currently implemented which can be passed to
 #' \code{\link{automlr}}.
 #' 
+#' @description
+#' This lists all the backends that can be used by \code{\link{automlr}}, even
+#' user defined ones.
+#' 
 #' @param fenv [\code{NULL}]\cr
 #'   Should be NULL
 #' 
@@ -32,7 +36,10 @@ lsambackends = function(fenv = NULL) {
 
 #' @title Check if the given name is a valid automlr backend
 #' 
-#' @param [\code{character(1)}]\cr
+#' @description
+#' Test whether whether all necessary functions for a backend are implemented.
+#' 
+#' @param name [\code{character(1)}]\cr
 #'   Name the name of the backend to check for.
 #' @export
 isambackend = function(name) {

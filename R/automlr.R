@@ -82,7 +82,7 @@
 #'   Give detailed warnings and messages that would otherwise be suppressed.
 #' @param ... No further arguments should be given.
 #' 
-#' @return [\code{AMState}]\cr
+#' @return [\code{AMState}]
 #' Object containing the result as well as info about the run. Use
 #' \code{\link{amfinish}} to extract the results.
 #' 
@@ -237,7 +237,7 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
 #' @param amstate [\code{AMState}]\cr
 #'   The AMState object which is to be converted.
 #' 
-#' @return [\code{AMResult}]\cr
+#' @return [\code{AMResult}]
 #' Object representing the optimum found by the \code{\link{automlr}} run.
 #' 
 #' Object members:
@@ -270,6 +270,9 @@ amfinish = function(amstate) {
 }
 
 #' @title Give some cute info about a given AMState
+#' 
+#' @description
+#' Optionally give a little or a lot (if \code{verbose == TRUE}) of info.
 #' 
 #' @param x [\code{AMState}|\code{AMResult}]\cr
 #'   What to print

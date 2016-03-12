@@ -152,7 +152,7 @@ amlrTransformName = function(name) {
 
 generateRealisticImputeVal = function(measure, learner, task) {
   naked = dropFeatures(task, getTaskFeatureNames(task))
-  retval = bootstrapB632(learner, naked, iter = 100, show.info = FALSE)$aggr
+  retval = bootstrapB632(learner, naked, iters = 100, show.info = FALSE)$aggr
   # and because convertYForTuner is retarded:
   retval * ifelse(measure$minimize, 1 , -1)
 }

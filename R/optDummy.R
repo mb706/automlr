@@ -17,10 +17,13 @@ amaddprior.amdummy = function(env, prior) {
 
 #' @title Reference implementation that exemplifies the backend interface.
 #' 
+#' @description
+#' Just give the prior object, which will be a number in this case.
+#' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
 #' 
-#' @return [any]\cr
+#' @return [any]
 #' An object representing the prior.
 amgetprior.amdummy = function(env) {
   cat("Called 'extractprior'\n")
@@ -28,6 +31,10 @@ amgetprior.amdummy = function(env) {
 }
 
 #' @title Reference implementation that exemplifies the backend interface.
+#' 
+#' @description
+#' The dummy backend here just saves the information necessary to give some
+#' bogus result in \code{\link{amresult.amdummy}}.
 #' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
@@ -63,7 +70,7 @@ amsetup.amdummy = function(env, prior, learner, task, measure) {
 #'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
 #'   \code{\link{automlr}} for details.
 #' 
-#' @return [\code{numeric(4)}]\cr
+#' @return [\code{numeric(4)}]
 #' The budget spent during this invocation.
 amoptimize.amdummy = function(env, stepbudget) {
   cat("Called 'optimize' with budget:\n")
@@ -75,10 +82,13 @@ amoptimize.amdummy = function(env, stepbudget) {
 
 #' @title Reference implementation that exemplifies the backend interface.
 #' 
+#' @description
+#' For the dummy backend, the result will be a random point in the search space.
+#' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
 #' 
-#' @return [\code{list}]\cr
+#' @return [\code{list}]
 #' A named list which will be inserted into the result object. Required elements
 #' are:
 #' \describe{

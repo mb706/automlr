@@ -1,6 +1,9 @@
 #' @title update the environment's prior by adding the information
 #' contained in 'prior'.
 #' 
+#' @description
+#' This is entirely backend-dependent.
+#' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend
 #' @param prior [any]\cr
@@ -11,10 +14,14 @@ amaddprior = function(env, prior) {
 
 #' @title return whatever kind of object this backend uses as 'prior'.
 #' 
+#' @description
+#' This is called usually after \code{\link{amaddprior}} to retrieve an updated
+#' prior object.
+#' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
 #' 
-#' @return [any]\cr
+#' @return [any]
 #' An object representing the prior.
 amgetprior = function(env) {
   UseMethod("amgetprior")
@@ -45,6 +52,7 @@ amsetup= function(env, prior, learner, task, measure) {
 
 #' @title Perform optimization, respecting the given budget.
 #' 
+#' @description
 #' return a vector detailing the spent budget.
 #' 
 #' optimization progress should be saved to 'env'.
@@ -55,7 +63,7 @@ amsetup= function(env, prior, learner, task, measure) {
 #'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
 #'   \code{\link{automlr}} for details.
 #' 
-#' @return [\code{numeric(4)}]\cr
+#' @return [\code{numeric(4)}]
 #' The budget spent during this invocation.
 amoptimize = function(env, stepbudget) {
   UseMethod("amoptimize")
@@ -63,10 +71,14 @@ amoptimize = function(env, stepbudget) {
 
 #' @title Give information about the optimum found.
 #' 
+#' @description
+#' This function can do some backend bound work to generate more information
+#' about the found optimum.
+#' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
 #' 
-#' @return [\code{list}]\cr
+#' @return [\code{list}]
 #' A named list which will be inserted into the result object. Required elements
 #' are:
 #' \describe{

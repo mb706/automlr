@@ -3,7 +3,11 @@
 Automlr is an R-package for *automatically* configuring *mlr* machine learning algorithms. It is designed for simplicity of use and supposed to run with minimal user intervention.
 
 * Installation
-
+Automlr depends on *roxygen2* for installation, so make sure you have it installed:
+#+BEGIN_SRC R
+install.packages("roxygen2")
+#+END_SRC
+Then you can install automlr from source, most easily by doing
 #+BEGIN_SRC R
 devtools::install_github("mlr-org/automlr")
 #+END_SRC

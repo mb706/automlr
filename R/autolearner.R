@@ -86,6 +86,17 @@ print.Autolearner = function(x, ...) {
 
 #' @title Define the searchspace parameter in a short form
 #' 
+#' @description
+#' This function is used to define the search space related to a given learner.
+#' The priority here is that the function should be saving space: Much of the
+#' information about a parameter is inferred from the learner itself; Only the
+#' name, the type, and a range of a parameter are needed.
+#' 
+#' However, to get notice about changes in the mlr package, also all the
+#' parameters that are not given should be referenced with an \code{sp()} of
+#' type \code{"def"}; otherwise, a warning will be given upon instantiation of
+#' the learner.  
+#' 
 #' @param name [\code{character(1)}]\cr
 #'   The name of the parameter which must match the id of the \code{Param} it
 #'   refers to. May be suffixed with \code{.AMLRFIX#}, where \code{#} is a

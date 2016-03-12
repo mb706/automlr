@@ -27,10 +27,10 @@
 #'   If and how to impute factorial missing values. Must be one of \code{"off"},
 #'   \code{"remove.na"}, \code{"distinct"} (introduce new factor level),
 #'   \code{"mode"}, \code{"hist"}.
-#' @param multivariate.trafo[\code{character(1)}]\cr
+#' @param multivariate.trafo [\code{character(1)}]\cr
 #'   The multivariate transformation of numeric parameters to perform. Must be
 #'   one of \code{"off"}, \code{"pca"}, \code{"ica"}.
-#' @param feature.filter[\code{character(1)}]\cr
+#' @param feature.filter [\code{character(1)}]\cr
 #'   How to do feature filtering. Must be one of \code{"off"},
 #'   \code{"information.gain"}, \code{"chi.squared"}, \code{"rf.importance"}.
 #' @param feature.filter.thresh [\code{numeric}]\cr
@@ -39,7 +39,7 @@
 #' @param keep.data [\code{logical(1)}]\cr
 #'   Whether to include the transformed data in the returned object.
 #' 
-#' @return [\code{ampreproc}]\cr
+#' @return [\code{ampreproc}]
 #' An object that can be used with \code{predict} to transform new data. If
 #' \code{keep.data} is \code{TRUE}, the slot \code{$data} will contain the
 #' transformed data.

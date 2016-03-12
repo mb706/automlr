@@ -8,4 +8,5 @@ test_that("auxiliary test functions behave as expected", {
   expect_false(isFeasibleNoneMissing(ps, list(a = FALSE, b = FALSE)))
   expect_false(isFeasibleNoneMissing(ps, list(b = FALSE)))
   expect_true(isFeasibleNoneMissing(ps, list(a = FALSE)))
+  print(exists("MYVAR"))
 })

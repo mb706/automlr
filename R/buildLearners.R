@@ -530,6 +530,10 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
 
 #' @title Turn learner id string into learner object, if necessary
 #' 
+#' @description
+#' If the given learner is a \code{character(1)} identifying a learner, the
+#' corresponding learner is generated using \code{makeLearner}.
+#' 
 #' @param learner [\code{character(1)}|\code{Learner}]\cr
 #'   A character scalar or learner object.
 myCheckLearner = function (learner) {
@@ -566,14 +570,22 @@ createTrafo = function(min, max, isint) {
   }
 }
 
-#' @title Like mlr's makeModelMultiplexerParamSet, but respecting requirements.
+#' @title Like mlr's \code{makeModelMultiplexerParamSet}, but respecting
+#' requirements.
+#' 
+#' @description
+#' This is necessary since \code{makeModelMultiplexerParamSet} does not handle
+#' parameter requirements correctly.  
 #'
 #' @param multiplexer [\code{ModelMultiplexer}]\cr
 #'   The model multiplexer to use to create the ParamSet.
 #' @param modelParsets [\code{ParamSet}]\cr
 #'   The list of param sets that are used to create the mmps.
+#' @param origParamNames [list of \code{character}]\cr
+#'   Maps the IDs of the individual \code{Learner}s to the set of parameters
+#'   that are actually used and need to be multiplexed.
 #' 
-#' @return [\code{ModelMultiplexer}]\cr
+#' @return [\code{ModelMultiplexer}]
 #' The \code{ModelMultiplexer} with repaired requirements.
 makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
     origParamNames) {

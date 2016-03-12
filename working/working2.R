@@ -18,8 +18,9 @@ options(error=dump.frames)
 
 
 library('testthat')
-devtools::test(pkg="..", filter="paramhandling")
-
+MYVAR = 2
+devtools::test(pkg="..", filter="aux")
+rm(MYVAR)
 
 
 ##### mlrMBO
