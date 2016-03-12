@@ -9,7 +9,7 @@ install.packages("roxygen2")
 #+END_SRC
 Then you can install automlr from source, most easily by doing
 #+BEGIN_SRC R
-devtools::install_github("mlr-org/automlr")
+devtools::install_github("mlr-org/automlr", ref = "develop")
 #+END_SRC
 To use the "mbo" backend, automlr relies on *mlrMBO*, which itself relies on a *ParamHelpers* version that is not on CRAN yet. To install these, run
 #+BEGIN_SRC R
@@ -53,9 +53,11 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] write documentation for entry points
   - [X] Adapt entry point docu to mlrOrg style
   - [X] finish writing wrappers
-  - [ ] correct version dependencies 
+  - [X] correct version dependencies 
   - [X] argument for debug level
-  - [ ] package build generate mlrLearners.R
+  - [X] package build generate mlrLearners.R
+  - [ ] automatically recognize absence of learner package and skip
+  - [ ] DESCRIPTION Suggests should really contain all learner packages of mlr.
   - [ ] mlrLearners, mlrLearnersNoWrap variables
   - [ ] write NEWS
 - [ ] release 0.2
