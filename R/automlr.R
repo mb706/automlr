@@ -32,7 +32,7 @@
 #'   budget than the \code{$spent} slot indicates. Passing \code{0} will return
 #'   an AMState object without performing any optimization or touching the file
 #'   system.
-#' @param searchspace [list of \code{Autolearner}]
+#' @param searchspace [list of \code{Autolearner}]\cr
 #'   Declaration of the searchspace: The mlr \code{Learner}s to use and the
 #'   parameter domains to consider for optimization. \code{Learner}s can be
 #'   chosen manually, either by creating custom \code{Autolearner} objects using
@@ -48,7 +48,7 @@
 #'   that may help speed up the optimization process. Effect of this parameter
 #'   depends on the backend implementation. Currently, this is ignored by all
 #'   backends.
-#' @param savefile [\code{character(1)}]
+#' @param savefile [\code{character(1)}]\cr
 #'   Name of a file or folder in which intermediate progress will be saved.
 #'   This is will prevent data getting lost in case of a crash. The data written
 #'   is an \code{AMState} object in an \code{.rds} file that can be read and run
