@@ -311,33 +311,6 @@ autolearners = makeNamedAlList(
             sp("maxcompete", "def", 4),
             sp("maxsurrogate", "def", 5),
             sp("parms", "def", NULL))),
-    autolearner("classif.bartMachine",
-        list(
-# ** vp
-            sp("num_trees", "int", c(25, 200), "exp"),
-            sp("alpha", "real", c(0, 1)),
-            sp("beta", "real", c(1, 3)),
-            sp("k", "real", c(1, 4)),
-            sp("mh_prob_steps", "real", c(0.00000001, 1), dim = 3),
-# ** cp
-            sp("run_in_sample", "fix", FALSE),
-            sp("verbose", "fix", FALSE),
-# ** dp
-            sp("num_burn_in", "def", 250),
-            sp("num_iterations_after_burn_in", "def", 1000),
-            sp("q", "def", 0.9),
-            sp("prob_rule_class", "def", 0.5),
-            sp("debug_log", "def", FALSE),
-            sp("cov_prior_vec", "def", NULL),
-            sp("use_missing_data", "def", TRUE),
-            sp("use_missing_data_dummies_as_covars", "def", FALSE),
-            sp("replace_missing_data_with_x_j_bar", "def", FALSE),
-            sp("impute_missingness_with_rf_impute", "def", FALSE),
-            sp("impute_missingness_with_x_j_bar_for_lm", "def", TRUE),
-            sp("num_rand_samps_in_library", "def", 10000),
-            sp("mem_cache_for_speed", "def", TRUE),
-            sp("serialize", "def", FALSE),
-            sp("seed", "def", NULL))),
     autolearner("classif.randomForest",
         list(
 # ** vp
@@ -423,7 +396,7 @@ autolearners = makeNamedAlList(
     autolearner("classif.rotationForest",
         list(
 # ** vp
-            sp("K", "int", c(2, 40), trafo = function(x) max(1, round(sum(info$n.feat) / x))),
+            sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x))),
             sp("L", "int", c(25, 100)))),
     autolearner("classif.ada",
         list(
@@ -771,7 +744,7 @@ autolearners = makeNamedAlList(
             sp("ydim", "int", c(5, 100), "exp", id = "koho.y"),
             sp("topo", "cat", c("rectangular", "hexagonal"), id = "koho.topo"),
             sp("rlen", "int", c(50, 400), "exp", id = "koho.rlen"),
-            sp("alpha", "real", c(0, 1), id = "koho.alpha", trafo = function(x) c(.02, .001) * 20^x, dim = 2),
+            sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2),
             sp("xweight", "real", c(0.5, 0.9), id = "koho.xweight"),
             sp("n.hood", "cat", c("circular", "square"), id = "koho.shape"),
             sp("toroidal", "bool", id = "koho.toro"),
@@ -809,7 +782,7 @@ autolearners = makeNamedAlList(
             sp("ydim", "int", c(5, 100), "exp", id = "koho.y"),
             sp("topo", "cat", c("rectangular", "hexagonal"), id = "koho.topo"),
             sp("rlen", "int", c(50, 400), "exp", id = "koho.rlen"),
-            sp("alpha", "real", c(0, 1), id = "koho.alpha", trafo = function(x) c(.02, .001) * 20^x, dim = 2),
+            sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2),
             sp("xweight", "real", c(0.5, 0.9), id = "koho.xweight"),
             sp("n.hood", "cat", c("circular", "square"), id = "koho.shape"),
             sp("toroidal", "bool", id = "koho.toro"),
