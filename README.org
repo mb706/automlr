@@ -3,6 +3,8 @@
 Automlr is an R-package for *automatically* configuring *mlr* machine learning algorithms. It is designed for simplicity of use and supposed to run with minimal user intervention.
 
 * Installation
+/Note: Installation of Automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
+
 Automlr depends on *roxygen2* for installation, so make sure you have it installed:
 #+BEGIN_SRC R
 install.packages("roxygen2")
@@ -84,6 +86,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] regression learners
   - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
   - [ ] use seeds in learners that use external RNGs
+  - [ ] installation on Win32
 - [ ] release 0.4
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs)
