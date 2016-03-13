@@ -2,8 +2,8 @@
 # This file is a slightly modified version of the convertParamSet.R file in 
 # the ParamHelpers project (https://github.com/berndbischl/ParamHelpers).
 #
-# This file was distributed with a BSD 3 clause license:
-#
+# This file was distributed with a BSD 3 clause license as follows. Changes that
+# I made are shown in the git history of this file.
 #
 # Copyright (c) 2013-2014, Bernd Bischl, Michel Lang, Daniel Horn
 #
@@ -84,7 +84,7 @@ convertParamSetToIrace = function(par.set, as.chars = FALSE) {
         stopf("Unknown parameter type: %s", p$type)
       }
       if (!is.null(p$requires)) {
-        line = paste(line, capture.output(p$requires), sep = " | ")
+        line = paste(line, collapse(capture.output(p$requires), sep=""), sep = " | ")
       }
       lines[count] = line
       count = count + 1L
