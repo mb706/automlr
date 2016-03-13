@@ -391,3 +391,38 @@ undebug(automlr:::iraceRequirements)
 #############################
 # TODO: withPP stresstest fails even with random
 #       catch all errors except the expected ones.
+
+
+##### builtin learners
+
+devtools::load_all("..")
+options(error=dump.frames)
+
+
+bigl = buildLearners(mlrLearnersNoWrap, pid.task)
+
+unique(unlist(lapply(bigl$learner$base.learners, function(l) l$package)))
+
+
+l = makeLearner("classif.glmnet")
+getHyperPars(l)
+getParamSet(l)
+
+
+##### testing automlr
+
+library('testthat')
+
+devtools::test(pkg="..", filter="aux")
+devtools::test(pkg="..", filter="coltypes")
+devtools::test(pkg="..", filter="paramhandling")
+devtools::test(pkg="..", filter="requirements")
+devtools::test(pkg="..", filter="searchspacedefs")
+devtools::test(pkg="..", filter="taskbuilding")
+devtools::test(pkg="..", filter="wrappers")
+
+devtools::test(pkg="..", filter="automlr_errors")
+
+devtools::test(pkg="..", filter="automlr_random")
+devtools::test(pkg="..", filter="automlr_irace")
+devtools::test(pkg="..", filter="automlr_mbo")

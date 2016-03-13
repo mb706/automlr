@@ -63,7 +63,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   
   control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
   control = mlrMBO::setMBOControlInfill(control, opt = "focussearch",
-      opt.focussearch.points = 1000)
+      opt.focussearch.points = 100)
   control = mlrMBO::setMBOControlTermination(control, iters = NULL,
       more.stop.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
