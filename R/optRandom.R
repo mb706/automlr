@@ -58,7 +58,7 @@ amoptimize.amrandom = function(env, stepbudget) {
   
   numcpus = parallelGetOptions()$settings$cpus
   
-  while (!checkoutofbudget(learner$am.env, numcpus, il = TRUE)) {
+  while (!checkoutofbudget(learner$am.env, il = TRUE)) {
     # chop up "evals" budget into 100s so we can stop when time runs out
     iterations = 100
     if ("evals" %in% names(stepbudget)) {
@@ -154,7 +154,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
   
   if (checkoutofbudget(env, evaltime[3])) {
     # FIXME: check this hack
-    configureMlr(on.learner.error = "quiet")
+    configureMlr(on.learner.error = "quiet", on.learner.warning = "quiet")
   }
   env$untouched = FALSE
   result

@@ -9,6 +9,8 @@ requiredBackendFunctions = c("amaddprior", "amgetprior", "amsetup",
 # optMBO
 # reduce types of parameter set to simple types to avoid mlrMBO bugs
 mboSaveMode = TRUE
+mbo.focussearch.points = 1000L
+mbo.focussearch.maxit = 5L
 
 # optRandom
 out.of.budget.string = "out of budget"

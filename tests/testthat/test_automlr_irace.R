@@ -26,7 +26,7 @@ test_that("backend 'irace' works with search space with model failures allowed",
 test_that("backend 'irace' works with search space with preprocessing and model failure", {
   backendToTest = "irace"
   searchSpaceToTest = withPPSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
+  checkBackend(searchSpaceToTest, backendToTest, thorough = TRUE)
 })
 
 ###

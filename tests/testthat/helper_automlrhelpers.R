@@ -271,7 +271,8 @@ checkSpentVsBudget = function(amobject, budget, budgettest, runtime) {
   expect_lte(amobject$spent['walltime'], runtime + 1)
 }
 
-checkBackend = function(searchSpaceToTest, backendToTest) {
+checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE, verbose = FALSE) {
+  
   if (!exists("SHORTRUN")) {
     SHORTRUN = TRUE
   }
@@ -280,13 +281,32 @@ checkBackend = function(searchSpaceToTest, backendToTest) {
   } else {
     typicalBudget = list(walltime = 30, cputime = 30, modeltime = 20, evals = 300)
   }
+  
+  oc = if (verbose) identity else utils::capture.output
+  
+  methodsToTest = c("file", "object")
+  budgetsToTest = c("walltime", "cputime", "modeltime", "evals")
+
+  if (SHORTRUN && !thorough) {
+    methodsToTest = "file"
+    budgetsToTest = "evals"
+  }
   amfile = tempfile()
   on.exit(STALLTIME <<- FALSE, add = TRUE)
   on.exit(try(file.remove(paste0(amfile, ".rds")), silent = TRUE), add = TRUE)
   on.exit(configureMlr(show.learner.output = TRUE, on.learner.error = "warn"), add = TRUE)
-  configureMlr(show.learner.output = FALSE, on.learner.error = "quiet")
-  for (methodOfContinuation in c("file", "object")) {
-    for (budgettest in c("walltime", "cputime", "modeltime", "evals")) {
+  origmfp = automlr:::mbo.focussearch.points
+  origmfm = automlr:::mbo.focussearch.maxit
+  originp = automlr:::irace.newpopulation
+  on.exit(assignInNamespace("mbo.focussearch.points", origmfp, ns = "automlr"), add = TRUE)
+  on.exit(assignInNamespace("mbo.focussearch.maxit", origmfm, ns = "automlr"), add = TRUE)
+  on.exit(assignInNamespace("irace.newpopulation", originp, ns = "automlr"), add = TRUE)
+  assignInNamespace("mbo.focussearch.points", 10L, ns = "automlr")
+  assignInNamespace("mbo.focussearch.maxit", 2L, ns = "automlr")
+  assignInNamespace("irace.newpopulation", 1, ns = "automlr")
+  configureMlr(show.learner.output = FALSE, on.learner.error = "quiet", on.learner.warning = "quiet")
+  for (methodOfContinuation in methodsToTest) {
+    for (budgettest in budgetsToTest) {
       STALLTIME <<- (budgettest == "modeltime")
       budget = typicalBudget[[budgettest]]
       if (backendToTest == "mbo" && budgettest %in% c("modeltime", "evals")) {
@@ -295,7 +315,7 @@ checkBackend = function(searchSpaceToTest, backendToTest) {
       names(budget) = budgettest
 
       starttime = Sys.time()
-      amobject = automlr(theTask, searchspace = searchSpaceToTest, backend = backendToTest, budget = budget, savefile = amfile)
+      oc(amobject <- automlr(theTask, searchspace = searchSpaceToTest, backend = backendToTest, budget = budget, savefile = amfile))
       runtime = as.numeric(difftime(Sys.time(), starttime, units = "secs"))
       expect_gt(as.numeric(difftime(file.mtime(amobject$savefile), starttime, units = "secs")) + 1, 0) # see if the file was modified, prevent rounding errors
 
@@ -310,7 +330,7 @@ checkBackend = function(searchSpaceToTest, backendToTest) {
       budget = budget + spentBefore[budgettest]
 
       starttime = Sys.time()
-      amobject = automlr(continueObject, budget = budget)
+      oc(amobject <- automlr(continueObject, budget = budget))
       runtime = runtime + as.numeric(difftime(Sys.time(), starttime, units = "secs"))
       expect_gt(as.numeric(difftime(file.mtime(amobject$savefile), starttime, units = "secs")) + 1, 0)  # see again if the file was modified
 
