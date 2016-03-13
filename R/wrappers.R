@@ -1,7 +1,21 @@
 
-#' @include preprocess.R
+#' @include preprocess.R autolearner.R mlrLearners.R
 
-autowrappers = makeNamedAlList(
+
+#' @title
+#' A list of wrappers with corresponding \code{par.set}s that can be searched
+#' over.
+#' 
+#' @description
+#' This is a list of wrappers that can be used as part of a searchspace.
+#' Currently this only includes a preprocessing wrapper, but may in future also
+#' include some meta-methods.
+#' 
+#' @name mlrWrappers
+#' @family searchspace
+#' @docType data
+#' @export
+mlrWrappers = makeNamedAlList(
     autolearner(
         stacktype = "requiredwrapper",
         searchspace = list(
@@ -44,3 +58,18 @@ autowrappers = makeNamedAlList(
                   factors = c("factors", ""),
                   ordered = c("ordered", ""),
                   x))))
+
+
+#' @title
+#' A list of learners with corresponding \code{par.set}s that can be searched
+#' over.
+#' 
+#' @description
+#' This is the complete search space as suggested by the automlr package. It
+#' includes learners and wrappers.
+#' 
+#' @name mlrLearners
+#' @family searchspace
+#' @docType data
+#' @export
+mlrLearners = c(mlrLearnersNoWrap, mlrWrappers)

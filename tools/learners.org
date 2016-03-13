@@ -265,8 +265,8 @@
    - F :: TRUE, FALSE: weight neighbours by 1-dist. req: I == FALSE
    - K :: int 1..100 exp: {knn.k} number of NN to use
 **** Default Parameters:
-   - X :: NULL: (false): don't optimize, /we/ are doing that already
-   - E :: NULL: no effect when X not given.
+   - X :: FALSE: don't optimize, /we/ are doing that already
+   - E :: FALSE: no effect when X not given.
    - A :: weka.core.neighboursearch.LinearNNSearch: use default NN alg
    - W :: NULL: no window
    - output-debug-info :: FALSE
@@ -562,6 +562,7 @@
    - cv.folds :: 0: no cross validation
    - train.fraction :: 1
    - verbose :: FALSE
+   - keep.data :: TRUE: TODO: as soon as mlr has this fixed, this must change.
 *** classif.glmboost
 **** Variable Parameters:
    - family :: AdaExp, Binomial
@@ -595,6 +596,7 @@
    - eval_metric :: error: use default
    - maximize :: TRUE: does not matter since early.stop.round is NULL.
    - early.stop.round :: 1: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
+   - feval :: NULL: no custom evaluation function
 **** Changed (fixed) Parameters:
    - nthread :: 1: only one thread
    - verbose :: 1: stay almost silent -- setting this to 0 gives error!
@@ -849,6 +851,7 @@
    - toroidal :: TRUE, FALSE: {koho.toro} edges of map are joined
 **** Default Parameters:
    - radius :: NULL: neighbourhood radius; not going to touch this for now
+   - keep.data :: TRUE: TODO: this must change when mlr fixes it on their end
 **** Changed (fixed) Parameters:
    - contin :: FALSE: indicate that we are dealing with categories
 *** classif.lvq1

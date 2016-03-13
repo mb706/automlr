@@ -60,7 +60,8 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] package build generate mlrLearners.R
   - [ ] automatically recognize absence of learner package and skip
   - [ ] DESCRIPTION Suggests should really contain all learner packages of mlr.
-  - [ ] mlrLearners, mlrLearnersNoWrap variables
+  - [ ] patch bugs in CRAN-versions of ParamHelpers and mlr
+  - [X] mlrLearners, mlrLearnersNoWrap variables
   - [ ] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
@@ -87,6 +88,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
   - [ ] use seeds in learners that use external RNGs
   - [ ] installation on Win32
+  - [ ] more consistent OO-based searchspace definition
 - [ ] release 0.4
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs)

@@ -42,7 +42,7 @@
 #' @param verbose [\code{logical(1)}]\cr
 #'   Give detailed warnings.
 #' @export
-buildLearners = function(searchspace, task, verbose) {
+buildLearners = function(searchspace, task, verbose = FALSE) {
   
   # searchspace contains learners, wrappers and requiredwrappers.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
@@ -101,27 +101,44 @@ buildLearners = function(searchspace, task, verbose) {
     sslist = learners[[i]]$searchspace
     if (taskdesc$type != l$type) {
       # skip this learner, it is not fit for the task
+      if (verbose) {
+        messagef("Skipping learner '%s': Learner type not fit for task type.",
+            l$id)
+      }
       next
     }
     if (!hasLearnerProperties(l, requiredClassProperty)) {
       # can't handle the target variable type
+      if (verbose) {
+        messagef("Skipping learner '%s': Learner can not handle target type.",
+            l$id)
+      }
       next
     }
     learnercovtypes = intersect(allcovproperties, getLearnerProperties(l))
     if (length(setdiff(mincovtypes, learnercovtypes)) != 0) {
       # there are feature types that no wrapper can remove that the learner
       # can't handle
+      if (verbose) {
+        messagef("Skipping learner '%s': Learner can not handle feature types.",
+            l$id)
+      }
       next
     }
     if (length(intersect(maxcovtypes, learnercovtypes)) == 0) {
       # we can't convert the features to any kind of feature that the learner
       # can handle
+      if (verbose) {
+        messagef(paste("Skipping learner '%s':",
+            "Task has no features the learner can handle."),
+            l$id)
+      }
       next
     }
     for (canHandle in intersect(allcovproperties, getLearnerProperties(l))) {
       handlerList[[canHandle]] = c(handlerList[[canHandle]], l$id)
     }
-    aux = buildTuneSearchSpace(sslist, l, info.env, idRef)
+    aux = buildTuneSearchSpace(sslist, l, info.env, idRef, verbose)
     modelTuneParsets[[l$id]] = aux$tss
     allParamNames[[l$id]] = aux$nondefParamNames
     # updated learner object with fixed hyperparameters
@@ -179,7 +196,7 @@ checkParamIds = function(idRef, verbose) {
   }
 }
 
-buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
+buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbose) {
   lp = getParamSet(l)
   lpids = getParamIds(lp)
   lptypes = getParamTypes(lp, use.names = TRUE)
@@ -299,10 +316,12 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
                        (param$type == "cat" &&
                            partype %nin% c("discrete", "discretevector", "character",
                                    "charactervector")))) {
-        warningf(paste0("Parameter '%s' for learner '%s' is of type '%s' and",
-                " has different (but feasible) type '%s' listed in search",
-                " space."),
-            param$name, l$id, partype, param$type)
+        if (verbose) {
+          warningf(paste0("Parameter '%s' for learner '%s' is of type '%s' and",
+                  " has different (but feasible) type '%s' listed in search",
+                  " space."),
+              param$name, l$id, partype, param$type)
+        }
         if (param$type == "cat") {
           # if the underlying type is a VectorParam but not discrete, we will
           # have to unlist().
@@ -318,7 +337,8 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
         l = removeHyperPars(l, origParamName)
         # we try to use the default, but apparently the value is already set in
         # the learner object.
-        if (is.null(truedefault) || truedefault != defaultcandidate) {
+        if (verbose &&
+            (is.null(truedefault) || truedefault != defaultcandidate)) {
           warningf(paste0("Parameter '%s' for learner '%s' is of type",
                   " 'default', but the learner has it already set to a",
                   " different value.\nThis value hase been removed; the",
@@ -361,9 +381,11 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef) {
     } else {
       if (origParamName %in% names(getHyperPars(l))) {
         # make sure this is not set at a default.
-        warningf(paste0("Parameter '%s' for learner '%s' was already set to a",
-                " value; this value has been removed."),
-            param$name, l$id)
+        if (verbose) {
+          warningf(paste("Parameter '%s' for learner '%s' was already set to a",
+                  "value; this value has been removed."),
+              param$name, l$id)
+        }
         l = removeHyperPars(l, param$name)
       }
       if (param$type != "def") {  # variable parameter

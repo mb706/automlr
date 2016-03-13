@@ -195,7 +195,7 @@ def completeOutput(includeManual):
             manuals.append(completeString)
         else:
             nonmanuals.append(completeString)
-    retstring = "autolearners = makeNamedAlList(\n"
+    retstring = "mlrLearnersNoWrap = makeNamedAlList(\n"
     if not includeManual:
         manuals = []
     if manuals:
