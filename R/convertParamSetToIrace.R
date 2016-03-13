@@ -35,18 +35,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#' @title Converts a ParamSet object to a parameter object of the irace package.
-#'
-#' @description
-#' Converts to a textual description used in irace and then potentially calls \link[irace]{readParameters}.
-#'
-#' @template arg_parset
-#' @param as.chars [\code{logical(1)}]\cr
-#'   Return results as character vector of lines \code{FALSE} or call
-#'   \code{\link[irace]{readParameters}} on it (\code{TRUE}).
-#'   Default is \code{FALSE}.
-#' @return [\code{\link{list}}].
-#' @export
 convertParamSetToIrace = function(par.set, as.chars = FALSE) {
   assertClass(par.set, "ParamSet")
   assertFlag(as.chars)
