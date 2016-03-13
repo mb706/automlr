@@ -136,7 +136,7 @@ automlr = function(task, ...) {
 #' @rdname automlr
 #' @export
 automlr.Task = function(task, measure = NULL, budget = 0,
-    searchspace = autolearners, prior = NULL, savefile = NULL,
+    searchspace = mlrLearners, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, backend, verbose = FALSE, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")

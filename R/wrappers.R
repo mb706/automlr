@@ -1,6 +1,20 @@
 
 #' @include preprocess.R autolearner.R mlrLearners.R
 
+getSupportedFilterMethods = function(suggestions) {
+  allFilters = lapply(listFilterMethods(FALSE), as.character)
+  allPkgs = rownames(installed.packages())
+  presentFilters = allFilters$id[allFilters$package %in% c("", allPkgs)]
+  
+  absentFilters = setdiff(suggestions, presentFilters)
+  if (length(absentFilters) > 0) {
+    absentPkgs = unique(allFilters$package[allFilters$id %in% absentFilters])
+    warningf(paste("Note that feature filter options '%s' will not be",
+            "available since packages '%s' are not installed."),
+        collapse(absentFilters, "', "), collapse(absentPkgs, "', '"))
+  }
+  intersect(suggestions, presentFilters)
+}
 
 #' @title
 #' A list of wrappers with corresponding \code{par.set}s that can be searched
@@ -13,9 +27,9 @@
 #' 
 #' @name mlrWrappers
 #' @family searchspace
-#' @docType data
 #' @export
-mlrWrappers = makeNamedAlList(
+# FIXME: the dirtiest of hacks
+mlrWrappers = function() makeNamedAlList(
     autolearner(
         stacktype = "requiredwrapper",
         searchspace = list(
@@ -32,21 +46,15 @@ mlrWrappers = makeNamedAlList(
             sp("ppa.impute.numeric", "cat",
                 c("remove.na", "mean", "median", "hist"),
                 req = quote(automlr.has.numerics && automlr.remove.missings)),
-# don't need this, it's the default:
-#           sp("ppa.impute.numeric.AMLRFIX1", "cat", c("off"),
-#               req = quote(!automlr.has.numerics || !automlr.remove.missings)),
             sp("ppa.impute.factor", "cat",
                 c("remove.na", "distinct", "mode", "hist"),
                 req = quote(automlr.has.factors && (!automlr.remove.factors) &&
                         automlr.remove.missings)),
-#           sp("ppa.impute.factor.AMLRFIX1", "cat", c("off"),
-#               req = quote(!automlr.has.factors || automlr.remove.factors ||
-#                       !automlr.remove.missings)),
             sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"),
                 req = quote(automlr.has.numerics == TRUE)),
             sp("ppa.feature.filter", "cat",
-                # FIXME: why does rf.importance crash in the following?
-                c("off", "information.gain", "chi.squared")),
+                c("off", getSupportedFilterMethods(c("information.gain",
+                            "chi.squared", "rf.importance")))),
             sp("ppa.feature.filter.thresh", "real", c(.Machine$double.eps, 1),
                 trafo = function(x) -log(x),
                 req = quote(ppa.feature.filter != "off"))),
@@ -70,6 +78,6 @@ mlrWrappers = makeNamedAlList(
 #' 
 #' @name mlrLearners
 #' @family searchspace
-#' @docType data
 #' @export
-mlrLearners = c(mlrLearnersNoWrap, mlrWrappers)
+# FIXME: the dirtiest of hacks
+mlrLearners = function() c(mlrLearnersNoWrap, mlrWrappers)
