@@ -52,7 +52,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
 (under consideration, subject to change)
 - [-] release 0.1
   - [X] write preliminary readme
-  - [X] Tests pass
+  - [-] Tests pass
+    - [X] backend tests
+    - [ ] realworld tests
   - [X] adapt coding style to mlrOrg
   - [X] write documentation for entry points
   - [X] Adapt entry point docu to mlrOrg style
@@ -60,7 +62,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] correct version dependencies 
   - [X] argument for debug level
   - [X] package build generate mlrLearners.R
-  - [ ] automatically recognize absence of learner package and skip
+  - [X] automatically recognize absence of learner package and skip
   - [X] DESCRIPTION Suggests should really contain all learner packages of mlr.
   - [ ] patch bugs in CRAN-versions of ParamHelpers and mlr
   - [X] mlrLearners, mlrLearnersNoWrap variables

@@ -96,7 +96,19 @@ buildLearners = function(searchspace, task, verbose = FALSE) {
   }
   
   for (i in seq_along(learners)) {
-    l = myCheckLearner(learners[[i]]$learner)
+    tryResult = try(l <- myCheckLearner(learners[[i]]$learner), silent = TRUE)
+    if (is.error(tryResult)) {
+      errcall = attr(tryResult, "condition")$call[[1]]
+      errmsg = attr(tryResult, "condition")$message
+      if (identical(errcall, quote(requirePackages))) {
+        warningf("Package for learner '%s' is missing; skipping.",
+            learners[[i]]$learner)
+        next
+      } else {
+        stopf("makeLearner gave unexpected error for learner '%s':\n%s",
+            learners[[i]]$learner, errmsg)
+      }
+    }
     
     sslist = learners[[i]]$searchspace
     if (taskdesc$type != l$type) {
@@ -540,8 +552,8 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
   }
   pobject = do.call(constructor, paramlist, quote = TRUE)
   if (!is.null(pobject$trafo)) {
-    environment(pobject$trafo) = list2env(as.list(environment(pobject$trafo),
-            all.names = TRUE), parent = info.env)
+    environment(pobject$trafo) = list2env(as.list(info.env, all.names = TRUE),
+        parent = environment(pobject$trafo))
     if (identical(param$trafo, "exp")) {
       pobject$amlr.origValues = param$values
     }
