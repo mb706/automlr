@@ -5,14 +5,19 @@ Automlr is an R-package for *automatically* configuring *mlr* machine learning a
 * Installation
 /Note: Installation of Automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
 
-Automlr depends on *roxygen2* for installation, so make sure you have it installed:
+Automlr depends on *roxygen2* for installation, but roxygen2 is not listed in its dependencies, so make sure you have it installed:
 #+BEGIN_SRC R
-install.packages("roxygen2")
+if (!require("roxygen2")) install.packages("roxygen2")
 #+END_SRC
-Then you can install automlr from source, most easily by doing
+Then you can install automlr from source. Automlr can work with many mlr learners; however, the respective dependent packages need to be installed for this. Automlr doesn't /need/ these packages, but without them, the search space will be incomplete (and a warning will be given). To install automlr and all referenced learner packages (this can take a while!), do
+#+BEGIN_SRC R
+devtools::install_github("mlr-org/automlr", ref = "develop", dependencies = c("Depends", "Imports", "Suggests"))
+#+END_SRC
+to *only* install automlr (and the essential dependencies), do
 #+BEGIN_SRC R
 devtools::install_github("mlr-org/automlr", ref = "develop")
 #+END_SRC
+
 To use the "mbo" backend, automlr relies on *mlrMBO*, which itself relies on a *ParamHelpers* version that is not on CRAN yet. To install these, run
 #+BEGIN_SRC R
 devtools::install_github("berndbischl/ParamHelpers")
