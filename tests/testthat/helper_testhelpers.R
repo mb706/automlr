@@ -1,6 +1,7 @@
 
 # TODO: put 'all = TRUE' in all expect_warning and expect_error
 
+configureMlr()  # set defaults
 configureMlr(show.learner.output = TRUE, on.learner.error = "warn")
 
 createTestData = function(nrow, nNumeric = 0, nFactor = 0, nOrdered = 0, nClasses = 2) {
