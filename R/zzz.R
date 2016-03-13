@@ -7,6 +7,6 @@ NULL
 
 
 .onLoad = function(libname, pkgname) {
-  mlrWrappers <<- mlrWrappers()
-  mlrLearners <<- mlrLearners()
+  mlrWrappers <<- mlrWrappers.gen()
+  mlrLearners <<- mlrLearners.gen()
 }

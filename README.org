@@ -28,6 +28,7 @@ To run a small example, execute
 #+BEGIN_SRC R
 library("mlr")
 library("automlr")
+configureMlr(on.learner.error = "warn", show.learner.output = FALSE)
 amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
 result = amfinish(amrun)
 print(result, verbose = TRUE)

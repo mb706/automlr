@@ -27,9 +27,11 @@ getSupportedFilterMethods = function(suggestions) {
 #' 
 #' @name mlrWrappers
 #' @family searchspace
+#' @docType data
 #' @export
-# FIXME: the dirtiest of hacks
-mlrWrappers = function() makeNamedAlList(
+mlrWrappers = list()
+
+mlrWrappers.gen = function() makeNamedAlList(
     autolearner(
         stacktype = "requiredwrapper",
         searchspace = list(
@@ -78,6 +80,8 @@ mlrWrappers = function() makeNamedAlList(
 #' 
 #' @name mlrLearners
 #' @family searchspace
+#' @docType data
 #' @export
-# FIXME: the dirtiest of hacks
-mlrLearners = function() c(mlrLearnersNoWrap, mlrWrappers)
+mlrLearners = list()
+
+mlrLearners.gen = function() c(mlrLearnersNoWrap, mlrWrappers)
