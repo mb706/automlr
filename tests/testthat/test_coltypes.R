@@ -149,7 +149,8 @@ test_that("requirements using pseudoparameters behave as expected", {
       NumericsLearner, FactorsLearner, OrderedsLearner,
       MissingsNumericsLearner, MissingsFactorsLearner, MissingsFactorsNumericsLearner,
       FactorsNumericsLearner, AllLearner,
-      XRemover, NARemover, FactorRemover, NAFactorRemover), MissingsNumericsFactorsTask), "different \\(but feasible\\) type 'cat' listed", all = TRUE)
+      XRemover, NARemover, FactorRemover, NAFactorRemover), MissingsNumericsFactorsTask, verbose = TRUE),
+      "different \\(but feasible\\) type 'cat' listed", all = TRUE)
 
   expect_set_equal(unlist(getpars(l)$automlr.wremoving.factors$values), c("FactorRemover", "NAFactorRemover"))
   expect_set_equal(unlist(getpars(l)$automlr.wremoving.missings$values), c("NARemover", "NAFactorRemover"))

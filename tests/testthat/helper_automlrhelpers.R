@@ -1,4 +1,12 @@
 
+STALLTIME = FALSE
+
+stalltime = function() {
+  if (STALLTIME) {
+    Sys.sleep(0.1)
+  }
+}
+
 # a basic predictor that classifies everything within a radius around a certain point as positive
 circleClassif = makeRLearnerClassif("circleClassif", character(0),
     makeParamSet(makeNumericLearnerParam("radius", lower = 0, default = 0, when = "predict"),
@@ -6,6 +14,7 @@ circleClassif = makeRLearnerClassif("circleClassif", character(0),
     properties = c("twoclass", "numerics", "missings"))
 circleClassif$fix.factors.prediction = TRUE
 trainLearner.circleClassif = function(.learner, .task, .subset, .weights = NULL, coordinates, ...) {
+  stalltime()
   list(coords = coordinates)
 }
 predictLearner.circleClassif = function(.learner, .model, .newdata, radius, ...) {
@@ -27,6 +36,7 @@ circleInoutClassif = makeRLearnerClassif("circleInoutClassif", character(0),
     properties = c("twoclass", "numerics", "missings"))
 circleInoutClassif$fix.factors.prediction = TRUE
 trainLearner.circleInoutClassif = function(.learner, .task, .subset, .weights = NULL, coordinates, ...) {
+  stalltime()
   list(coords = coordinates)
 }
 predictLearner.circleInoutClassif = function(.learner, .model, .newdata, radius, estimfunction, ...) {
@@ -46,6 +56,7 @@ meshClassif = makeRLearnerClassif("meshClassif", character(0),
     properties = c("twoclass", "numerics", "missings"))
 meshClassif$fix.factors.prediction = TRUE
 trainLearner.meshClassif = function(.learner, .task, .subset, .weights = NULL, coordinates, ...) {
+  stalltime()
   list(coords = coordinates)
 }
 predictLearner.meshClassif = function(.learner, .model, .newdata, radius, mesh, ...) {
@@ -70,6 +81,7 @@ detfailClassif = makeRLearnerClassif("detfailClassif", character(0),
     properties = c("twoclass", "numerics", "missings"))
 detfailClassif$fix.factors.prediction = TRUE
 trainLearner.detfailClassif = function(.learner, .task, .subset, .weights = NULL, coordinates, ...) {
+  stalltime()
   list(coords = coordinates)
 }
 predictLearner.detfailClassif = function(.learner, .model, .newdata, radius, ...) {
@@ -89,6 +101,7 @@ randfailClassif = makeRLearnerClassif("randfailClassif", character(0),
     properties = c("twoclass", "numerics", "missings"))
 randfailClassif$fix.factors.prediction = TRUE
 trainLearner.randfailClassif = function(.learner, .task, .subset, .weights = NULL, coordinates, ...) {
+  stalltime()
   list(coords = coordinates)
 }
 predictLearner.randfailClassif = function(.learner, .model, .newdata, radius, ...) {
@@ -150,6 +163,7 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
 noiseClassif$fix.factors.prediction = TRUE
 
 trainLearner.noiseClassif = function(.learner, .task, .subset, .weights = NULL, ...) {
+  stalltime()
   list()
 }
 predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs = FALSE,
@@ -258,11 +272,26 @@ checkSpentVsBudget = function(amobject, budget, budgettest, runtime) {
 }
 
 checkBackend = function(searchSpaceToTest, backendToTest) {
-  typicalBudget = list(walltime = 30, cputime = 30, modeltime = 2, evals = 10)
+  if (!exists("SHORTRUN")) {
+    SHORTRUN = TRUE
+  }
+  if (SHORTRUN) {
+    typicalBudget = list(walltime = 3, cputime = 3, modeltime = 3, evals = 40)
+  } else {
+    typicalBudget = list(walltime = 30, cputime = 30, modeltime = 20, evals = 300)
+  }
   amfile = tempfile()
+  on.exit(STALLTIME <<- FALSE, add = TRUE)
+  on.exit(try(file.remove(paste0(amfile, ".rds")), silent = TRUE), add = TRUE)
+  on.exit(configureMlr(show.learner.output = TRUE, on.learner.error = "warn"), add = TRUE)
+  configureMlr(show.learner.output = FALSE, on.learner.error = "quiet")
   for (methodOfContinuation in c("file", "object")) {
     for (budgettest in c("walltime", "cputime", "modeltime", "evals")) {
+      STALLTIME <<- (budgettest == "modeltime")
       budget = typicalBudget[[budgettest]]
+      if (backendToTest == "mbo" && budgettest %in% c("modeltime", "evals")) {
+        budget = budget / 10
+      }
       names(budget) = budgettest
 
       starttime = Sys.time()
@@ -295,7 +324,6 @@ checkBackend = function(searchSpaceToTest, backendToTest) {
       }
     }
   }
-  try(file.remove(amobject$savefile), silent = TRUE)
 }
 
 nofailSearchSpace = list(ccAL, cicAL, mcAL)

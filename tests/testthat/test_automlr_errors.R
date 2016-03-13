@@ -1,4 +1,4 @@
-context("automlr")
+context("automlr_errors")
 
 test_that("error on budget misclassification", {
   #the following is backend independent

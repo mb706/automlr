@@ -269,7 +269,7 @@ checkWrapperEffectEx = function(autolearnersPL, transformation = list, debugOut 
 
 
 bl = function(...) {
-  buildLearners(list(...), pid.task)
+  buildLearners(list(...), pid.task, verbose = TRUE)
 }
 
 
