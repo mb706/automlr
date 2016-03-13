@@ -478,7 +478,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - K :: int 3..40: MANUAL{sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x)))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
+   - K :: int 2..40: MANUAL{sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x)))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
    - L :: int 25..100: number of trees
 ** Boosting
 *** classif.ada

@@ -11,6 +11,8 @@ amgetprior.ammbo = function(env) {
 
 amsetup.ammbo = function(env, prior, learner, task, measure) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
+  # fix the dumb mlrMBO bug
+  mlrMBO:::.onAttach()
   requirePackages("smoof", why = "optMBO", default.method = "load")
   # FIXME things that could be variable:
   #  resampling: holdout, cv, or something adaptive?
