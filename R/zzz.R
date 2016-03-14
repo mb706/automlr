@@ -3,6 +3,7 @@
 #' @import mlr
 #' @import ParamHelpers
 #' @import parallelMap
+#' @import utils
 NULL
 
 

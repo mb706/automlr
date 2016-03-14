@@ -11,7 +11,8 @@ Encoding: UTF-8
 Depends:
     R (>= 3.0.2),
     mlr (>= 2.8),
-    ParamHelpers (>= 1.7)
+    ParamHelpers (>= 1.7),
+    utils
 Imports:
     BBmisc (>= 1.9),
     checkmate (>= 1.7.1),
