@@ -1,28 +1,6 @@
 #+TITLE: Automatic Machine Learning Algorithm Configuration in R
 * Introduction
-Automlr is an R-package for *automatically* configuring *mlr* machine learning algorithms. It is designed for simplicity of use and supposed to run with minimal user intervention.
-
-* Installation
-/Note: Installation of Automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
-
-Automlr depends on *roxygen2* for installation, but roxygen2 is not listed in its dependencies, so make sure you have it installed:
-#+BEGIN_SRC R
-if (!require("roxygen2")) install.packages("roxygen2")
-#+END_SRC
-Then you can install automlr from source. Automlr can work with many mlr learners; however, the respective dependent packages need to be installed for this. Automlr doesn't /need/ these packages, but without them, the search space will be incomplete (and a warning will be given). To install automlr and all referenced learner packages (this can take a while!), do
-#+BEGIN_SRC R
-devtools::install_github("mlr-org/automlr", ref = "develop", dependencies = c("Depends", "Imports", "Suggests"))
-#+END_SRC
-to *only* install automlr (and the essential dependencies), do
-#+BEGIN_SRC R
-devtools::install_github("mlr-org/automlr", ref = "develop")
-#+END_SRC
-
-To use the "mbo" backend, automlr relies on *mlrMBO*, which itself relies on a *ParamHelpers* version that is not on CRAN yet. To install these, run
-#+BEGIN_SRC R
-devtools::install_github("berndbischl/ParamHelpers")
-devtools::install_github("mlr-org/mlrMBO")
-#+END_SRC
+*automlr* is an R-package for *automatically* configuring *mlr* machine learning algorithms so that they perform well. It is designed for simplicity of use and supposed to run with minimal user intervention.
 * Usage
 To run a small example, execute
 #+BEGIN_SRC R
@@ -44,12 +22,33 @@ The functions and data exported by automlr that will be of interest to the user:
     - a measure for which to optimize, if not the task's default measure (~measure~)
   - amfinish :: Generates an ~AMResult~ object that contains information about the optimization result.
   - mlrLearners :: A collection of mlr learners with corresponding search space.
-  - mlrLearnersNoWrappers :: as autolearners, but without preprocessing wrappers
+  - mlrLearnersNoWrappers :: as mlrLearners, but without preprocessing wrappers
 - searchspace definition
   - autolearner :: define your own mlr learner to put in a search space
   - autoWrapper :: define an mlr wrapper to use in a search space
   - sp :: for defining parameters that are given to ~autolearner~
 See their respective R documentation for more information and additional arguments.
+* Installation
+/Note: Installation of automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
+
+automlr depends on *roxygen2* for installation, but roxygen2 is not listed in its dependencies, so make sure you have it installed:
+#+BEGIN_SRC R
+if (!require("roxygen2")) install.packages("roxygen2")
+#+END_SRC
+Then you can install automlr from source. automlr can work with many mlr learners; however, the respective dependent packages need to be installed for this. automlr doesn't /need/ these packages, but without them, the search space will be incomplete (and a warning will be given). To install automlr and all referenced learner packages (this can take a while!), do
+#+BEGIN_SRC R
+devtools::install_github("mlr-org/automlr", ref = "develop", dependencies = c("Depends", "Imports", "Suggests"))
+#+END_SRC
+to *only* install automlr (and the essential dependencies), do
+#+BEGIN_SRC R
+devtools::install_github("mlr-org/automlr", ref = "develop")
+#+END_SRC
+
+To use the "mbo" backend, automlr relies on *mlrMBO*, which itself relies on a *ParamHelpers* version that is not on CRAN yet. To install these, run
+#+BEGIN_SRC R
+devtools::install_github("berndbischl/ParamHelpers")
+devtools::install_github("mlr-org/mlrMBO")
+#+END_SRC
 
 * Project status
 Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
@@ -58,8 +57,8 @@ Currently the project is undergoing heavy development; while the spirit of the a
 (under consideration, subject to change)
 - [-] release 0.1
   - [X] write preliminary readme
-  - [-] Tests pass
-    - [X] backend tests
+  - [ ] Tests pass
+    - [ ] backend tests
     - [ ] realworld tests
   - [X] adapt coding style to mlrOrg
   - [X] write documentation for entry points
@@ -70,9 +69,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] package build generate mlrLearners.R
   - [X] automatically recognize absence of learner package and skip
   - [X] DESCRIPTION Suggests should really contain all learner packages of mlr.
-  - [ ] patch bugs in CRAN-versions of ParamHelpers and mlr
+  - [X] patch bugs in CRAN-versions of ParamHelpers and mlr
   - [X] mlrLearners, mlrLearnersNoWrap variables
-  - [ ] write NEWS
+  - [X] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [ ] event handling

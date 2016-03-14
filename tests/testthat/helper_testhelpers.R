@@ -1,5 +1,6 @@
 
 # TODO: put 'all = TRUE' in all expect_warning and expect_error
+library("checkmate")
 
 configureMlr()  # set defaults
 configureMlr(show.learner.output = TRUE, on.learner.error = "warn")
