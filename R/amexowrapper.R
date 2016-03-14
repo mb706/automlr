@@ -87,8 +87,6 @@
 makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
     canHandleX, allLearners) {
   
-  # doing this in .onLoad gives a warning, so we do it here.
-  patchMlr()
   
   covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
       if (taskdesc$has.missings) "missings")
@@ -279,6 +277,8 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   # setting the LearnerParam$when = train / test value.
   # The learner.model we are given is just an mlr WrappedModel that we can use
   # predict on.
+  on.exit(unpatchMlr())
+  patchMlrPredict()
   getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
 }
 

@@ -6,7 +6,11 @@
 NULL
 
 
+mlr.predictLearner.ModelMultiplexer = NULL
+
 .onLoad = function(libname, pkgname) {
   mlrWrappers <<- mlrWrappers.gen()
   mlrLearners <<- mlrLearners.gen()
+  
+  mlr.predictLearner.ModelMultiplexer <<- mlr:::predictLearner.ModelMultiplexer
 }

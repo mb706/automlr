@@ -171,7 +171,7 @@ deExpression = function(language) {
   substitute(eval(x), list(x = language))
 }
 
-patchMlr = function() {
+patchMlrPredict = function() {
 # The following function is a slightly modified version of the
 # predictLearner.ModelMultiplexer function in the mlr project
 # (https://github.com/mlr-org/mlr).
@@ -215,4 +215,9 @@ patchMlr = function() {
         args = c(args, getHyperPars(bl, for.fun = c("predict", "both")))
         do.call(predictLearner, args)
       })
+}
+
+unpatchMlr = function() {
+  assignInNamespace("predictLearner.ModelMultiplexer", ns = "mlr",
+      mlr.predictLearner.ModelMultiplexer)
 }
