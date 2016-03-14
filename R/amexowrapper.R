@@ -87,6 +87,9 @@
 makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
     canHandleX, allLearners) {
   
+  # doing this in .onLoad gives a warning, so we do it here.
+  patchMlr()
+  
   covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
       if (taskdesc$has.missings) "missings")
   
