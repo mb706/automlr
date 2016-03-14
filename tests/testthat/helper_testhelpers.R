@@ -46,7 +46,7 @@ changeColsWrapper  = function (learner, prefix, ...) {
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
 
-  colman = function(args, data) {
+  colman = function(args, data, target = NULL) {
     names(args) = sub(paste0("^", prefix, "\\."), "", names(args))
     ordereds = sapply(data, is.ordered)
     if (args$convert.ord2num) {
@@ -69,6 +69,16 @@ changeColsWrapper  = function (learner, prefix, ...) {
       ordereds = FALSE
     }
     data = data[!((args$remove.factors & factors) | (args$remove.ordered & ordereds))]
+    if (args$remove.NA) {
+      narows = Reduce(`|`, lapply(data, is.na))
+      data = data[!narows, , drop = FALSE]
+      if (!is.null(target)) {
+        target = target[!narows, , drop = FALSE]
+      }
+    }
+    if (!is.null(target)) {
+      data = cbind(data, target)
+    }
     data
   }
 
@@ -76,8 +86,7 @@ changeColsWrapper  = function (learner, prefix, ...) {
     tcol = data[target]
     data[target] = NULL
     args$levels = lapply(data, levels)
-    data = colman(args, data)
-    data = cbind(data, tcol)
+    data = colman(args, data, tcol)
     catf("wrapper %s train", prefix)
     dput(args[[paste0(prefix, ".spare1")]])
     dput(args[[paste0(prefix, ".spare2")]])

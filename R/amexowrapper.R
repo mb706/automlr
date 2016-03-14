@@ -240,6 +240,16 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
     automlr.wrappersetup, ...) {
   # train selected learner model and remove prefix from its param settings
   learner = .learner$learner
+  
+  sl = list(...)$selected.learner
+  if (is.null(sl)) {
+    slIndex = which("selected.learner" ==
+            extractSubList(.learner$staticParams, "id"))
+    assert(length(slIndex) == 1)
+    sl = .learner$staticParams[[slIndex]]$value
+  }
+  learner$properties = learner$base.learners[[sl]]$properties
+  
 
   if (length(.learner$wrappers) > 0) {
     if (length(.learner$wrappers) == 1) {
@@ -255,6 +265,7 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   learner = setupLearnerParams(learner, .learner$staticParams,
       .learner$shadowparams, list(automlr.wrappersetup = automlr.wrappersetup,
           ...))
+
   train(learner, task = .task, subset = .subset, weights = .weights)
 }
 
