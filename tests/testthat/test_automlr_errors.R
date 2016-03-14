@@ -3,7 +3,7 @@ context("automlr_errors")
 test_that("error on budget misclassification", {
   #the following is backend independent
   backendToTest = "random"
-
+  source("helper_automlrhelpers.R")  # this is apparently necessary to avoid warnings.
   amobject = automlr(theTask, searchspace = nofailSearchSpace, backend = backendToTest)
   expect_set_equal(amobject$spent, c(0, 0, 0, 0))
   amfile = tempfile()
