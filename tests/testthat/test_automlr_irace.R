@@ -19,7 +19,7 @@ test_that("backend 'irace' works with search space with model failures allowed",
   source("helper_automlrhelpers.R")
   backendToTest = "irace"
   searchSpaceToTest = withFailSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest)
+  checkBackend(searchSpaceToTest, backendToTest, learnersMayFail = TRUE)
 })
 
 ###
@@ -29,7 +29,7 @@ test_that("backend 'irace' works with search space with preprocessing and model 
   source("helper_automlrhelpers.R")
   backendToTest = "irace"
   searchSpaceToTest = withPPSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest, thorough = TRUE)
+  checkBackend(searchSpaceToTest, backendToTest, thorough = TRUE, learnersMayFail = TRUE)
 })
 
 ###
