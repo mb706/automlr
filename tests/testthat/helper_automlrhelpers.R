@@ -170,17 +170,17 @@ predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs = FA
     int, intv, num, numv, log, logv, disc1, disc1v, disc2, disc2v, disc3, disc3v, disc4, disc4v, ...) {
   # expect_xxx are VERY slow in this context.
   assert(test_numeric(int, len = 1, any.missing = FALSE) &&
-    test_numeric(intv, len = 3, any.missing = FALSE) &&
-    test_numeric(num, len = 1, any.missing = FALSE) &&
-    test_numeric(numv, len = 3, any.missing = FALSE) &&
-    test_logical(log, len = 1, any.missing = FALSE) &&
-    test_logical(logv, len = 3, any.missing = FALSE) &&
-    test_character(disc1, len = 1, any.missing = FALSE) &&
-    test_list(disc1v, types = "character", any.missing = FALSE, len = 3) &&
-    test_logical(disc2, len = 1, any.missing = FALSE) &&
-    test_list(disc2v, types = "logical", any.missing = FALSE, len = 3) &&
-    test_numeric(disc3, len = 1, any.missing = FALSE) &&
-    test_list(disc3v, types = "numeric", any.missing = FALSE, len = 3))
+      test_numeric(intv, len = 3, any.missing = FALSE) &&
+      test_numeric(num, len = 1, any.missing = FALSE) &&
+      test_numeric(numv, len = 3, any.missing = FALSE) &&
+      test_logical(log, len = 1, any.missing = FALSE) &&
+      test_logical(logv, len = 3, any.missing = FALSE) &&
+      test_character(disc1, len = 1, any.missing = FALSE) &&
+      test_list(disc1v, types = "character", any.missing = FALSE, len = 3) &&
+      test_logical(disc2, len = 1, any.missing = FALSE) &&
+      test_list(disc2v, types = "logical", any.missing = FALSE, len = 3) &&
+      test_numeric(disc3, len = 1, any.missing = FALSE) &&
+      test_list(disc3v, types = "numeric", any.missing = FALSE, len = 3))
   assert(!identical(disc4, FALSE))
   bar = mean(c(int > 0, intv[1] + intv[2] + intv[3] > 0,
       num > 0, mean(numv), log == TRUE, logv[1] && logv[2] || logv[3],
@@ -190,8 +190,8 @@ predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs = FA
     moreArgs = list(...)
     oftenEval = eval(noiseClassif$par.set$pars$often$requires)
     seldomEval = eval(noiseClassif$par.set$pars$seldom$requires)
-    expect_identical(oftenEval, "often" %in% names(moreArgs))
-    expect_identical(seldomEval, "seldom" %in% names(moreArgs))
+    assert(identical(oftenEval, "often" %in% names(moreArgs)) &&
+        identical(seldomEval, "seldom" %in% names(moreArgs)))
     if ("seldom" %in% names(moreArgs)) {
       cat("seldom\n")
     }
