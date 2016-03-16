@@ -242,8 +242,14 @@ mboRequirements = function(searchspace) {
     }
     replaceQuote = asQuoted(replaceStr)
     if (isDiscrete(param)) {
-      fullObject = capture.output(dput(param$values))
-      fullObject = asQuoted(collapse(fullObject, sep = "\n"))
+      objectText = capture.output(dput(param$values))
+      fullObject = try(asQuoted(collapse(objectText, sep = "\n")),
+          silent = TRUE)
+      if (is.error(fullObject)) {
+        fullObject = substitute(stop(sprintf(
+                    "Parameter %s cannot be used in requirements.", pname)),
+            list(pname = param$id))
+      }
       insert =  list(fullObject = fullObject, index = replaceQuote)
       template = switch(type,
           # we index into fullObject to get a list
