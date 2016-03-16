@@ -557,9 +557,15 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
     if (identical(param$trafo, "exp")) {
       pobject$amlr.origValues = param$values
     }
+    pobject$trafo = guardTrafoNa(pobject$trafo)
   }
   pobject$amlr.isDummy = identical(param$special, "dummy")
   pobject
+}
+
+guardTrafoNa = function(origTrafo) {
+  force(origTrafo)
+  function(x) if (length(x) == 1 && is.na(x)) x else origTrafo(x)
 }
 
 #' @title Turn learner id string into learner object, if necessary
