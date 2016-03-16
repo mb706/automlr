@@ -35,7 +35,7 @@ checkfile = function(filename, basename) {
     if (!givenAsDir) {
       stopf(paste0("Target file '%s' is a directory. To create a file inside ",
               " the directory, use '%s/' (trailing slash)."),
-          filename)
+          filename, filename)
     }
     basepath = filename
     filename = tempfile(paste0(basename, "_"), basepath, ".rds")
