@@ -11,6 +11,7 @@ requiredBackendFunctions = c("amaddprior", "amgetprior", "amsetup",
 mboSaveMode = TRUE
 mbo.focussearch.points = 1000L
 mbo.focussearch.maxit = 5L
+mbo.focussearch.restarts = 1L
 
 # optRandom
 out.of.budget.string = "out of budget"

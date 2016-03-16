@@ -49,6 +49,15 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
     usedParset = simplifyParams(usedParset)
   }
   
+  for (p in usedParset$pars) {
+    if (isDiscrete(p) && length(p$values) > 53) {
+      stopf(paste("Parameter '%s' has more than 53 possible (in fact %s)",
+              "values. Since mbo uses pencil and paper to calculate things,",
+              "it can't handle numbers that big. Try to use",
+              "searchspace = mlrLightweight."), p$id, length(p$values))
+    }
+  }
+  
   resDesc = makeResampleDesc("Holdout")
   objective = smoof::makeSingleObjectiveFunction(
       name = "automlr learner optimization",
@@ -66,7 +75,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
   control = mlrMBO::setMBOControlInfill(control, opt = "focussearch",
       opt.focussearch.points = mbo.focussearch.points,
-      opt.focussearch.maxit = mbo.focussearch.maxit)
+      opt.focussearch.maxit = mbo.focussearch.maxit,
+      opt.restarts = mbo.focussearch.restarts)
   control = mlrMBO::setMBOControlTermination(control, iters = NULL,
       more.stop.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {

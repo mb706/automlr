@@ -434,7 +434,50 @@ devtools::load_all("..")
 options(error=dump.frames)
 
 
-configureMlr(on.learner.error = "warn", show.learner.output = FALSE)
+
+configureMlr(on.learner.error = "warn", show.learner.output = TRUE)
 
 amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
+
+as.data.frame(amrun$backendprivatedata$opt.path)
+
+lrn = buildLearners(list(mlrLearners$classif.bdk, mlrLearners$classif.rotationForest), pid.task)
+ps = lrn$searchspace
+
+ps$pars$classif.bdk.alpha$trafo
+
+lrn = makeLearner("classif.bdk")
+ps = makeParamSet(makeIntegerParam("xdim", 10, 11),
+    makeNumericVectorParam("alpha", 2, 1, 2, requires = quote(xdim == 11), trafo = function(x) {print(x) ; x} ))
+
+ctrl = makeTuneControlGrid(resolution = 2)
+
+ctrl = makeTuneControlRandom(maxit = 10)
+
+tuneRes <- tuneParams(lrn, pid.task, hout, par.set = ps, control = ctrl)
+
+names(tuneRes)
+as.data.frame(tuneRes$opt.path)
+
+
+amrun = automlr(pid.task, backend = "mbo", budget = c(evals = 1))
+
+debugonce(mlrMBO:::getOptStateModels)
+
+amrun2 = automlr(amrun, budget = c(evals = 2))
+
+amrun3 = automlr(amrun, budget = c(evals = 100))
+
+lrn = makeLearner("classif.randomForest")
+
+thedat = getTaskData(iris.task)
+thedat$Petal.Width = as.factor(thedat$Petal.Width + round(rnorm(nrow(thedat), sd=.1), digits=2) * 5)
+
+str(thedat)
+
+thedat2 = thedat[1:10, , drop = FALSE]
+
+tsk = makeClassifTask("iris", thedat, target=getTaskTargetNames(iris.task))
+
+train(lrn, tsk)
 

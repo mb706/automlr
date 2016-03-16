@@ -82,6 +82,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] maximum walltime overrun
     - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
     - [ ] nicer printing
+  - [ ] make debugging easier
+    - [ ] debug flag sets all show.learner.output to TRUE
+    - [ ] optionally sets some variables to small values (thinking of you, ~infill.opt.focussearch.points~) so do.call doesn't clog the call stack so much
   - [ ] searchspace
     - [ ] add metalearner wrappers
     - [ ] respect parameter equality IDs

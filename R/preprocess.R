@@ -89,7 +89,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   # drop cols that have low variance
   # FIXME: does this work with NAs?
   var.numeric = naToZero(sapply(data[cols.numeric], var, na.rm = TRUE))
-  nzv.drop.numeric = var.numeric <= nzv.cutoff.numeric
+  nzv.drop.numeric = var.numeric < nzv.cutoff.numeric
   ndsplit = split(cols.numeric, nzv.drop.numeric)
   nzv.drop.numeric = ndsplit$`TRUE`
   cols.numeric = ndsplit$`FALSE`
@@ -98,7 +98,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     sort(table(x, useNA = "ifany"), TRUE)[1] / length(x)
   }
   var.factor = sapply(data[cols.factor], highestFactorFrequency)
-  nzv.drop.factor = var.factor >= 1 - nzv.cutoff.factor
+  nzv.drop.factor = var.factor > 1 - nzv.cutoff.factor
   ndsplit = split(cols.factor, nzv.drop.factor)
   nzv.drop.factor = ndsplit$`TRUE`
   cols.factor = ndsplit$`FALSE`
@@ -147,7 +147,8 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
                 mean = mean(x, na.rm = TRUE),
                 median = median(x, na.rm = TRUE),
                 hist = x[!is.na(x)])
-            if (length(res) == 0 || identical(res, NaN)) {
+            if (length(res) == 0 || identical(res, NaN) ||
+                (length(res) == 1 && is.na(res))) {
               res = 0
             }
             res
@@ -321,7 +322,15 @@ naRows = function(data, cols) {
 }
 
 imputeRandom = function(x, pop) {
-  x[is.na(x)] = sample(pop, size = sum(is.na(x)), replace = TRUE)
+  assert(all(!is.na(pop)))
+  assert(length(pop) > 0)
+  if (length(pop) == 1) {
+    # this is why I hate R
+    replacement = pop
+  } else {
+    replacement = sample(pop, size = sum(is.na(x)), replace = TRUE)
+  }
+  x[is.na(x)] = replacement
   x
 }
 
