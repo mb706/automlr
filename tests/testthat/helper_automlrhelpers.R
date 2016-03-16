@@ -137,8 +137,12 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
                  makeDiscreteLearnerParam("disc3", c(3, 10), when = "both"),  # also harder: numeric
                  makeDiscreteVectorLearnerParam("disc3v", 3, c(3, 10), when = "predict"),
                  # challenge: mixed types
-                 makeDiscreteLearnerParam("disc4", list(`3` = 3, `TRUE` = "TRUE", `FALSE` = TRUE, li = list(TRUE, FALSE), fun = function() TRUE), when = "both"),  
+                 makeDiscreteLearnerParam("disc4", list(`3` = 3, `TRUE` = "TRUE", `FALSE` = TRUE, li = list(TRUE, FALSE),
+                                                        fun = function() { TRUE || TRUE || TRUE ;  # long function is long
+                                                                           TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE || TRUE
+                                                                          }), when = "both"),  
                  makeDiscreteVectorLearnerParam("disc4v", 3, list(`3` = 3, `TRUE` = "TRUE", `FALSE` = TRUE, li = list(TRUE, FALSE)), when = "predict"),
+                 makeDiscreteLearnerParam("disc4x", list(falseFun = function(x) x != x, trueFun = function(x) x == x), when = "both"),
                  makeLogicalLearnerParam("often", default = FALSE, when = "predict",
                                          requires = quote(int > -10 && mean(intv) > -10 &&
                                                           num - abs(numv[1]) < numv[2] + numv[3] &&
@@ -147,7 +151,8 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
                                                                 (disc2 || disc2v[[1]] || disc2v[[2]] || disc2v[[3]]) &&
                                                                   disc3 * min(unlist(disc3v)) < 100 &&
                                                                     if(is.function(disc4)) TRUE else as.character(unlist(disc4)[1])==TRUE &&
-                                                                      sum(unlist(disc4v) == "TRUE") > 2)),
+                                                                      sum(unlist(disc4v) == "TRUE") > 2 &&
+                                                                        is.function(disc4x))),
     # remember that functions in requirements do not work and probably will never work
                  makeLogicalLearnerParam("seldom", default = FALSE, when = "predict",
                                          requires = quote(int > 0 && mean(intv) > 0 &&
@@ -157,7 +162,8 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
                                                                 (disc2 || disc2v[[1]] || disc2v[[2]] || disc2v[[3]]) &&
                                                                   disc3 * min(unlist(disc3v)) < 100 &&
                                                                     if(is.function(disc4)) TRUE else as.character(unlist(disc4)[1])==TRUE &&
-                                                                      sum(unlist(disc4v) == "TRUE") > 2)),
+                                                                      sum(unlist(disc4v) == "TRUE") > 2 &&
+                                                                        is.function(disc4x))),
                  makeLogicalLearnerParam("testReqs", default = FALSE, when = "predict", tunable = FALSE)),
     properties = c("twoclass", "numerics", "missings"))
 noiseClassif$fix.factors.prediction = TRUE
@@ -167,7 +173,7 @@ trainLearner.noiseClassif = function(.learner, .task, .subset, .weights = NULL, 
   list()
 }
 predictLearner.noiseClassif = function(.learner, .model, .newdata, testReqs = FALSE,
-    int, intv, num, numv, log, logv, disc1, disc1v, disc2, disc2v, disc3, disc3v, disc4, disc4v, ...) {
+    int, intv, num, numv, log, logv, disc1, disc1v, disc2, disc2v, disc3, disc3v, disc4, disc4v, disc4x, ...) {
   # expect_xxx are VERY slow in this context.
   assert(test_numeric(int, len = 1, any.missing = FALSE) &&
       test_numeric(intv, len = 3, any.missing = FALSE) &&
@@ -213,7 +219,8 @@ trivialParams = list(
     sp("disc3", "cat", c(3, 10)),
     sp("disc3v", "cat", c(3, 10), dim = 3),
     sp("disc4", "cat", c(3, "TRUE", "FALSE", "li", "fun")),
-    sp("disc4v", "cat", c(3, "TRUE", "FALSE", "li"), dim = 3))
+    sp("disc4v", "cat", c(3, "TRUE", "FALSE", "li"), dim = 3),
+    sp("disc4x", "cat", c("trueFun", "falseFun")))
 
 
 

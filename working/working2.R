@@ -426,3 +426,15 @@ devtools::test(pkg="..", filter="automlr_errors")
 devtools::test(pkg="..", filter="automlr_random")
 devtools::test(pkg="..", filter="automlr_irace")
 devtools::test(pkg="..", filter="automlr_mbo")
+
+##### testing automlr for real fitting
+
+
+devtools::load_all("..")
+options(error=dump.frames)
+
+
+configureMlr(on.learner.error = "warn", show.learner.output = FALSE)
+
+amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
+

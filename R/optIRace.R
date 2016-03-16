@@ -222,8 +222,21 @@ iraceRequirements = function(searchspace) {
 
     if (type %in% c("discrete", "discretevector")) {
       assertList(param$values, names = "named")
-      fullObject = capture.output(dput(param$values))
-      fullObject = asQuoted(collapse(fullObject, sep = ""))
+      objectText = capture.output(dput(param$values))
+      fullObject = try(asQuoted(collapse(objectText, sep = "")), silent = TRUE)
+      if (!is.error(fullObject)) {
+        
+        
+      }
+      if (is.error(fullObject) || length(all.vars(fullObject)) > 0) {
+        # irace does not like '\n' in their requirements.
+        # but it DOES accept 'eval(parse("\\n"))'
+        # this also fixes the problem that parameters in lists of functions show
+        # up on 'all.vars' even though they shouldn't, for irace's sake.
+        objectText = collapse(objectText, sep = "\n")
+        fullObject = asQuoted(paste0("eval(parse(text = ",
+                capture.output(dput(objectText)), "))"))
+      }
       if (type == "discrete") {
         replaceQuote = substitute(fullObject[[index]],
             list(fullObject = fullObject, index = replaceQuote))

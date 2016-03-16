@@ -243,7 +243,7 @@ mboRequirements = function(searchspace) {
     replaceQuote = asQuoted(replaceStr)
     if (isDiscrete(param)) {
       fullObject = capture.output(dput(param$values))
-      fullObject = asQuoted(collapse(fullObject, sep = ""))
+      fullObject = asQuoted(collapse(fullObject, sep = "\n"))
       insert =  list(fullObject = fullObject, index = replaceQuote)
       template = switch(type,
           # we index into fullObject to get a list
