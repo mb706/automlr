@@ -85,3 +85,42 @@ mlrWrappers.gen = function() makeNamedAlList(
 mlrLearners = list()
 
 mlrLearners.gen = function() c(mlrLearnersNoWrap, mlrWrappers)
+
+# the following is a bit handwavy. I ran these learners in randomsearch and
+# looked which learners took, on average, "kinda long".
+slowLrn <- c('classif.xyf', 'classif.lda', 'classif.mda', 'classif.rrlda',
+    'classif.dcSVM', 'classif.rda', 'classif.bartMachine', 'classif.boosting',
+    'classif.nodeHarvest')
+
+#' @title
+#' A list of fast learners with corresponding \code{par.set}s that can be 
+#' earched over.
+#' 
+#' @description
+#' This is a list similar to \code{\link{mlrLearnersNoWrap}}, only it excludes
+#' the slowest learners. This decreases average evaluation time significantly
+#' and also makes the search space small enough for the \code{mbo} backend.
+#' 
+#' @name mlrLightweightNoWrap
+#' @family searchspace
+#' @docType data
+#' @export
+mlrLightweightNoWrap = mlrLearnersNoWrap[names(mlrLearnersNoWrap) %nin% slowLrn]
+
+#' @title
+#' A list of fast learners with corresponding \code{par.set}s that can be 
+#' earched over.
+#' 
+#' @description
+#' This is a list similar to \code{\link{mlrLearners}}, only it excludes
+#' the slowest learners. This decreases average evaluation time significantly
+#' and also makes the search space small enough for the \code{mbo} backend.
+#' 
+#' @name mlrLightweight
+#' @family searchspace
+#' @docType data
+#' @export
+mlrLightweight = list()
+
+mlrLightweight.gen = function() c(mlrLightweightNoWrap, mlrWrappers)
+

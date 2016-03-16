@@ -53,8 +53,9 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
     if (isDiscrete(p) && length(p$values) > 53) {
       stopf(paste("Parameter '%s' has more than 53 possible (in fact %s)",
               "values. Since mbo uses pencil and paper to calculate things,",
-              "it can't handle numbers that big. Try to use",
-              "searchspace = mlrLightweight."), p$id, length(p$values))
+              "it can't handle numbers that big.%s"), p$id, length(p$values),
+          ifelse(p$id != "selected.learner", "",
+              " Try to use searchspace = mlrLightweight[NoWrap]."))
     }
   }
   

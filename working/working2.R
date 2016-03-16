@@ -460,7 +460,7 @@ names(tuneRes)
 as.data.frame(tuneRes$opt.path)
 
 
-amrun = automlr(pid.task, backend = "mbo", budget = c(evals = 1))
+amrun = automlr(pid.task, backend = "mbo", budget = c(evals = 1), searchspace=mlrLightweight)
 
 debugonce(mlrMBO:::getOptStateModels)
 
@@ -480,4 +480,5 @@ thedat2 = thedat[1:10, , drop = FALSE]
 tsk = makeClassifTask("iris", thedat, target=getTaskTargetNames(iris.task))
 
 train(lrn, tsk)
+
 
