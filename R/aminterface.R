@@ -24,14 +24,14 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   if (is.null(savefile) || save.interval == 0) {
     save.interval = Inf
   }
-  if (!is.null(savefile)) {
-    savefile = checkfile(savefile)
-    savefile = gsub("(\\.rds|)$", ".rds", savefile)
-    amstate$savefile = savefile
-  }
   # basename gives an informative filename in case savefile is a directory
   basename = paste0("automlr_", amstate$backend,
       format(Sys.time(), "_%F_%H-%M"))
+  if (!is.null(savefile)) {
+    savefile = checkfile(savefile, basename)
+    savefile = gsub("(\\.rds|)$", ".rds", savefile)
+    amstate$savefile = savefile
+  }
   
   # update the amstate object
 
