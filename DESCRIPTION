@@ -1,5 +1,5 @@
 Package: automlr
-Title: automatic machine learning in r
+Title: automatic machine learning in R
 Description: Package for interfacing mlr with algorithm configuration
     optimization libraries, giving functionality for optimizing across different
     ML algorithms.
@@ -68,7 +68,7 @@ Suggests:
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
-Version: 0.1
+Version: 0.1.0
 RoxygenNote: 5.0.1
 Collate:
     'amexowrapper.R'
