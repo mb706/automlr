@@ -4,6 +4,8 @@
 * Installation
 /Note: Installation of automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
 
+/Note 2: automlr integrates tightly with mlr, and I try to make it work with both the current CRAN version of mlr, as well as the version on github (=https://github.org/mlr-org/mlr=). mlr is a moving target, however, so if there are problems with the mlr version from github, try to fall back to the mlr version on CRAN./
+
 automlr depends on *roxygen2* for installation, but roxygen2 is not listed in its dependencies, so make sure you have it installed:
 #+BEGIN_SRC R
 if (!require("roxygen2")) install.packages("roxygen2")
@@ -83,6 +85,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] add metalearner wrappers
     - [ ] respect parameter equality IDs
     - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
+    - [ ] searchspace definitions for certain mlr versions
   - [ ] tests
     - [ ] differentiate expensive tests from fast tests
     - [ ] 100% test coverage

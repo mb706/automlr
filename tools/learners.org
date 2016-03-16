@@ -430,6 +430,8 @@
    - na.action :: fuse
 *** classif.randomForestSRC
 - Random forest for survival, regression, classification
+- xwar.wt :: NULL: even splitting prob. MLR<=2.8
+- forest :: TRUE: return forest object for prediction (duh) MLR<=2.8
 **** Variable Parameters:
    - ntree :: int 100..4000 exp: {rf.numtree} number of trees to grow
    - mtry :: int 3..40: {rf.mtry} number of sampled variables
@@ -437,15 +439,13 @@
    - nsplit :: int 0..32 exp: number of splits
 **** Default Parameters:
    - nimpute :: 1: doesn't matter with na.action==na.omit.
-   - xwar.wt :: NULL: even splitting prob
-   - forest :: TRUE: return forest object for prediction (duh)
    - seed :: NULL: no seed
    - do.trace :: FALSE: no verbose output
    - statistics :: FALSE: no statistics
    - fast.restore :: FALSE: don't even know what this does but its marked as not tunable
 **** Changed (fixed) Parameters:
    - bootstrap :: none: no bootstrap
-   - na.action :: na.omit: imputation, if it happens, happens during preprocessing.
+   - na.action :: na.random: imputation, if it happens, happens during preprocessing.
    - membership :: FALSE: don't need inbag info
 *** classif.ranger
 - guess what, another random forest (yay)
@@ -796,7 +796,7 @@
    - visible_dropout :: 0
 *** classif.neuralnet
 - neural nets using backpropagation
-- TODO: linear.output broken.
+- linear.output :: TRUE: this is a bug MLR<=2.8
 **** Variable Parameters:
    - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
    - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
@@ -818,7 +818,6 @@
    - exclude :: NULL: don't exclude
    - constant.weights :: NULL: no constant weights
    - likelihood :: FALSE: no further calculation
-   - linear.output :: TRUE: TODO: this is a bug
 *** classif.saeDNN
 - deep neural net initialized by stacked autoencoder
 **** Variable Parameters:
