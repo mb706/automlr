@@ -4,7 +4,7 @@
 * Installation
 /Note: Installation of automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
 
-/Note 2: automlr integrates tightly with mlr, and I try to make it work with both the current CRAN version of mlr, as well as the version on github (https://github.org/mlr-org/mlr). mlr is a moving target, however, so if there are problems with the mlr version from github, try to fall back to the mlr version on CRAN./
+/Note 2: automlr integrates tightly with mlr, and I try to make it work with both the current CRAN version of mlr, as well as the version on GitHub (https://github.org/mlr-org/mlr). mlr is a moving target, however, so if there are problems with the mlr version from GitHub, try to fall back to the mlr version on CRAN./
 
 automlr depends on *roxygen2* for installation, but roxygen2 is not listed in its dependencies, so make sure you have it installed:
 #+BEGIN_SRC R
@@ -110,6 +110,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] installation on Win32
   - [ ] more consistent OO-based searchspace definition
   - [ ] more empirical grounding for mlrLightweight.
+  - [ ] nicer printing of results
 - [ ] release 0.4
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs)
