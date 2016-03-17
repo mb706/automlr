@@ -72,23 +72,6 @@ Currently the project is undergoing heavy development; while the spirit of the a
 
 ** Project TODO
 (under consideration, subject to change)
-- [X] release 0.1
-  - [X] write preliminary readme
-  - [X] Tests pass
-    - [X] backend tests
-    - [X] realworld tests
-  - [X] adapt coding style to mlrOrg
-  - [X] write documentation for entry points
-  - [X] Adapt entry point docu to mlrOrg style
-  - [X] finish writing wrappers
-  - [X] correct version dependencies 
-  - [X] argument for debug level
-  - [X] package build generate mlrLearners.R
-  - [X] automatically recognize absence of learner package and skip
-  - [X] DESCRIPTION Suggests should really contain all learner packages of mlr.
-  - [X] patch bugs in CRAN-versions of ParamHelpers and mlr
-  - [X] mlrLearners, mlrLearnersNoWrap variables
-  - [X] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [ ] optRandom: don't abort crossvalidation when time runs out (?)
