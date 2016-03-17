@@ -1,6 +1,8 @@
 #+TITLE: Automatic Machine Learning Algorithm Configuration in R
 * Introduction
 *automlr* is an R-package for *automatically* configuring *mlr* machine learning algorithms so that they perform well. It is designed for simplicity of use and supposed to run with minimal user intervention.
+
+automlr is currently under development. You can see the current status in the 'develop' branch, but it may not be in a state to run.
 * Installation
 /Note: Installation of automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
 
