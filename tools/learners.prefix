@@ -1,0 +1,17 @@
+
+#' @include autolearner.R
+
+#' @title
+#' A list of learners with corresponding \code{par.set}s that can be searched
+#' over.
+#' 
+#' @description
+#' This is a list of learners that the infinitely wise developer of this package
+#' collected \emph{himself} that work well with automlr.
+#' \code{mlrLearnersNoWrap} does not include wrappers and therefore does not
+#' perform preprocessing and does not include meta-methods.
+#' 
+#' @name mlrLearnersNoWrap
+#' @family searchspace
+#' @docType data
+#' @export

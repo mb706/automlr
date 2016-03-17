@@ -1,0 +1,999 @@
+* Ideas for implementation
+- use a function that takes name, options and converts automatically to right parameter
+  - also gives discrete exponential parameters. Resolution for discrete parameters at low end is high, may have e.g. 1, 2, 3, 4, 6, 8, 11, 16, 23, 32 rising by factor sqrt(2) but cutting out doubles in the beginning
+- use id value that connects different parameters of different algs to the same value
+  - watch out that there are 'internal' requirements also whether a certain variable is useful.
+- give info: is the restriction strict, or does it represent "assumed realistic" bounds?
+
+
+* syntax for highlighting
+- grep syntax:
+:  :: \([-0-9e+.]\+\(\.\.[-0-9e+.]\+\(\s\+exp\(onential\)\?\)\?\)\?\|\(\([a-zA-Z][-.+_[:alnum:]]*\|[-0-9e+.]\+\),\s\+\)*\([a-zA-Z][-+._[:alnum:]]*\|[-0-9e+.]\+\)\)\(:\|$\)
+- emacs syntax
+:  :: \([-0-9e+.]+\(\.\.[-0-9e+.]+\(\s-+exp\(onential\)?\)?\)?\|\(\([a-zA-Z][-+.[:alnum:]_]*\|[-0-9e+.]+\),\s-+\)*\([a-zA-Z][-+.[:alnum:]_]*\|[-0-9e+.]+\)\)\(:\|$\)
+* special syntax
+- MANUAL: must be manually adjusted
+- MANUAL{text}: give `text` instead of parsed info
+- TODO: should be changed
+- DUMMY: this is a dummy variable
+- INJECT: this is a variable that needs to be added to the learner
+- {common id}
+- [int] x..y [exp]: for numeric ranges
+- x..y: numeric range with additional end 
+- a, b, c: choices
+- x..y: len(3) # more than 1 dimension
+* TODO:
+- [X] respect MANUAL
+- [X] respect DUMMY
+- [X] respect INJECT
+- [ ] remove ONNA
+- [X] parse ID
+- [X] multidim
+- [X] requirements
+
+* classif
+** glm
+*** classif.glmnet
+**** Variable Parameters:
+   - alpha :: 0..1: elastic mixing parameter
+   - s :: 0.001..1 exp: lambda value to use for prediction
+**** Default Parameters:
+   - lambda :: NULL: we don't supply a lambda grid
+   - exact :: FALSE
+   - intercept :: TRUE: dont set intercpt to 0
+   - thresh :: 1e-7: abort condition for grddesc
+   - dfmax :: NULL: unbounded degs of freedom
+   - pmax :: NULL: unbounded nonzero vars
+   - exclude :: NULL: dont exclude variables
+   - penalty.factor :: NULL
+   - lower.limits :: NULL: unbounded coefficients
+   - upper.limits :: NULL
+   - maxit :: 1e5
+   - type.logistic :: NULL: use default algorithm
+   - type.multinomial :: NULL: standard lasso penalty
+   - fdev :: 1e-5
+   - devmax :: .999
+   - eps :: 1e-6
+   - big :: 9.9e35
+   - pmin :: 1e-9
+   - exmx :: 250
+   - prec :: 1e-10
+   - mxit :: 100
+   - factory :: FALSE
+**** Changed (fixed) Parameters:
+   - lambda.min.ratio :: .0001
+   - nlambda :: 200: resolution of precomputed models
+   - mnlam :: 200: resolution of precomputed models; need to set this too, seems to be a bug
+   - standardize :: FALSE: is done already
+*** classif.binomial
+- Uses glm() for binomial classification
+**** Variable Parameters:
+   - link :: logit, probit, cauchit, log, cloglog: link function
+**** Default Parameters:
+   - model :: TRUE: this is a BUG giving this hyper parameter gives an error.
+*** classif.LiblineaRXXX
+- Different methods:
+**** Variable Parameters:
+   - method :: MANUAL L1L2SVC, L1LogReg, L2L1SVC, L2LogReg, L2SVC, MultiClassSVC
+   - cost :: .125..8 exp: constraint violation cost
+   - type :: MANUAL 0, 7 for L2LogReg; 1, 2 for L2SVC
+**** Default Parameters:
+   - epsilon :: NULL
+   - bias :: TRUE
+   - wi :: NULL
+   - cross :: 0: no cross validation
+   - verbose :: FALSE
+*** classif.lqa
+- GLM fitted with LQA algorithm
+**** Variable Parameters:
+   - penalty :: adaptive.lasso, ao, bridge, enet, fused.lasso, genet, icb, lasso, licb, oscar, penalreg, ridge, scad, weighted.fusion
+   - lambda :: .001..100 exp: regularization parameter; req: penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad")
+   - gamma :: 1.0001..100 exp: regularization parameter; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
+   - alpha :: .001..100 exp: regularization parameter; req: penalty == "genet"
+   - c :: .001..100 exp: regularization parameter; req: penalty == "oscar"
+   - a :: 2..100 exp: regularization parameter; req: penalty == "scad"
+   - lambda1 :: .001..100 exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
+   - lambda2 :: .001..100 exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
+   - method :: lqa.update2, ForwardBoost, GBlockBoost
+**** Default Parameters:
+   - var.eps :: .Machine$double.eps: MANUAL{sp("var.eps", "def", .Machine$double.eps)} tol when checking for 0 variance
+   - max.steps :: 5000: maximum lqa algorithm steps
+   - conv.eps :: .001: convergence break for parameter updating
+   - conv.stop :: TRUE: stop when coeffs are converged
+   - c1 :: 1e-8: approx in penalty term
+   - digits :: 5: digits of tuning parameter candidates to consider
+*** classif.logreg
+- logistig regression
+- literally no parameters
+*** classif.probit
+- probit regression
+- no parameters
+*** classif.plr
+- Logistic regression, L2 penalty
+**** Variable Parameters:
+   - lambda :: 1e-5..100 exp: regularization parameter
+   - cp.type :: bic, aic
+**** Default Parameters:
+   - cp :: 2: will be ignored when cp.type is given.
+** discriminant analysis
+*** classif.lda
+- Linear discriminant analysis
+**** Variable Parameters:
+   - method :: moment, mle, mve, t: {da.method}
+   - nu :: 2..64 exp: {da.nu} t degrees of freedom, req: method=='t'
+   - predict.method :: plug-in, predictive, debiased: {da.pm}
+**** Default Parameters:
+   - tol :: .0001
+   - CV :: FALSE: don't do cross validation
+*** classif.qda
+- quadratic discriminant analysis
+- see also: classif.lda
+**** Variable Parameters:
+   - method :: moment, mle, mve, t: {da.method}
+   - nu :: 2..64 exp: {da.nu} t degrees of freedom, req: method=='t'
+   - predict.method :: plug-in, predictive, debiased: {da.pm}
+*** classif.linDA
+- linear discriminant analysis
+**** Default Parameters:
+   - validation :: NULL: no validation
+*** classif.sparseLDA
+- sparse linear discriminant analysis
+**** Variable Parameters:
+   - lambda :: 1e-10..1 exp: weight on L2 norm for elastic regression
+   - maxIte :: int 50..400 exponential: number of iterations
+**** Default Parameters:
+   - trace :: FALSE
+   - tol :: 1e-6
+*** classif.rrlda
+- robust regularized linear discriminant analysis
+**** Variable Parameters:
+   - lambda :: 0.01..10: penalty parameter for sparseness of inverse scatter matrix
+   - hp :: 0.3..1: robustness parameter specifying no of observations in computation
+   - nssamples :: int 10..1000 exp: number of start samples to use for iterated estimation
+   - maxit :: int 50..400 exponential: number of iterations
+   - penalty :: L1, L2: type of penalty
+**** Default Parameters:
+   - prior :: NULL: don't give any prior
+*** classif.rda
+- Regularized discriminant analysis
+**** Variable Parameters:
+   - kernel :: rectangular, triangular, epanechnikov, biweight, triweight, cos, inv, gaussian
+   - crossval :: TRUE, FALSE: req: fold > 1
+   - crossval.AMLRFIX1 :: FALSE: req: fold == 1
+   - train.fraction :: 0.1..0.9: the fraction of the data used for training
+   - fold :: int 1..32 exp: number of crossval- or bootstrap samples
+   - K :: int 30..3000 exp: steps until temp == 0; req: SimAnn == TRUE && schedule == 1
+   - alpha :: 1..4: power of temp reduction; req: SimAnn == TRUE && schedule == 2
+   - zero.temp :: .001..0.1 exp: temp at which to set temperature to 0 req: SimAnn == TRUE && schedule == 1
+   - halflife :: 5..1000 exp: steps that reduce temperature to 1/2. req: SimAnn == TRUE && schedule == 1
+   - T.start :: .01..100 exp: starting temp; req: SimAnn == TRUE
+   - schedule :: 1, 2: req: SimAnn == FALSE
+   - trafo :: TRUE, FALSE: use transformed variables
+   - SimAnn :: TRUE, FALSE: use simulated annealing
+**** Default Parameters:
+   - lambda :: NULL: is estimated by the algorithm
+   - gamma :: NULL: is estimated by the algorithm
+   - output :: FALSE: no log output
+**** Changed (fixed) Parameters:
+   - estimate.error :: FALSE: we do this ourselves.
+*** classif.sda
+- shrinkage discriminant analysis
+**** Variable Parameters:
+   - lambda :: 0..1: shrinkage parameter
+   - lambda.var :: 0..1: shrinkage intensity for variance
+   - lambda.freqs :: 0..1: shrinkage intensity for frequencies
+   - diagonal :: TRUE, FALSE: DDA vs. LDA
+**** Default Parameters:
+   - verbose :: TRUE: output
+*** classif.plsdaCaret
+- partial least squares discriminant analysis
+**** Variable Parameters:
+   - ncomp :: int 2..64 exp: number of components to include in the model
+   - probMethod :: softmax, Bayes
+*** classif.mda
+- Mixture Discriminant Analysis
+**** Variable Parameters:
+   - subclasses :: int 1..32 exp: subclasses per class
+   - sub.df :: int 1..32 exp: subclasses degrees of freedom
+   - method :: polyreg, mars, bruto, gen.ridge
+   - start.method :: kmeans, lvq
+   - tries :: int 5..20: number of retries of mda initialization
+   - criterion :: misclassification, deviance: optimization crit for mda init.
+**** Default Parameters:
+   - tot.df :: NULL: total degrees of freedom; we declare df per class
+   - dimension :: NULL: not specifying model dimension in advance
+   - eps :: 2.22e-16: MANUAL{sp("eps", "def", .Machine$double.eps)}
+   - iter :: 5: number of iterations
+   - trace :: FALSE
+**** Changed (fixed) Parameters:
+   - keep.fitted :: FALSE: don't keep fitted values
+*** classif.hdrda
+- "HDRDA classifier from Ramey, Stein, and Young (2014)"
+**** Variable Parameters:
+   - lambda :: 0..1: pooling parameter
+   - gamma :: 0.001..0.3 exponential: shrinkage parameter
+   - shrinkage_type :: ridge, convex: cov matrix shrinkage type
+**** Default Parameters:
+   - prior :: NULL
+   - tol :: 1e-6
+   - projected :: FALSE
+*** classif.quaDA
+- Another quadratic discriminant analysis
+**** Variable Parameters:
+   - do.validation :: TRUE, FALSE: DUMMY whether to do validation {da.val}
+   - validation :: crossval: ('learntest' would also be an option, but is broken) req: do.validation == TRUE
+*** classif.geoDA
+**** Variable Parameters:
+   - do.validation :: TRUE, FALSE: DUMMY whether to do validation {da.val}
+   - validation :: crossval: ('learntest' would also be an option, but is broken) req: do.validation == TRUE
+** KNN
+*** classif.kknn
+**** Variable Parameters:
+   - k :: int 1..100 exp: {knn.k} number of NN to use
+   - distance :: 0.5..4 exp
+   - kernel :: triangular, rectangular, epanechnikov, biweight, triweight, cos, inv, gaussian
+**** Changed (fixed) Parameters:
+   - scale :: FALSE
+*** classif.knn
+**** Variable Parameters:
+   - k :: int 1..100 exp: {knn.k} number of NN to use
+**** Default Parameters:
+   - l :: 0: never doubt
+   - prob :: FALSE: no probability returned
+   - use.all :: TRUE
+*** classif.rknn
+- random knn
+- TODO bug: additional parameters possible for rpart() part.
+**** Variable Parameters:
+   - k :: int 1..100 exp: number of NN to use. since this is a knn ensemble it does not have the knn.k-id.
+   - r :: int 100..4000 exp: number of KNNs
+   - mtry :: int 3..40: number of features to draw
+**** Default Parameters:
+   - seed :: NULL: no seed
+   - cluster :: NULL: is this even a thing?
+*** classif.fnn
+- Fast k nearest neighbours
+**** Variable Parameters:
+   - k :: int 1..100 exp: {knn.k} number of NN to use
+   - algorithm :: cover_tree, kd_tree, brute: NN searching alg
+**** Default Parameters:
+   - prob :: FALSE
+*** classif.IBk
+- WEKA K-nearest neighbours classifier.
+**** Variable Parameters:
+   - I :: TRUE, FALSE: weight neighbours by inv dist
+   - F :: TRUE, FALSE: weight neighbours by 1-dist. req: I == FALSE
+   - K :: int 1..100 exp: {knn.k} number of NN to use
+**** Default Parameters:
+   - X :: FALSE: don't optimize, /we/ are doing that already
+   - E :: FALSE: no effect when X not given.
+   - A :: weka.core.neighboursearch.LinearNNSearch: use default NN alg
+   - W :: NULL: no window
+   - output-debug-info :: FALSE
+** TREE
+*** classif.ctree
+**** Variable Parameters:
+   - teststat :: quad, max: type of test statistic  I WANT TO KNOW IF THIS IS RELEVANT IF TESTTYPE IS NOT 'Teststatistic'
+   - testtype :: Bonferroni, MonteCarlo, Univariate, Teststatistic
+   - mincriterion :: 0.5..0.99: value of 1-p value that must be exceeded to implement split. req: testtype != "Teststatistic"
+   - mincriterion.AMLRFIX1 :: 0.1..1: value of test statistics that must be exceeded to implement split. req: testtype == "Teststatistic"
+   - maxsurrogate :: int 0..5: number of surrogate splits to evaluate. NEEDS ORDERED COVARIABLES
+   - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
+   - mtry :: int 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
+   - minbucket :: int 1..32 exp: {tree.m} minimum weight in terminal node
+   - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
+   - stump :: TRUE, FALSE
+**** Default Parameters:
+   - nresample :: 9999: number of MC replications when using distribution test stat
+   - maxdepth :: 0: no restriction on tree size
+**** Changed (fixed) Parameters:
+   - savesplitstats :: FALSE: save statistics about node splits
+*** classif.J48
+- WEKA C4.5 decision tree
+**** Variable Parameters:
+   - U :: TRUE, FALSE: {tree.u} no pruning y/n
+   - O :: TRUE, FALSE: no collapsing y/n
+   - C :: 0.1...9: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
+   - M :: int 1..32 exp: {tree.m} minimum instances per leaf
+   - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
+   - N :: int 2..8: {tree.n} req: U == FALSE && R == TRUE
+   - B :: TRUE, FALSE: {tree.b} only binary splits
+   - S :: TRUE, FALSE: no subtree raising y/n req: U == FALSE
+   - J :: TRUE, FALSE: {tree.j} MDL correction for info gain on numeric attributes
+**** Default Parameters:
+   - Q :: NULL: no seed
+   - output-debug-info :: FALSE
+**** Changed (fixed) Parameters:
+   - L :: FALSE: cleanup
+   - A :: FALSE: Laplace smoothing not necessary
+*** classif.PART
+- WEKA PART decision list
+**** Variable Parameters:
+   - C :: 0.1..0.9: {tree.c} pruning confidence: req: R == FALSE
+   - M :: int 1..32 exp: {tree.m} minimum instances per leaf
+   - R :: TRUE, FALSE: {tree.r} reduced error pruning
+   - N :: int 2..8: {tree.n} req: R == TRUE
+   - B :: TRUE, FALSE: {tree.b} only binary splits
+   - U :: TRUE, FALSE: {tree.u} no pruning y/n
+   - J :: TRUE, FALSE: {tree.j} do not use MDL correction
+**** Default Parameters:
+   - Q :: NULL: no seed
+   - output-debug-info :: FALSE: no debug output
+*** classif.nodeHarvest
+- "simple interpretable tree-like estimator for high-dimensional regression and classification"
+**** Variable Parameters:
+   - nodesize :: int 1..32 exp: min samples per node
+   - nodes :: int 100..10000 exp: "nodes in initial large ensemble of nodes"
+   - maxinter :: int 1..3: max order of interactions
+   - mode :: mean, outbag
+   - biascorr :: TRUE, FALSE: experimental bias correction
+**** Default Parameters:
+   - onlyinter :: NULL: btw. the type specification is false, it should be a list of character BUG
+   - addto :: NULL: don't add to any other model
+   - lambda :: NULL: no limit on samples in nodes
+**** Changed (fixed) Parameters:
+   - silent :: TRUE: no output
+*** classif.rpart
+- recursive partitioning and regression trees
+**** Variable Parameters:
+   - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
+   - minbucket :: int 1..32 exp: {tree.m} minimum weight in terminal node
+   - cp :: 1e-4..0.5 exp: complexity parameter
+   - usesurrogate :: 0, 1, 2: ONNA how to use surrogate in splitting process
+   - surrogatestyle :: 0, 1: ONNA how to use surrogate
+   - maxdepth :: int 1..30 exp: maximum depth of any node
+**** Default Parameters:
+   - maxcompete :: 4: only affects output
+   - maxsurrogate :: 5: only affects output
+   - parms :: NULL: further parameters not given
+**** Changed (fixed) Parameters:
+   - xval :: 0: no crossvalidation
+** Random Forests
+*** classif.bartMachine
+- Bayesian Additive Regression Trees
+**** Variable Parameters:
+   - currentlyNotImplemented :: MANUAL
+   - num_trees :: int 25..200 exponential: number of trees to grow
+   - alpha :: 0..1: nonterminal node probability parameter
+   - beta :: 1..3: nonterminal node probability parameter
+   - k :: 1..4: distribution parameter
+   - mh_prob_steps :: 0.00000001..1: len(3) prior probabilities for three different actions. The program normalizes this.
+**** Default Parameters:
+   - num_burn_in :: 250: number of trees to use as burn-in
+   - num_iterations_after_burn_in :: 1000: number of MCMC samples
+   - q :: 0.9: not used for classification
+   - prob_rule_class :: 0.5: prob to choose positive outcome
+   - debug_log :: FALSE
+   - cov_prior_vec :: NULL: relative probability of being split candidate for each covariate.
+   - use_missing_data :: TRUE
+   - use_missing_data_dummies_as_covars :: FALSE: (TODO: need to add this feature to preprocess)
+   - replace_missing_data_with_x_j_bar :: FALSE: (this is in preprocess)
+   - impute_missingness_with_rf_impute :: FALSE: (need to add this to preprocess)
+   - impute_missingness_with_x_j_bar_for_lm :: TRUE
+   - num_rand_samps_in_library :: 10000: amount of randomnes sampled for MCMC
+   - mem_cache_for_speed :: TRUE: set to FALSE if mem requirements too large
+   - serialize :: FALSE: serialize resulting object (large mem requirement)
+   - seed :: NULL: initialize seed in R and JAVA. (TODO: test whether it should be set so that java side of things is deterministic)
+**** Changed (fixed) Parameters:
+   - run_in_sample :: FALSE
+   - verbose :: FALSE
+*** classif.cforest
+- TODO: THIS IS FUCKED UP BEYOND REPAIR, SOMEONE NEEDS TO REPAIR THE MLR INTERFACE FIRST
+- Random forest and bagging ensemble
+**** Variable Parameters:
+   - xxx :: MANUAL repair this...
+   - ntree :: int 100..4000 exp: {rf.numtree} number of trees to grow
+   - mtry :: 3..20 exp: number of sampled variables. TODO: could also do 'NULL' or 0 or Inf, but the formalism doesn't allow that so far.
+   - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
+   - fraction :: 0.1..0.9: req: replace==FALSE
+   - teststat :: quad, max: test statistic to apply
+   - testtype :: Univariate, Bonferroni, MonteCarlo, Teststatistic
+   - mincriterion :: 0.5..0.99: value of 1-p value that must be exceeded to implement split. req: testtype != "Teststatistic"
+   - mincriterion.AMLRFIX1 :: 0.1..1: value of test statistics that must be exceeded to implement split. req: testtype == "Teststatistic"
+   - minprob :: 0..1: TODO this is where I gave up...
+**** Default Parameters:
+   - trace :: FALSE
+*** classif.randomForest
+- Random forest (who could have guessed..)
+**** Variable Parameters:
+   - ntree :: int 100..4000 exp: {rf.numtree} number of trees to grow
+   - mtry :: int 3..40: {rf.mtry} number of sampled variables
+   - replace :: TRUE, FALSE: {rf.replace} sampling with / wo replacement
+   - nodesize :: int 1..32 exp: {rf.nodesize} min samples per node
+**** Default Parameters:
+   - classwt :: NULL: prior of classes
+   - cutoff :: NULL: use majority vote
+   - sampsize :: NULL: be dependent on rows and `replace`
+   - maxnodes :: NULL: don't limit terminal nodes
+   - importance :: FALSE: don't assess importance
+   - localImp :: FALSE: no local importance assessment
+   - norm.votes :: TRUE: final votes as fractions
+   - do.trace :: FALSE: no verbose output
+   - keep.inbag :: FALSE: don't remember bagged samples
+*** classif.extraTrees
+- "Classification and regression based on an ensemble of decision trees"
+**** Variable Parameters:
+   - ntree :: int 100..4000 exp: {rf.numtree} number of trees to grow
+   - mtry :: int 3..40: {rf.mtry} number of sampled variables
+   - nodesize :: int 1..32 exp: {rf.nodesize} terminal node size
+   - numRandomCuts :: int 1..16 exp: number of tried cuts
+   - evenCuts :: TRUE, FALSE
+   - subsetSizesIsNull :: TRUE, FALSE: DUMMY
+   - subsetSizes :: int 10..1000 exp: req: subsetSizesIsNull == FALSE
+**** Default Parameters:
+   - numThreads :: 1: let's not get too fancy
+   - subsetGroups :: NULL: not for optimization
+   - tasks :: NULL: task feature not used
+   - probOfTaskCuts :: NULL
+   - numRandomTaskCuts :: 1
+**** Changed (fixed) Parameters:
+   - na.action :: fuse
+*** classif.randomForestSRC
+- Random forest for survival, regression, classification
+- xwar.wt :: NULL: even splitting prob. MLR<=2.8
+- forest :: TRUE: return forest object for prediction (duh) MLR<=2.8
+**** Variable Parameters:
+   - ntree :: int 100..4000 exp: {rf.numtree} number of trees to grow
+   - mtry :: int 3..40: {rf.mtry} number of sampled variables
+   - nodesize :: int 1..32 exp: {rf.nodesize} min samples per node
+   - nsplit :: int 0..32 exp: number of splits
+**** Default Parameters:
+   - nimpute :: 1: doesn't matter with na.action==na.omit.
+   - seed :: NULL: no seed
+   - do.trace :: FALSE: no verbose output
+   - statistics :: FALSE: no statistics
+   - fast.restore :: FALSE: don't even know what this does but its marked as not tunable
+**** Changed (fixed) Parameters:
+   - bootstrap :: none: no bootstrap
+   - na.action :: na.impute: TODO this sucks, it is the only value both in mlr 2.8 and on github. imputation, if it happens, should happen during preprocessing.
+   - membership :: FALSE: don't need inbag info
+*** classif.ranger
+- guess what, another random forest (yay)
+**** Variable Parameters:
+   - num.trees :: int 100..4000 exp: {rf.numtree} number of trees to grow
+   - mtry :: int 3..40: {rf.mtry} number of sampled variables
+   - min.node.size :: int 1..32 exp: {rf.nodesize} min samples per node
+   - replace :: TRUE, FALSE: {rf.replace} sampling w / wo replacement
+**** Default Parameters:
+   - split.select.weights :: NULL: even split probability
+   - always.split.variables :: NULL: no special variables
+   - importance :: none: don't calculate importance values
+   - scale.permutation.importance :: FALSE: not needed when not computing importance
+   - save.memory :: FALSE: no memory optimization
+   - seed :: NULL: no seed.
+**** Changed (fixed) Parameters:
+   - respect.unordered.factors :: TRUE: treat unordered factor vars as unordered
+   - num.threads :: 1: single threaded.
+   - verbose :: FALSE
+*** classif.rFerns
+- random ferns
+**** Variable Parameters:
+   - depth :: int 1..14 exp: depth of ferns. actually up to 16 is possible but puts lots of strain on memory.
+   - ferns :: int 100..4000 exp: number of ferns to grow
+**** Default Parameters:
+   - importance :: FALSE: don't calculate importance
+   - reportErrorEvery :: 0: not verbose
+   - saveForest :: TRUE
+   - saveErrorPropagation :: FALSE: don't need error info
+*** classif.rotationForest
+- random forest + pca
+**** Variable Parameters:
+   - K :: int 2..40: MANUAL{sp("K", "int", c(2, 40), trafo=function(x) max(1, round(sum(info$n.feat) / x)))} number of variables per subset. Need to implement K = round(ncol(x) / Kinverse, 0).
+   - L :: int 25..100: number of trees
+** Boosting
+*** classif.ada
+- Described in "Additive Logistic Regression: A Statistical View of Boosting" (Friedman 2000).
+- Uses AdBoost with trees
+- The algorithms used are dependent on "type" parameter and are Alg 1, 2 and 4 for "discrete", "real" and "gentle".
+**** Variable Parameters:
+   - loss :: exponential, logistic: loss function that is optimized
+   - type :: discrete, real, gentle: slight differences in algorithm used
+   - iter :: int 25..400 exponential: {boostree.iter} number of boosting iterations. Range seems sensible in paper
+   - nu :: 0.001..0.3 exponential: {boostree.nu} shrinkage parameter
+   - model.coef :: TRUE, FALSE: use stageweights in boosting
+**** Default Parameters:
+   - minsplit :: 20: bug in ada...
+   - minbucket :: NULL: bug in ada...
+   - cp :: 0.01: bug in ada...
+   - usesurrogate :: 2: bug in ada...
+   - surrogatestyle :: 0: bug in ada...
+   - maxdepth :: 30: bug in ada...
+   - bag.frac :: 0.5
+   - bag.shift :: FALSE: only makes sense if bag.frac is small according to manual
+   - delta :: 1e-10: tolerance for convergence
+   - maxcompete :: 4: only affects output
+   - maxsurrogate :: 5: only affects output
+   - verbose :: FALSE: little output
+   - xval :: 10: bug in ada...
+**** Changed (fixed) Parameters:
+   - max.iter :: 40: newton steps. Conservatively chosen for large data sets; this might be relevant when we start optimizing runtime
+*** classif.blackboost
+- gradient boosting using regression trees as base-learners
+**** Variable Parameters:
+   - family :: AdaExp, Binomial
+   - mstop :: int 25..400 exp: {boostree.iter} number of boosting iterations
+   - nu :: .001..0.3 exponential: {boostree.nu} shrinkage parameter
+   - teststat :: quad, max: type of test statistic  I WANT TO KNOW IF THIS IS RELEVANT IF TESTTYPE IS NOT 'Teststatistic'
+   - testtype :: Bonferroni, MonteCarlo, Univariate, Teststatistic
+   - mincriterion :: 0.5..0.99: value of 1-p value that must be exceeded to implement split. req: testtype != "Teststatistic"
+   - mincriterion.AMLRFIX1 :: 0.1..1: value of test statistics that must be exceeded to implement split. req: testtype == "Teststatistic"
+   - maxsurrogate :: int 0..5: number of surrogate splits to evaluate. NEEDS ORDERED COVARIABLES
+   - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
+   - mtry :: int 3..20: number of sampled variables for random forests. req: limitmtry == TRUE
+   - minbucket :: int 1..32 exp: minimum weight in terminal node
+   - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
+   - stump :: TRUE, FALSE
+**** Default Parameters:
+   - nresample :: 9999: number of MC replications when using distribution test stat
+   - maxdepth :: 0: no restriction on tree size
+**** Changed (fixed) Parameters:
+   - risk :: none: TODO: idk if this is really necessary at all
+   - savesplitstats :: FALSE: save statistics about node splits
+*** classif.boosting
+- AdaBoost.M1 and SAMME using classification trees
+**** Variable Parameters:
+   - boos :: TRUE, FALSE: whether to adjust weights
+   - mfinal :: int 25..400 exp: number of boosting iterations
+   - coeflearn :: Breiman, Freund, Zhu: coefficient learning algorithm
+   - minsplit :: int 2..64 exp: minimum sum of weights to be considered for splitting
+   - minbucket :: int 1..32 exp: minimum weight in terminal node
+   - cp :: 1e-4..0.5 exp: complexity parameter
+   - usesurrogate :: 0, 1, 2: ONNA how to use surrogate in splitting process
+   - surrogatestyle :: 0, 1: ONNA  how to use surrogate
+   - maxdepth :: int 1..30 exp: maximum depth of any node
+**** Default Parameters:
+   - maxcompete :: 4: only affects output
+   - maxsurrogate :: 5: only affects output
+**** Changed (fixed) Parameters:
+   - xval :: 0: no crossvalidation
+*** classif.bst
+**** Variable Parameters:
+   - xxx :: MANUAL Gradient Boosting, seems like this wouldn't be adding anything so I'll skip it for now
+*** classif.gbm
+- "Generalized Boosted Regression Modeling"
+**** Variable Parameters:
+   - distribution :: bernoulli, adaboost, huberized, multinomial
+   - n.trees :: int 100..4000 exp
+   - interaction.depth :: int 1..3: max order of interactions
+   - n.minobsinnode :: int 1..32 exp
+   - shrinkage :: 0.0001..0.3 exp
+   - bag.fraction :: .1...9
+**** Default Parameters:
+   - cv.folds :: 0: no cross validation
+   - train.fraction :: 1
+   - verbose :: FALSE
+   - keep.data :: TRUE: TODO: as soon as mlr has this fixed, this must change.
+*** classif.glmboost
+**** Variable Parameters:
+   - family :: AdaExp, Binomial
+   - mstop :: int 25..400 exp: req: m == "mstop"
+   - mstop.AMLRFIX1 :: 400: req: m != "mstop"
+   - nu :: .001...3 exp
+   - risk :: inbag, oobag, none: req: m != "aic"
+   - stopintern :: TRUE, FALSE
+   - m :: mstop, cv, aic
+**** Default Parameters:
+   - center :: FALSE
+   - trace :: FALSE
+*** classif.xgboost
+- extreme gradient boosting
+**** Variable Parameters:
+   - booster :: gbtree, gblinear: which booster to use
+   - eta :: 0..1: req: booster == "gbtree"
+   - gamma :: .0001..1 exp: minimum loss reduction required to make partition. req: booster == "gbtree"
+   - max_depth :: int 1..32 exp: maximum depth of a tree. req: booster == "gbtree"
+   - min_child_weight :: int 1..32 exp: minimum sum of weight needed in a child. req: booster == "gbtree"
+   - subsample :: .3..1: subsample of training to use. req: booster == "gbtree"
+   - colsample_bytree :: .3..1: ratio of columns when constructing tree. req: booster == "gbtree"
+   - num_parallel_tree :: int 1..100 exp: trees per round. req: booster == "gbtree"
+   - lambda :: .001..10 exp: L2 reqularization term on weights. req: booster == "gblinear"
+   - lambda_bias :: .001..10 exp: L2 regularization term on bias. req: booster == "gblinear"
+   - alpha :: .001..10 exp: L1 regularization term on weights. req: booster == "gblinear"
+   - base_score :: 0..1: initial prediction score.. not really sure what it is but oh well
+   - nrounds :: int 1..16 exp: number of passes. Not sure whether this is a sensible range.
+**** Default Parameters:
+   - silent :: 0: some output
+   - eval_metric :: error: use default
+   - maximize :: TRUE: does not matter since early.stop.round is NULL.
+   - early.stop.round :: 1: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
+   - feval :: NULL: no custom evaluation function
+**** Changed (fixed) Parameters:
+   - nthread :: 1: only one thread
+   - verbose :: 1: stay almost silent -- setting this to 0 gives error!
+   - print.every.n :: 1000: stay silent
+   - missing :: 2147359313: we don't have a missing indicator, but we can't give NULL here, so we take a number that is unlikely to be chosen.
+   - objective :: NULL: we must set this to NULL so it gets chosen automatically.
+** SVM
+*** classif.dcSVM
+- Divide and Conquer kernel Support Vector Machine
+- http://jmlr.org/proceedings/papers/v32/hsieha14.pdf
+**** Variable Parameters:
+   - k :: int 2..6 exp: number of sub-problems divided
+   - kernel :: 1, 2, 3: kernel type
+   - max.levels :: int 1..32 exp: maximum number of levels
+   - final.training :: FALSE, TRUE: usually false
+   - cluster.method :: kmeans, kernkmeans: {svm.cluster} clustering algorithm
+**** Default Parameters:
+   - pre.scale :: FALSE: we scale ourselves
+   - seed :: NULL: random seed
+   - verbose :: TRUE: print training info
+   - valid.x :: NULL
+   - valid.y :: NULL
+   - valid.metric :: NULL
+   - cluster.fun :: NULL
+   - cluster.predict :: NULL
+   - early :: 0: (would have the range 0..max.levels: use early prediction)
+**** Changed (fixed) Parameters:
+   - m :: 1000: used in the paper; more an influence on performance, maybe add option "Infinity"
+*** classif.clusterSVM
+- Clustered Support Vector Machine
+**** Variable Parameters:
+   - centers :: int 2..6 exp: number of centers in clustering
+   - lambda :: 0.5..4 exp: weight of global l2 norm
+   - type :: 1, 2, 3, 5: idk, the default parameter set says so
+   - cost :: 0.1..10 exp: inverse of regularisation constant
+   - cluster.method :: kmeans, kernkmeans: {svm.cluster} clustering algorithm
+**** Default Parameters:
+   - cluster.object :: NULL: internal object
+   - sparse :: TRUE: return sparse object
+   - valid.x :: NULL
+   - valid.y :: NULL
+   - valid.metric :: NULL
+   - epsilon :: NULL
+   - bias :: TRUE: use bias term
+   - wi :: NULL: weights of classes
+   - verbose :: 1: output some information
+   - seed :: NULL: random seed
+   - cluster.fun :: NULL
+   - cluster.predict :: NULL
+*** classif.ksvm
+- Support Vector Machine
+**** Variable Parameters:
+   - type :: C-svc, nu-svc, C-bsvc, spoc-svc, kbb-svc: svm type
+   - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot: {svm.kernel} TODO: "matrix" is also available in principle
+   - C :: .125..8 exp: {svm.c} constraint violation cost. req: type %in% c("C-svc", "C-bsvc", "spoc-svc", "kbb-svc")
+   - nu :: .001...1 exp: {svm.nu} req: type == "nu-svc"
+   - epsilon :: .001...5 exp: insensitive loss epsilon. req: type %in% c("eps-svr", "nu-svr", "eps-bsvm")
+   - sigma :: .001..100 exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
+   - degree :: int 1..10 exp: {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
+   - scale :: .001..100 exp: {svm.scale} req: kernel %in% c("polydot", "tanhdot")
+   - offset :: 0..4: {svm.offset} req: kernel %in% c("polydot", "tanhdot")
+   - order :: int 0..6: {svm.order} integer, req: kernel == "besseldot"
+   - shrinking :: TRUE, FALSE: {svm.shrink} use shrinking heuristic
+**** Default Parameters:
+   - tol :: .001: termination criterion
+   - class.weights :: NULL
+**** Changed (fixed) Parameters:
+   - scaled :: FALSE: we do that ourselves
+   - cache :: 400
+   - fit :: FALSE: don't include computed values
+*** classif.gaterSVM
+- "Mixture SVMs with gater function"
+- described in "A Parallel Mixture of SVMs for Very Large Scale Problems"
+**** Variable Parameters:
+   - m :: int 10..50 exp: number of experts as in the paper
+   - max.iter :: int 50..400 exp: number of iterations
+   - hidden :: int 3..200 exp: number of hidden units
+   - learningrate :: 0.01..0.8 exp
+   - threshold :: 1e-7..1e-1 exp: stopping condition
+   - stepmax :: int 50..400 exp
+   - c :: 1, 100, 10000: upper bound for samples / subset is n / m + c.
+**** Default Parameters:
+   - seed :: NULL: random seed
+   - valid.x :: NULL
+   - valid.y :: NULL
+   - valid.metric :: NULL
+**** Changed (fixed) Parameters:
+   - verbose :: TRUE: print training info
+*** classif.lssvm
+- Least Squares Support Vector Machine
+**** Variable Parameters:
+   - kernel :: vanilladot, polydot, rbfdot, tanhdot, laplacedot, besseldot, anovadot, splinedot: {svm.kernel} TODO: "matrix" would be available in principle.
+   - tau :: .001...100 exp: regularization parameter
+   - reduced :: TRUE, FALSE: solve full problem vs. reduced problem using csi
+   - sigma :: .001..100 exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
+   - degree :: int 1..10 exp: {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
+   - scale :: .001..100 exp: {svm.scale} req: kernel %in% c("polydot", "tanhdot")
+   - offset :: 0..4: {svm.offset} req: kernel %in% c("polydot", "tanhdot")
+   - order :: int 0..6: {svm.order} integer, req: kernel == "besseldot"
+**** Default Parameters:
+   - tol :: .0001: termination criterion
+**** Changed (fixed) Parameters:
+   - scaled :: FALSE: we do that ourselves
+   - fitted :: FALSE: TODO is named 'fitted' in mlr, which is a BUG?
+*** classif.svm
+**** Variable Parameters:
+   - type :: C-classification, nu-classification
+   - cost :: .125..8 exp: {svm.c} constraint violation cost. req: type == "C-classification"
+   - nu :: .001...1 exp: {svm.nu} req: type == "nu-classification"
+   - kernel :: linear, polynomial, radial, sigmoid: kernel type
+   - degree :: int 1..10 exp: {svm.degree} [this is classif.ksvm's 'degree' parameter] req: kernel == "polynomial"
+   - coef0 :: 0..4: {svm.offset} [this is classif.ksvm's 'offset' parameter] req: kernel == "polynomial" || kernel == "sigmoid"
+   - gamma :: .001..100 exp: {svm.scale} [this is classif.ksvm's 'scale' parameter] req: kernel != "linear"
+   - shrinking :: TRUE, FALSE: {svm.shrink} use shrinking heuristic
+**** Default Parameters:
+   - class.weights :: NULL: use 1 weights
+   - tolerance :: 0.001: termination criterion
+   - cross :: 0: no cross validation
+**** Changed (fixed) Parameters:
+   - cachesize :: 400: 400 mb cache
+   - fitted :: FALSE: don't return fitted values
+   - scale :: FALSE: we do that ourselves.
+** Neural Nets
+*** classif.avNNet
+**** Variable Parameters:
+   - xxx :: MANUAL seems to be bagging using nnet; ignoring this for the time being.
+*** classif.dbnDNN
+**** Variable Parameters:
+   - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7} req: numlayers==7
+   - activationfun :: sigm, linear, tanh: {nn.afun}
+   - learningrate :: 0.01..2 exp: {nn.lrate}
+   - momentum :: 0..0.8: {nn.momentum}
+   - learningrate_scale :: 0.2..1 exp: {nn.lrs}
+   - numepochs :: int 1..6: {nn.epochs}
+   - batchsize :: int 5..500 exp: {nn.bs}
+   - hidden_dropout :: 0.5..1: {nn.dropout}
+   - output :: sigm, linear, softmax: {nn.output}
+   - cd :: int 1..5: boltzmann machine init rounds
+**** Default Parameters:
+   - visible_dropout :: 0
+*** classif.mlp
+- Multilayer perceptron
+**** Variable Parameters:
+   - xxx :: MANUAL Skipping this for now since we have a few NNs already
+*** classif.multinom
+- multinomial log-linear models via neural nets
+
+**** Variable Parameters:
+   - decay :: 0.0001..0.3 exponential: {nn.shallowdecay} weight decay
+   - maxit :: int 50..400 exponential: {nn.shallowmaxit} number of iterations
+   - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely. INJECT since mlr doesn't know about it.
+**** Default Parameters:
+   - Hess :: FALSE: don't return hessian
+   - summ :: 0: don't sum and change weights
+   - censored :: FALSE: (interpretation of input format)
+   - model :: FALSE
+   - rang :: 0.7: initial random weights. This is too parameter dependent
+   - trace :: TRUE: Tracing optimization
+   - abstoll :: 0.0001
+   - reltoll :: 1e-8
+*** classif.nnet
+- Single-hidden-layer neural network with multinomial log-linear models and possible skip-layer connections
+**** Variable Parameters:
+   - size :: int 3..200 exponential: number of units in hidden layer
+   - skip :: FALSE, TRUE: skip layers
+   - decay :: 0.0001..0.3 exponential: {nn.shallowdecay} weight decay
+   - maxit :: int 50..400 exponential: {nn.shallowmaxit} number of iterations
+**** Default Parameters:
+   - rang :: 0.7: initial random weights. This is too parameter dependent
+   - Hess :: FALSE: return hessian
+   - trace :: TRUE: Tracing optimization
+   - abstoll :: 0.0001
+   - reltoll :: 1e-8
+**** Changed (fixed) Parameters:
+   - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely
+*** classif.nnTrain
+- choo choo, motherfucker
+**** Variable Parameters:
+   - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7} req: numlayers==7
+   - activationfun :: sigm, linear, tanh: {nn.afun}
+   - learningrate :: 0.01..2 exp: {nn.lrate}
+   - momentum :: 0..0.8: {nn.momentum}
+   - learningrate_scale :: 0.2..1 exp: {nn.lrs}
+   - numepochs :: int 1..6: {nn.epochs}
+   - batchsize :: int 5..500 exp: {nn.bs}
+   - hidden_dropout :: 0.5..1: {nn.dropout}
+   - output :: sigm, linear, softmax: {nn.output}
+**** Default Parameters:
+   - initW :: NULL: random init weights
+   - initB :: NULL: random init bias
+   - visible_dropout :: 0
+*** classif.neuralnet
+- neural nets using backpropagation
+- linear.output :: TRUE: this is a bug MLR<=2.8
+**** Variable Parameters:
+   - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7} req: numlayers==7
+   - threshold :: .0001...1 exp: stopping criterion
+   - stepmax :: int 50..400 exponential: number of iterations
+   - rep :: int 1..16 exp: repetitions of fitting
+   - algorithm :: backprop, rprop+, rprop-, sag, slr
+   - learningrate.limit :: .01..2 exp: len(2) req: algorithm != "backprop"
+   - learningrate.factor :: .01..2 exp: len(2) req: algorithm != "backprop"
+   - learningrate :: 0.01..2 exp: {nn.lrate} req: algorithm == "backprop"
+   - err.fct :: sse, ce: error function
+   - act.fct :: logistic, tanh: activation function
+**** Default Parameters:
+   - startweights :: NULL: init randomly
+   - lifesign :: none: not verbose
+   - lifesign.step :: 1000: print after this many steps
+   - exclude :: NULL: don't exclude
+   - constant.weights :: NULL: no constant weights
+   - likelihood :: FALSE: no further calculation
+*** classif.saeDNN
+- deep neural net initialized by stacked autoencoder
+**** Variable Parameters:
+   - numlayers :: 2, 5, 7: {nn.nlayer} DUMMY
+   - hidden :: int 3..100 exp: len(2) {nn.h2} req: numlayers==2
+   - hidden.AMLRFIX1 :: int 3..100 exp: len(5) {nn.h5} req: numlayers==5
+   - hidden.AMLRFIX2 :: int 3..100 exp: len(7) {nn.h7}  req: numlayers==7
+   - activationfun :: sigm, linear, tanh: {nn.afun}
+   - learningrate :: 0.01..2 exp: {nn.lrate}
+   - momentum :: 0..0.8: {nn.momentum}
+   - learningrate_scale :: 0.2..1 exp: {nn.lrs}
+   - numepochs :: int 1..6: {nn.epochs}
+   - batchsize :: int 5..500 exp: {nn.bs}
+   - hidden_dropout :: 0.5..1: {nn.dropout}
+   - output :: sigm, linear, softmax: {nn.output}
+   - sae_output :: sigm, linear, softmax
+**** Default Parameters:
+   - visible_dropout :: 0
+** Other
+*** classif.bdk
+- Supervised version of Kohonen's self-organising maps
+**** Variable Parameters:
+   - xdim :: int 5..100 exp: {koho.x} grid X size (I don't really know how this works..)
+   - ydim :: int 5..100 exp: {koho.y} grid Y size (I don't really know how this works..)
+   - topo :: rectangular, hexagonal: {koho.topo} topology of the grid
+   - rlen :: int 50..400 exp: {koho.rlen} idk lol
+   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2)} [0.1..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
+   - xweight :: 0.5..0.9: {koho.xweight} initial weight given to X map
+   - n.hood :: circular, square: {koho.shape} shape of neighbourhood
+   - toroidal :: TRUE, FALSE: {koho.toro} edges of map are joined
+**** Default Parameters:
+   - radius :: NULL: neighbourhood radius; not going to touch this for now
+   - keep.data :: TRUE: TODO: this must change when mlr fixes it on their end
+**** Changed (fixed) Parameters:
+   - contin :: FALSE: indicate that we are dealing with categories
+*** classif.lvq1
+- "Learning Vector Quantization 1"
+*** classif.naiveBayes
+- naive Bayes classifier
+**** Default Parameters:
+   - laplace :: 0: no laplace smoothing
+*** classif.OneR
+- WEKA OneR
+**** Variable Parameters:
+   - B :: int 1..32 exp: minimum weight in terminal node
+**** Default Parameters:
+   - output-debug-info :: FALSE
+*** classif.pamr
+- Classification in microarrays
+**** Variable Parameters:
+   - scale.sd :: TRUE, FALSE: scale threshold by within class deviations
+   - offset.percent :: 0..100: fudge factor percentile of gene stdevs
+   - remove.zeros :: TRUE, FALSE: remove thresholds yielding zeros
+   - sign.contrast :: both, negative, positive: directions of deviations of class wise average from overall average
+   - threshold.predict.fraction :: MANUAL 0..1 in 0.01-steps. !!! need to create a wrapper that takes threshold.predict = max(thresholds) * trheshold.predict.fraction.
+**** Default Parameters:
+   - threshold :: NULL: let the software choose
+   - threshold.scale :: NULL: no scaling of thresholds by class
+   - se.scale :: NULL: no scaling of within class stderr
+   - hetero :: NULL: would need to be set to a class label
+   - prior :: NULL: uniform prior
+**** Changed (fixed) Parameters:
+   - n.threshold :: 100: number of threshold values
+*** classif.JRip
+**** Variable Parameters:
+   - F :: int 2..8
+   - N :: int 2..64 exp: minimum weight for split
+   - O :: int 1..10: number of opt runs
+   - P :: TRUE, FALSE: no pruning y/n
+**** Default Parameters:
+   - D :: FALSE: no debug mode
+   - S :: NULL: no seed
+   - E :: FALSE: check error rate
+   - output-debug-info :: FALSE
+*** classif.xyf
+- Supervised version of Kohonen's self-organising maps
+**** Variable Parameters:
+   - xdim :: int 5..100 exp: {koho.x} grid X size (I don't really know how this works..)
+   - ydim :: int 5..100 exp: {koho.y} grid Y size (I don't really know how this works..)
+   - topo :: rectangular, hexagonal: {koho.topo} topology of the grid
+   - rlen :: int 50..400 exp: {koho.rlen} idk lol
+   - alpha :: MANUAL{sp("alpha", "real", c(0, 1), id="koho.alpha", trafo=function(x) c(.02, .001) * 20^x, dim=2)} [0.4..0.02; 0.02..0.001] exp: {koho.alpha} learning rate
+   - xweight :: 0.5..0.9: {koho.xweight} initial weight given to X map
+   - n.hood :: circular, square: {koho.shape} shape of neighbourhood
+   - toroidal :: TRUE, FALSE: {koho.toro} edges of map are joined
+**** Default Parameters:
+   - radius :: NULL: neighbourhood radius; not going to touch this for now
+**** Changed (fixed) Parameters:
+   - contin :: FALSE: indicate that we are dealing with categories
+* regr
+** regr.avNNet
+x
+** regr.bartMachine
+x
+** regr.bcart
+** regr.bdk
+x
+** regr.bgp
+** regr.bgpllm
+** regr.blackboost
+x
+** regr.blm
+** regr.brnn
+** regr.bst
+x
+** regr.btgp
+** regr.btgpllm
+** regr.btlm
+** regr.cforest
+x
+** regr.crs
+** regr.ctree
+x
+** regr.cubist
+** regr.elmNN
+** regr.extraTrees
+x
+** regr.fnn
+x
+** regr.frbs
+** regr.gbm
+x
+** regr.glmnet
+x
+** regr.IBkx
+x
+** regr.kknn
+x
+** regr.ksvm
+x
+** regr.LiblineaRXXX
+x
+** regr.lm
+** regr.mars
+** regr.mob
+** regr.nnet
+x
+** regr.nodeHarvest
+x
+** regr.pcr
+** regr.penalized.lasso
+** regr.penalized.ridge
+** regr.plsr
+** regr.randomForest
+x
+** regr.randomForestSRC
+x
+** regr.ranger
+** regr.rknn
+x
+** regr.rpart
+x
+** regr.rsm
+** regr.rvm
+** regr.svm
+x
+** regr.xgboost
+x
+** regr.xyf
+x
+
+* surv
+** surv.cforest
+** surv.coxph
+** surv.cvglmnet
+** surv.glmboost
+** surv.glmnet
+** surv.penalized
+** surv.randomForestSRC
+** surv.ranger
+** surv.rpart
+* cluster
+** cluster.EM
+** cluster.FarthestFirst
+** cluster.SimpleKMeans
+** cluster.XMeans
+* multilabel
+** multilabel.rFerns
+   
