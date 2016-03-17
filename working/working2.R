@@ -482,3 +482,11 @@ tsk = makeClassifTask("iris", thedat, target=getTaskTargetNames(iris.task))
 train(lrn, tsk)
 
 
+
+
+source("../../testruns/prepare.R", chdir = TRUE)
+
+lrn = buildLearners(mlrLightweight, task = krvkp.train)
+
+lrn$searchspace$par$ppa.nzv.cutoff.factor$requires
+

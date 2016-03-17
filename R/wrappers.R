@@ -90,7 +90,9 @@ mlrLearners.gen = function() c(mlrLearnersNoWrap, mlrWrappers)
 # looked which learners took, on average, "kinda long".
 slowLrn <- c('classif.xyf', 'classif.lda', 'classif.mda', 'classif.rrlda',
     'classif.dcSVM', 'classif.rda', 'classif.bartMachine', 'classif.boosting',
-    'classif.nodeHarvest')
+    'classif.nodeHarvest', 'classif.randomForestSRC')
+
+# classif.randomForestSRC seems to be a memory hog
 
 #' @title
 #' A list of fast learners with corresponding \code{par.set}s that can be 

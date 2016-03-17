@@ -28,6 +28,7 @@
      - [X] .AMLRFIX but other parameter has "fix" or "def" -> error
      - [X] .AMLRFIX but itself / other parameter is 'dummy' -> error
      - [X] .AMLRFIX and itself / other is 'inject' --> works
+     - [ ] when .AMLRFIX occurs, the original also exists
    - [X] parameter definitions match learner
      - [X] learner has parameter that is not part of search space -> warning
      - [X] 'inject' but parameter exists really -> error

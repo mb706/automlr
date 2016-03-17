@@ -57,8 +57,11 @@ See their respective R documentation for more information and additional argumen
 Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
 
 ** Notes
-- the "irace" backend's behaviour deviates slightly from that of the ~irace~ package in so far that the number of evaluations per generation, and the slimming of the sampling distribution, are independent of the budget.
-- the "mbo" backend currently uses an inferior imputation method for the surrogate model, and its performance should not be seen as representative for ~mlrMBO~.
+- The "irace" backend's behaviour deviates slightly from that of the ~irace~ package in so far that the number of evaluations per generation, and the slimming of the sampling distribution, are independent of the budget.
+- The "mbo" backend currently uses an inferior imputation method for the surrogate model, and its performance should not be seen as representative for ~mlrMBO~.
+- The wrappers are currently neither very well tested nor implemented in an altogether very sensible way. For now, using the ~XXXNoWrappers~ search spaces might get you further.
+- expect automlr to use about 0.5-2MB of memory per row of data, for tasks with tens of features and thousands of rows.
+- There is about one segfault per hr per 16 runs. Use savefiles.
 
 ** Project TODO
 (under consideration, subject to change)
@@ -81,14 +84,18 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] write NEWS
 - [ ] release 0.2
   - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
+  - [ ] optRandom: don't abort crossvalidation when time runs out (?)
   - [ ] event handling
     - [ ] catch Ctrl-C and handle gracefully
     - [ ] maximum walltime overrun
+    - [ ] maximum per learner time
     - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
     - [ ] nicer printing
   - [ ] make debugging easier
     - [ ] debug flag sets all show.learner.output to TRUE
     - [ ] optionally sets some variables to small values (thinking of you, ~infill.opt.focussearch.points~) so do.call doesn't clog the call stack so much
+    - [ ] nicer printing of results
+    - [ ] some output about memory usage, maybe
   - [ ] searchspace
     - [ ] add metalearner wrappers
     - [ ] respect parameter equality IDs
@@ -104,13 +111,13 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] write a nicer readme **selfconscious**
   - [ ] parallelMap is not required as dependency, make it optional.
 - [ ] release 0.3
+  - [ ] memory handling
   - [ ] regression learners
   - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
   - [ ] use seeds in learners that use external RNGs
   - [ ] installation on Win32
   - [ ] more consistent OO-based searchspace definition
   - [ ] more empirical grounding for mlrLightweight.
-  - [ ] nicer printing of results
 - [ ] release 0.4
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs)

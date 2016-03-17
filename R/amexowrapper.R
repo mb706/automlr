@@ -633,7 +633,21 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
         subst = substitute(if (eval(req)) value else original,
             list(req = as.expression(curpar$requires), value = fixvalue,
                 original = asQuoted(leaf)))
-        finalSubstitutions[[leaf]] = asQuoted(parid)
+        if (parid == curpar$id) {
+          # the value itself is fixed -> if there are references remaining in
+          # a requirement after all substitutions were done, it is an error.
+          # This can happen, if the requirements of the fixed values do not
+          # cover the whole domain.
+          finalSubstitutions[[leaf]] = substitute(
+              stop(sprintf(paste("Parameter %s is fixed, but its reqs do not",
+                               "cover the whole domain."), parname)),
+                  list(parname = parid))
+        }
+        if (is.null(finalSubstitutions[[leaf]])) {
+          # check whether it is null; we don't want to overwrite it if the
+          # original is a fixed value.
+          finalSubstitutions[[leaf]] = asQuoted(parid)
+        }
       } else {
         subst = fixvalue
       }
@@ -667,6 +681,11 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
           sl[[leaf]] = substitutions[[parid]]
           substitutions[[parid]] = do.call(substitute, list(subst, sl))
         } else {
+          if (is.null(finalSubstitutions[[leaf]])) {
+              # check whether it is null; we don't want to overwrite it if the
+              # original is a fixed value.
+              finalSubstitutions[[leaf]] = asQuoted(parid)
+          }
           substitutions[[parid]] = subst
         }
       }
