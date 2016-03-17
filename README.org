@@ -1,0 +1,118 @@
+#+TITLE: Automatic Machine Learning Algorithm Configuration in R
+* Introduction
+*automlr* is an R-package for *automatically* configuring *mlr* machine learning algorithms so that they perform well. It is designed for simplicity of use and supposed to run with minimal user intervention.
+
+automlr is currently under development. You can see the current status in the 'develop' branch, but it may not be in a state to run.
+* Installation
+/Note: Installation of automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
+
+/Note 2: automlr integrates tightly with mlr, and I try to make it work with both the current CRAN version of mlr, as well as the version on GitHub (https://github.org/mlr-org/mlr). mlr is a moving target, however, so if there are problems with the mlr version from GitHub, try to fall back to the mlr version on CRAN./
+
+Installation will fail if *roxygen2* is not installed, so make sure it is:
+#+BEGIN_SRC R
+if (!require("roxygen2")) install.packages("roxygen2")
+#+END_SRC
+Then you can install automlr from source. automlr can work with many mlr learners; however, many of them have package dependencies. automlr doesn't /need/ these packages and will skip learners that are not installed, but without them, the search space will be incomplete (and a warning will be given). To install automlr and all referenced learner packages (this can take a while!), do
+#+BEGIN_SRC R
+devtools::install_github("mlr-org/automlr",
+    dependencies = c("Depends", "Imports", "Suggests"))
+#+END_SRC
+Alternatively, to *only* install automlr (and its essential dependencies), do
+#+BEGIN_SRC R
+devtools::install_github("mlr-org/automlr")
+#+END_SRC
+
+To use the "mbo" backend, automlr relies on *mlrMBO*, which itself relies on a *ParamHelpers* version that is not on CRAN yet. To install these, run
+#+BEGIN_SRC R
+devtools::install_github("berndbischl/ParamHelpers")
+devtools::install_github("mlr-org/mlrMBO")
+#+END_SRC
+* Usage
+To run a small example to fit some learners on the mlr-provided ~pid.task~, execute
+#+BEGIN_SRC R
+library("mlr")
+library("automlr")
+configureMlr(on.learner.error = "warn", show.learner.output = FALSE)
+amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
+result = amfinish(amrun)
+print(result, verbose = TRUE)
+#+END_SRC
+This already shows all the mandatory arguments of ~automlr~: The task for which to optimize, the backend to use (may be "random", "irace" or "mbo"), and a computational budget. The resulting object can be given to another ~automlr~ call with a different budget to continue optimizing, or to ~amfinish~ to finalize the run.
+
+You can subset the search space like so:
+#+BEGIN_SRC R
+# this example can take a while
+amrun2 = automlr(pid.task, backend = "random", budget = c(evals = 10),
+    searchspace = list(mlrLearners$classif.randomForest, mlrLearners$classif.svm))
+#+END_SRC
+
+The functions and data exported by automlr that will be of interest to the user:
+- automlr invocation
+  - automlr :: The main entry point; can be called with a task and a backend, or with an object that was returned by a previous automlr invocation, or even with a file name that was used by automlr to save the state. The user can choose:
+    - which backend to use (~backend~)
+    - the computational budget (~budget~)
+    - a possible savefile (~savefile~) and the interval in which to save to a file (~save.interval~)
+    - a measure for which to optimize, if not the task's default measure (~measure~)
+  - amfinish :: Generates an ~AMResult~ object that contains information about the optimization result.
+  - mlrLearners, mlrLearnersNoWrappers :: A collection of mlr learners with corresponding search space. ~mlrLearnersNoWrappers~ does not contain preprocessing wrappers.
+  - mlrLightweight, mlrLightweightNoWrappers :: Similar to ~mlrLearners~ and ~mlrLearnersNoWrappers~, these are search spaces, but with the slowest learners removed. This decreases evaluation time and is also necessary for the "mbo" backend to work.
+- searchspace definition
+  - autolearner :: define your own mlr learner to put in a search space
+  - autoWrapper :: define an mlr wrapper to use in a search space
+  - sp :: for defining parameters that are given to ~autolearner~
+See their respective R documentation for more information and additional arguments.
+
+* Project status
+Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
+
+** Notes
+- The "irace" backend's behaviour deviates slightly from that of the ~irace~ package in so far that the number of evaluations per generation, and the slimming of the sampling distribution, are independent of the budget.
+- The "mbo" backend currently uses an inferior imputation method for the surrogate model, and its performance should not be seen as representative for ~mlrMBO~.
+- The wrappers are currently neither very well tested nor implemented in an altogether very sensible way. For now, using the ~XXXNoWrappers~ search spaces might get you further.
+- for tasks with tens of features and thousands of rows, expect automlr to use about 0.5-1MB of memory per row of data. You should reserve 2MB for extreme cases, however.
+- There is about one segfault per hr per 32 runs. Use savefiles.
+
+** Project TODO
+(under consideration, subject to change)
+- [ ] release 0.2
+  - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
+  - [ ] optRandom: don't abort crossvalidation when time runs out (?)
+  - [ ] event handling
+    - [ ] catch Ctrl-C and handle gracefully
+    - [ ] maximum walltime overrun
+    - [ ] maximum per learner time
+    - [ ] make sure mlr on.learner.error, on.learner.warning are handled well
+    - [ ] nicer printing
+  - [ ] make debugging easier
+    - [ ] debug flag sets all show.learner.output to TRUE
+    - [ ] optionally sets some variables to small values (thinking of you, ~infill.opt.focussearch.points~) so do.call doesn't clog the call stack so much
+    - [ ] nicer printing of results
+    - [ ] some output about memory usage, maybe
+  - [ ] searchspace
+    - [ ] add metalearner wrappers
+    - [ ] respect parameter equality IDs
+    - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
+    - [ ] searchspace definitions for certain mlr versions
+  - [ ] tests
+    - [ ] differentiate expensive tests from fast tests
+    - [ ] 100% test coverage
+    - [ ] tests for preprocessing
+    - [ ] test for all possible wrong arguments
+    - [ ] other things?
+  - [ ] simultaneous multiple task optimization
+  - [ ] write a nicer readme **selfconscious**
+  - [ ] parallelMap is not required as dependency, make it optional.
+- [ ] release 0.3
+  - [ ] memory handling
+  - [ ] regression learners
+  - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
+  - [ ] use seeds in learners that use external RNGs
+  - [ ] installation on Win32
+  - [ ] more consistent OO-based searchspace definition
+  - [ ] more empirical grounding for mlrLightweight.
+- [ ] release 0.4
+  - [ ] other backends?
+  - [ ] batchJobs integration? (e.g. break run down into smaller jobs)
+  - [ ] priors for learners?
+- [ ] release 1.0
+  - [ ] everything is really, really stable

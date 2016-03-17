@@ -1,0 +1,107 @@
+
+ - [X] error when task has weights
+ - [X] return NULL and warning when searchspace is empty
+ - [-] learners that are selected depend on learner type and task type:
+   - [X] task is multiclass -- all the twoclass learners missing
+   - [ ] task is class -- all regression learners missing
+   - [ ] task is regression -- all the task learners missing
+   - [X] task has NAs -- all the learners that can't handle them missing
+   - [X] task has factors -- all the learners that can't handle them missing
+   - [X] task has ordereds -- all the learners that can't handle them missing
+   - [X] task has NAs, factors, ordereds, but a requiredwrapper that can convert them -- the learners are not missing
+   - [X] task has NAs, factors, ordereds, but a nonrequired wrapper that can handle them: ignored
+   - [X] task has no numerics but factors or ordereds: learners that can only handle numerics go out
+   - [X] task has no numerics but factors or ordereds, and requiredwrapper that can convert: learners that can only handle numerics stay in
+ - [X] no valid learner found --> warning received, return NULL
+ - [-] search space parameter behaviour
+   - [X] parameter definition consistency
+     - [X] parameter is dummy and 'fix' -> warning (or error?)
+     - [X] parameter is dummy and 'def' -> error
+     - [X] parameter is inject and 'def' -> error
+   - [X] id behaviour
+     - [X] parameter has an id but is the only one -> warning, but nothing special
+     - [X] two parameters have same id but different type/length/feasible region -> error
+   - [X] .AMLRFIX definitions
+     - [X] .AMLRFIX without requirements -> error
+     - [X] .AMLRFIX, but other parameter has no requirements -> error
+     - [X] .AMLRFIX with "fix" or "def" type -> error
+     - [X] .AMLRFIX but other parameter has "fix" or "def" -> error
+     - [X] .AMLRFIX but itself / other parameter is 'dummy' -> error
+     - [X] .AMLRFIX and itself / other is 'inject' --> works
+     - [ ] when .AMLRFIX occurs, the original also exists
+   - [X] parameter definitions match learner
+     - [X] learner has parameter that is not part of search space -> warning
+     - [X] 'inject' but parameter exists really -> error
+     - [X] 'dummy' but parameter exists -> error
+     - [X] parameter neither dummy nor inject (any type or 'def' or 'fix') not present in searchspace -> error
+     - [X] parameter neither dummy nor inject (any type or def or fix) has value that is partially infeasible for true param -> error
+     - [X] parameter neither dummy nor inject (any type, not def or fix) has type that is incompatible with param (real when int/cat, int when cat) -> error
+     - [X] parameter neither dummy nor inject (any type) has type that is compatible (int/cat when real, cat when int/bool) -> warning
+     - [X] parameter def unlike true def -> warning
+     - [X] parameter def like true def but set hyperpar present -> warning, 
+     - [X] true param has requires, searchspace param does not -> warning
+     - [X] hyperparameter already set for learner -> also set in resulting object
+     - [X] hyperparameter already set but overwritten by definition -> is reset
+   - [ ] parameter trafo
+     - [ ] parameter with trafo fn: trafo function 'works'
+     - [ ] parameter with trafo 'exp': trafo is given. test trafo with known values
+   - [X] outer searchspace appearance
+     - [X] 'inject' parameter is visible from the outside
+     - [X] .AMLRFIX becomes part of searchspace
+     - [X] fixed .AMLRFIX not visible from the outside
+     - [X] parameter fix/def -> not in searchspace
+     - [X] parameter not fix/def -> part of searchspace
+     - [X] parameter is inject and 'fix' -> not visible from the outside
+     - [X] parameter is 'inject' or 'dummy' and of type real/int/cat -> created numeric/integer/discrete(vector)
+     - [X] parameters with only one possible value not visible
+   - [X] inner parameter values
+     - [X] learner categorical variable with boolean values and "bool" type in searchspace defn. actually gets these boolean values.
+     - [X] 'dummy', parameter not visible during either training or testing
+     - [X] 'inject' parameter is present during training (and testing?)
+     - [X] parameter .AMLRFIX reaches learner as normal value
+       - [X] .AMLRFIX reaches learner as fixed value when requirement of a fixed .AMLRFIX given
+       - [X] .AMLRFIX reaches learner as appropriate outside value requirement of a variable .AMLRFIX given
+       - [X] error when two .AMLRFIX requirements are satisfied simultaneously
+     - [X] parameter def is null, true def is null -> learner receives no value
+     - [X] parameter fix -> learner receives this value
+     - [X] parameter is inject and 'fix' -> reaches learner like this
+     - [X] parameters with only one possible value take this value
+     - [X] parameter given as 'def' but unlike true def --> receive given value
+     - [X] parameter given as 'def' but set hyperpar present --> learner receives the given value or nothing (we don't care)
+ - [X] wrappers
+   - [X] no wrappers given, or only one required wrapper given: no wrapper selector; otherwise there is a selector
+   - [X] one required wrapper: is always used
+   - [X] one nonrequired wrapper: is only used some of the time
+   - [X] two required wrappers: order can be selected; also changes in reallife
+   - [X] two optional wrappers: selector, which one is used and the order match
+   - [X] two optional, two requireds: selector, order and which one is used match
+ - [X] has.X, removes.X
+   - [X] has.X:
+     - [X] parameters in learner can depend on 'has.X'. X may be missings, factors, ordered but not numerics. this is so for
+       - [X] .AMLRFIX
+         - [X] parameters with .AMLRFIX, fixed: value takes on this value in presence/absence of X
+         - [X] parameters with .AMLRFIX, variable: two external vars, each only valid some times, set the goal variable differently inside the learner.
+       - [X] normal variables
+         - [X] removed (or requirement removed) if it trivially depends on has.X / removes.X and requirement satisfied n / y
+     - [X] how variable
+       - [X] is fixed to NO if the task doesn't have X to begin with
+       - [X] is fixed to YES if the task has it an nothing can convert
+       - [X] there is an external var determining this if X is in the task and a wrapper can remove it
+       - [X] there is another var only available if the above is TRUE, determining which wrapper removes it, if more than one wrapper are present
+       - [X] removes.X is set for the given wrapper. this has influence on .AMLRFIX for fixed and variable learners and changes the external search space accordingly, while setting internally the variable accordingly
+       - [X] has.X is true for all the wrappers before and including the one removing it, is false afterwards; .AMLRFIX etc. behaves accordingly
+ - [-] requirements behaviour
+   - [ ] parameters with requirements: given requirements are respected, plus 'selected.learner'. (how to test this?) This even works if 'c()' is used an 'c' parameter exists.
+   - [ ] requirements consistency
+     - [ ] requirements satisfied: generate a random searchspace for a huge setting of wrappers & learners with entanglement of requirements; check internally that these equirements are always satisfied.
+     - [ ] requirements satisfied REVERSE: generate the same huge thing; generate variables from the inside and see they are feasible from the outside. THIS MIGHT BE HARD.
+   - [X] requirements simplification
+     - [X] requirements that are always TRUE removed (for wrappers)
+     - [X] parameters with requirements that are always FALSE removed (wrappers and learners)
+   - [X] hidden variables requirements propagation, traversing multiple edges
+     - [X] var reqs can depend on dummy variable values
+     - [X] var reqs can depend on fixed variable values
+     - [X] var reqs can depend on .AMLRFIX fixed var values
+     - [X] var reqs can depend on .AMLRFIX variable var values
+   - [ ] circular dependencies cause error
+

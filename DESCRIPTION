@@ -1,0 +1,91 @@
+Package: automlr
+Title: automatic machine learning in R
+Description: Package for interfacing mlr with algorithm configuration
+    optimization libraries, giving functionality for optimizing across different
+    ML algorithms.
+Authors@R: c(person("mb706", role = c("aut", "cre"), email = "mb706@uni"))
+URL: https://github.com/mlr-org/automlr
+BugReports: https://github.com/mlr-org/automlr/issues
+License: AGPL-3
+Encoding: UTF-8
+Depends:
+    R (>= 3.0.2),
+    mlr (>= 2.8),
+    ParamHelpers (>= 1.7),
+    utils
+Imports:
+    BBmisc (>= 1.9),
+    checkmate (>= 1.7.1),
+    parallelMap (>= 1.3)
+Suggests:
+    mlrMBO (>= 1.0),
+    smoof (>= 1.3),
+    irace (>= 1.05),
+    fastICA,
+    testthat,
+    FSelector,
+    randomForestSRC,
+    glmnet,
+    stats,
+    lqa,
+    stepPlr,
+    MASS,
+    DiscriMiner,
+    sparseLDA,
+    elasticnet,
+    rrlda,
+    klaR,
+    sda,
+    caret,
+    mda,
+    sparsediscrim,
+    kknn,
+    class,
+    rknn,
+    FNN,
+    RWeka,
+    party,
+    nodeHarvest,
+    rpart,
+    randomForest,
+    extraTrees,
+    ranger,
+    rFerns,
+    rotationForest,
+    ada,
+    mboost,
+    adabag,
+    gbm,
+    xgboost,
+    SwarmSVM,
+    LiblineaR,
+    kernlab,
+    e1071,
+    deepnet,
+    nnet,
+    neuralnet,
+    kohonen
+Roxygen: list(wrap = FALSE)
+LazyData: yes
+ByteCompile: yes
+Version: 0.1.0
+RoxygenNote: 5.0.1
+Collate:
+    'amexowrapper.R'
+    'aminterface.R'
+    'autolearner.R'
+    'defaults.R'
+    'lsambackends.R'
+    'mlrLearners.R'
+    'automlr.R'
+    'buildLearners.R'
+    'convertParamSetToIrace.R'
+    'optDummy.R'
+    'optGeneric.R'
+    'optIRace.R'
+    'optMBO.R'
+    'optRandom.R'
+    'preprocess.R'
+    'utils.R'
+    'wrappers.R'
+    'zzz.R'
