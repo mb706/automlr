@@ -490,3 +490,4 @@ lrn = buildLearners(mlrLightweight, task = krvkp.train)
 
 lrn$searchspace$par$ppa.nzv.cutoff.factor$requires
 
+wine.train
