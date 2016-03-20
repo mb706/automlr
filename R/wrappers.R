@@ -92,6 +92,9 @@ slowLrn <- c('classif.xyf', 'classif.lda', 'classif.mda', 'classif.rrlda',
     'classif.dcSVM', 'classif.rda', 'classif.bartMachine', 'classif.boosting',
     'classif.nodeHarvest', 'classif.randomForestSRC')
 
+# classif.ctree takes a long time also when testtype == MonteCarlo
+# classif.multinom also (?)
+
 # classif.randomForestSRC seems to be a memory hog
 
 #' @title
