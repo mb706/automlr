@@ -1,4 +1,30 @@
 
+
+#' @title irace backend configuration
+#' 
+#' @description
+#' Create an \code{AutomlrBackendConfig} object that can be fed to
+#' \code{\link{automlr}} to perform optimization with the "irace" backend.
+#' 
+#' @param nbIterations [\code{integer(1)}]\cr
+#'   Thinning of sampling distribution happens as if irace expected to run for
+#'   \code{nbIterations} generations.
+#' @param newpopulation [\code{integer(1)}]\cr
+#'   Size of the population, \emph{additinal to} the \code{2 + log2(dimParams)}
+#'   elite size.
+#' @param resampling [\code{ResampleDesc}]\cr
+#'   resampling to evaluate model performance.
+#' @export
+makeBackendconfIrace = registerBackend("irace",
+    function(nbIterations = 10, newpopulation = 10,
+        resampling = hout) {
+      checkCount(nbIterations)
+      checkCount(newpopulation)
+      checkClass(resampling, "ResampleDesc")
+      argsToList()
+    })
+
+
 amaddprior.amirace = function(env, prior) {
   NULL
 }

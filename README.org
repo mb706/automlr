@@ -74,8 +74,8 @@ Currently the project is undergoing heavy development; while the spirit of the a
 
 ** Project TODO
 (under consideration, subject to change)
-- [ ] release 0.2
-  - [ ] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
+- [-] release 0.2
+  - [X] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [ ] optRandom: don't abort crossvalidation when time runs out (?)
   - [ ] event handling
     - [ ] catch Ctrl-C and handle gracefully

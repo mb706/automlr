@@ -1,4 +1,32 @@
 
+#' @title mbo backend configuration
+#' 
+#' @description
+#' Create an \code{AutomlrBackendConfig} object that can be fed to
+#' \code{\link{automlr}} to perform optimization with the "mbo" backend.
+#' 
+#' @param focussearch.restarts [\code{integer(1)}]\cr
+#'   number of restarts to perform in focussearch surrogate model optimizer
+#' @param focussearch.maxit [\code{integer(1)}]\cr
+#'   number of iterations for one focussearch round
+#' @param focussearch.points [\code{integer(1)}]\cr
+#'   number of points to sample in focussearch.
+#' @param mbo.save.mode [\code{logical(1)}]\cr
+#'   Simplify search space for mbo backend. You should probably not change the
+#'   default.
+#' @param resampling [\code{ResampleDesc}]\cr
+#'   resampling to evaluate model performance.
+#' @export
+makeBackendconfMbo = registerBackend("mbo",
+    function(focussearch.restarts = 1, focussearch.maxit = 5,
+        focussearch.points = 100, mbo.save.mode = TRUE, resampling = hout) {
+      checkCount(focussearch.restarts)
+      checkCount(focussearch.maxit)
+      checkCount(focussearch.points)
+      checkClass(resampling, "ResampleDesc")
+      argsToList()
+    })
+
 
 
 amaddprior.ammbo = function(env, prior) {

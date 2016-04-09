@@ -62,7 +62,7 @@
 #'   supplied again; this is to prevent accidental file overwrites. If the first
 #'   argument is a character, \code{savefile} defaults to \code{amstate} and
 #'   therefore offers to seamlessly continue optimization runs.
-#' @param backend [\code{character(1)}]\cr
+#' @param backend [\code{character(1)}|\code{BackendOptions}]\cr
 #'   Refers to the back end used for optimization. Currently implemented and
 #'   provided by automlr are \code{"random"}, \code{"irace"} and \code{"mbo"}.
 #'   To list all backends, run \code{\link{lsambackends}}.
@@ -145,6 +145,16 @@ automlr.Task = function(task, measure = NULL, budget = 0,
   } else {
     assertClass(measure, "Measure")
   }
+  if (testString(backend)) {
+    if (is.null(registered.backend[[backend]])) {
+      stopf(paste0("Backend '%s' not found.\n",
+              "You can list available backends with lsambackends()."), backend)
+    }
+    backend = registered.backend[[backend]]()
+    attr(backend, "automlr.backend.invocation") =
+        attr(backend, "automlr.backend")
+  }
+  assertClass(backend, "AutomlrBackendConfig")
   budget = unlist(budget, recursive = FALSE)
   checkBudgetParam(budget)
   assertList(searchspace, types = "Autolearner", min.len = 1)
@@ -164,10 +174,11 @@ automlr.Task = function(task, measure = NULL, budget = 0,
               evals = 0),
           searchspace = searchspace,
           prior = prior,
-          backend = backend,
+          backend = attr(backend, "automlr.backend"),
+          backendoptions = backend,
           backendprivatedata = setClasses(
               new.env(parent = emptyenv()),
-              paste0("am", backend)),
+              paste0("am", attr(backend, "automlr.backend"))),
           seed = .Random.seed,
           creation.time = Sys.time(),
           finish.time = NULL,

@@ -1,4 +1,26 @@
 
+#' @title random backend configuration
+#' 
+#' @description
+#' Create an \code{AutomlrBackendConfig} object that can be fed to
+#' \code{\link{automlr}} to perform optimization with the "random" backend.
+#' 
+#' @param iters.per.round [\code{integer(1)}]\cr
+#'   Number of iterations to perform between timeout checks. Do not set too
+#'   small; you probably don't want to change this.
+#' @param resampling [\code{ResampleDesc}]\cr
+#'   resampling to evaluate model performance.
+#' @export
+makeBackendconfRandom = registerBackend("random",
+    function(iters.per.round = 100, resampling = cv5) {
+      checkCount(iters.per.round)
+      checkClass(resampling, "ResampleDesc")
+      argsToList()
+    })
+
+# error message to put in opt.path
+out.of.budget.string = "out of budget"
+
 # 'random' has no prior, so do nothing here
 amaddprior.amrandom = function(env, prior) {
   NULL

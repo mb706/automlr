@@ -1,33 +1,17 @@
 # Constants and default values should be defined here.
 
+# default save interval is 5 minutes
 default.save.interval = 300
 
 requiredBackendFunctions = c("amaddprior", "amgetprior", "amsetup",
     "amoptimize", "amresult")
 
 
-# optMBO
-# reduce types of parameter set to simple types to avoid mlrMBO bugs
-mboSaveMode = TRUE
-mbo.focussearch.points = 1000L
-mbo.focussearch.maxit = 5L
-mbo.focussearch.restarts = 1L
-
-# optRandom
-out.of.budget.string = "out of budget"
-# the default resample method to use during optimization.
-resampleOptions = list(method = "CV", iters = 5)
-
-# optIRace
-irace.nbIterations = 10
-irace.newpopulation = 2
-
-# globals
-
 registered.backend = new.env()
 
 #' @title Register a new backend
 #' 
+#' @description
 #' Make it possible to invoke automlr() with your own custom backend. Besides
 #' providing a creator function as an argument here, you need to make the S3
 #' methods \code{\link{amaddprior}}, \code{\link{amgetprior}},
@@ -49,12 +33,22 @@ registered.backend = new.env()
 #' @return [\code{function}]\cr
 #'   The function that can be used to create a "BackendOptions" object that can
 #'   then be given as the \code{backend} parameter to \code{\link{automlr}}.
+#' 
+#' @note
+#' Use auxiliary function \code{\link{argsToList}} to return a list of all
+#' given formal arguments.
 #'
 #' @examples
 #' \dontrun{
 #' makeMyBackendOptions = registerBackend("mybackend",
 #'     function(opt1 = 1, opt2 = "a") {
 #'       list(opt1 = opt1, opt2 = opt2)
+#'     })
+#' 
+#' # equivalent:
+#' makeMyBackendOptions = registerBackend("mybackend",
+#'     function(opt1 = 1, opt2 = "a") {
+#'       argsToList()
 #'     })
 #' 
 #' # the following works if you also defined amsetup.mybackend,
@@ -64,13 +58,17 @@ registered.backend = new.env()
 #' 
 #' # the following also works; it uses the defaults as defined in the funciton
 #' # header.
-#' amresult2 = automlr(iris.task, budget = c(evals = 10), backend = "myBackend)
+#' amresult2 = automlr(iris.task, budget = c(evals = 10), backend = "mybackend")
 #' }
+#' @export
 registerBackend = function(name, creator) {
   assertString(name)
   assertFunction(creator)
   returnFnc = creator
   body(returnFnc) = expression({
+        if (!isambackend(name)) {
+          stopf("The backend '%s' does not have all necessary generics.", name)
+        }
         args = match.call()
         fnchead = args[[1]]
         args[[1]] = quote(list)
@@ -82,7 +80,7 @@ registerBackend = function(name, creator) {
         addClasses(resultObject, "AutomlrBackendConfig")
       })
   environment(returnFnc) = environment()
-  registered.backend[name] = returnFnc
+  registered.backend[[name]] = returnFnc
   returnFnc
 }
 
@@ -90,3 +88,30 @@ registerBackend = function(name, creator) {
 print.AutomlrBackendConfig = function(x, ...) {
   print(attr(x, "automlr.backend.invocation"))
 }
+
+#' @title create a list of formal arguments
+#' 
+#' @description
+#' Return a list of formal arguments. Useful for \code{\link{registerBackend}}.
+#' 
+#' @examples
+#' fun <- function(x = 1, y = 2) {
+#'   argsToList()
+#' }
+#' 
+#' fun(y = 10)
+#' fun()
+#' @export
+argsToList = function() {
+  substitute(list(...), parent.frame())
+  if ("..." %in% names(ret)) {
+    ret$`...` = NULL
+    ret = insert(ret, eval.parent(quote(list(...))))
+  }
+  ret
+}
+
+
+
+
+
