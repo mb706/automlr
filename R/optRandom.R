@@ -32,7 +32,7 @@ amgetprior.amrandom = function(env) {
 }
 
 # save all the relevant variables in env
-amsetup.amrandom = function(env, prior, learner, task, measure) {
+amsetup.amrandom = function(env, prior, learner, task, measure, verbosity) {
   env$learner = addClasses(learner, "amrandomWrapped")
   env$rdesc = do.call(makeResampleDesc, resampleOptions)
   env$task = task
@@ -52,7 +52,7 @@ amresult.amrandom = function(env) {
 }
 
 # now this is where the fun happens
-amoptimize.amrandom = function(env, stepbudget) {
+amoptimize.amrandom = function(env, stepbudget, verbosity) {
   # so the strategy is as following:
   # we build a model wrapper around the learner, which, before checking, checks
   # the budget. if that was exceeded, we change the mlr settings so that errors
@@ -62,7 +62,7 @@ amoptimize.amrandom = function(env, stepbudget) {
   oldOpts = getMlrOptions()
   on.exit(do.call(configureMlr, oldOpts))
   
-  learner = env$learner
+  learner = adjustLearnerVerbosity(env$learner, verbosity)
   
   am.env = new.env(parent = emptyenv())
   am.env$cpus = parallelGetOptions()$settings$cpus

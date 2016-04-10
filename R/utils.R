@@ -221,3 +221,72 @@ unpatchMlr = function() {
   assignInNamespace("predictLearner.ModelMultiplexer", ns = "mlr",
       mlr.predictLearner.ModelMultiplexer)
 }
+
+# whether to output optimization trace info
+verbosity.traceout = function(verbosity) {
+  verbosity >= 1
+}
+
+# whether to output detailed search space warnings
+verbosity.sswarnings = function(verbosity) {
+  verbosity >= 2
+}
+
+# whether to output learner warnings
+verbosity.learnerwarnings = function(verbosity) {
+  verbosity >= 3
+}
+
+# whether to give learner output
+verbosity.learneroutput = function(verbosity) {
+  verbosity >= 4
+}
+
+# stop on learner error
+verbosity.stoplearnerror = function(verbosity) {
+  verbosity >= 5
+}
+
+
+# getLearnerOptions without polluting the result with getMlrOptions()
+getLLConfig = function(learner) {
+  if (inherits(learner, "BaseWrapper")) {
+    getLLConfig(learner$next.learner)
+  } else {
+    as.list(learner$config)
+  }
+}
+
+# setLearnerOptions, basically
+setLLConfig = function(learner, config) {
+  if (getLLConfig(learner) == config) {
+    # avoid too much copy-on-write action for nothing
+    learner
+  } else {
+    (function(l) {
+        if (inherits(l, "BaseWrapper")) {
+          l$next.learner = Recall(l$next.learner)
+        } else {
+          l$config = config
+        }
+        l
+      })(learner)
+  }
+}
+
+adjustLearnerVerbosity = function(learner, verbosity) {
+  config = getLLConfig(learner)
+  # show.info is not used, but in case this changes at some point...
+  config$show.show.info = verbosity.learneroutput(verbosity)
+  config$on.learner.error = if (verbosity.stoplearnerror(verbosity))
+      "stop"
+    else if (verbosity.learnerwarnings(verbosity))
+      "warn"
+    else
+      "quiet"
+  config$on.learner.warning = if (verbosity.learnerwarnings(verbosity))
+      "warn"
+    else
+      "quiet"
+  config$show.learner.output = verbosity.learneroutput(verbosity)
+}

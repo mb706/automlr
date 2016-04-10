@@ -33,7 +33,7 @@ amgetprior.amirace = function(env) {
   NULL
 }
 
-amsetup.amirace = function(env, prior, learner, task, measure) {
+amsetup.amirace = function(env, prior, learner, task, measure, verbosity) {
   requirePackages("irace", why = "optIrace", default.method = "load")
   env$learner = learner
   env$task = task
@@ -180,7 +180,7 @@ amresult.amirace = function(env) {
 }
 
 # now this is where the fun happens
-amoptimize.amirace = function(env, stepbudget) {
+amoptimize.amirace = function(env, stepbudget, verbosity) {
   env$starttime = Sys.time()
   env$stepbudget = stepbudget
   env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
@@ -204,6 +204,8 @@ amoptimize.amirace = function(env, stepbudget) {
             as.chars = TRUE),
         digits = .Machine$integer.max)
   }
+  
+  env$learner = adjustLearnerVerbosity(env$learner, verbosity)
   
   env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
       list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)

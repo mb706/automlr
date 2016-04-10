@@ -46,9 +46,11 @@ amgetprior.amdummy = function(env) {
 #'   The task to optimize the \code{Learner} over.
 #' @param measure [\code{Measure}]\cr
 #'   The measure to optimize.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Output options.
 #' 
 #' @return \code{NULL}
-amsetup.amdummy = function(env, prior, learner, task, measure) {
+amsetup.amdummy = function(env, prior, learner, task, measure, verbosity) {
   cat("Called 'setup'\n")
   env$prior = coalesce(prior, 1)
   env$learner = learner
@@ -69,10 +71,12 @@ amsetup.amdummy = function(env, prior, learner, task, measure) {
 #'   The budget for this optimization step with one or several of the entries
 #'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
 #'   \code{\link{automlr}} for details.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Output options.
 #' 
 #' @return [\code{numeric(4)}]
 #' The budget spent during this invocation.
-amoptimize.amdummy = function(env, stepbudget) {
+amoptimize.amdummy = function(env, stepbudget, verbosity) {
   cat("Called 'optimize' with budget:\n")
   print(stepbudget)
   env$evals = env$evals + 1

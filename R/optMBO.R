@@ -37,7 +37,7 @@ amgetprior.ammbo = function(env) {
   NULL
 }
 
-amsetup.ammbo = function(env, prior, learner, task, measure) {
+amsetup.ammbo = function(env, prior, learner, task, measure, verbosity) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
   # fix the dumb mlrMBO bug
   mlrMBO:::.onAttach()
@@ -57,6 +57,8 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   numcpus[is.na(numcpus)] = 1
   
   budget = 0
+  
+  learner = adjustLearnerVerbosity(learner, verbosity)
   
   isOutOfBudget = function(opt.state) {
     stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
@@ -142,12 +144,14 @@ amresult.ammbo = function(env) {
       result = mboResult)
 }
 
-amoptimize.ammbo = function(env, stepbudget) {
+amoptimize.ammbo = function(env, stepbudget, verbosity) {
   # initialize for spent budget computation
   zero = env$runtimeEnv
   zero$numcpus = parallelGetOptions()$settings$cpus
   zero$numcpus[is.na(zero$numcpus)] = 1
   zero$budget = stepbudget
+  
+  zero$learner = adjustLearnerVerbosity(zero$learner, verbosity)
   
   env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
   

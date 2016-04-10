@@ -233,6 +233,9 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
   learner$fix.factors.prediction = TRUE
   learner$wrappers = extractSubList(wrappers, "constructor")
   learner$shadowparams = shadowparams
+  learner$config = list(show.info = FALSE, on.learner.error = "quiet",
+      on.learner.warning = "quiet", on.par.without.desc = "stop",
+      on.par.out.of.bounds = "stop", show.learner.output = FALSE)
   learner
 }
 
@@ -266,6 +269,9 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   learner = setupLearnerParams(learner, .learner$staticParams,
       .learner$shadowparams, list(automlr.wrappersetup = automlr.wrappersetup,
           ...))
+
+  # set the mlr $config of the learner to the config of the .learner 
+  learner = setLLConfig(learner, getLLConfig(.learner))
 
   train(learner, task = .task, subset = .subset, weights = .weights)
 }

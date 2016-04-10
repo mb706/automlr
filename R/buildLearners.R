@@ -39,10 +39,10 @@
 #'   The task that the searchspace is being created. \code{buildLearners}
 #'   respects the task type, presence of NAs and type of covariates. Currently
 #'   not supported: weights, request of probability assignment instead of class.
-#' @param verbose [\code{logical(1)}]\cr
-#'   Give detailed warnings.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Give detailed warnings. See the \code{\link{automlr}} parameter.
 #' @export
-buildLearners = function(searchspace, task, verbose = FALSE) {
+buildLearners = function(searchspace, task, verbosity = 0) {
   
   # searchspace contains learners, wrappers and requiredwrappers.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
@@ -113,15 +113,7 @@ buildLearners = function(searchspace, task, verbose = FALSE) {
     sslist = learners[[i]]$searchspace
     if (taskdesc$type != l$type) {
       # skip this learner, it is not fit for the task
-      if (verbose) {
-        messagef("Skipping learner '%s': Learner type not fit for task type.",
-            l$id)
-      }
-      next
-    }
-    if (!hasLearnerProperties(l, requiredClassProperty)) {
-      # can't handle the target variable type
-      if (verbose) {
+      if (verbosity.sswarnings(verbosity)) {
         messagef("Skipping learner '%s': Learner can not handle target type.",
             l$id)
       }
@@ -131,7 +123,7 @@ buildLearners = function(searchspace, task, verbose = FALSE) {
     if (length(setdiff(mincovtypes, learnercovtypes)) != 0) {
       # there are feature types that no wrapper can remove that the learner
       # can't handle
-      if (verbose) {
+      if (verbosity.sswarnings(verbosity)) {
         messagef("Skipping learner '%s': Learner can not handle feature types.",
             l$id)
       }
@@ -140,7 +132,7 @@ buildLearners = function(searchspace, task, verbose = FALSE) {
     if (length(intersect(maxcovtypes, learnercovtypes)) == 0) {
       # we can't convert the features to any kind of feature that the learner
       # can handle
-      if (verbose) {
+      if (verbosity.sswarnings(verbosity)) {
         messagef(paste("Skipping learner '%s':",
             "Task has no features the learner can handle."),
             l$id)
@@ -150,14 +142,14 @@ buildLearners = function(searchspace, task, verbose = FALSE) {
     for (canHandle in intersect(allcovproperties, getLearnerProperties(l))) {
       handlerList[[canHandle]] = c(handlerList[[canHandle]], l$id)
     }
-    aux = buildTuneSearchSpace(sslist, l, info.env, idRef, verbose)
+    aux = buildTuneSearchSpace(sslist, l, info.env, idRef, verbosity)
     modelTuneParsets[[l$id]] = aux$tss
     allParamNames[[l$id]] = aux$nondefParamNames
     # updated learner object with fixed hyperparameters
     learnerObjects = c(learnerObjects, list(aux$l))
     idRef = aux$idRef
   }
-  checkParamIds(idRef, verbose)
+  checkParamIds(idRef, verbosity)
   
   if (length(learnerObjects) == 0) {
     warning("No model fits the given task, returning NULL.")
@@ -177,11 +169,11 @@ buildLearners = function(searchspace, task, verbose = FALSE) {
       allLearners)
 }
 
-checkParamIds = function(idRef, verbose) {
+checkParamIds = function(idRef, verbosity) {
   # check that the IDs match.
   for (parid in names(idRef)) {
     if (length(idRef[[parid]]) == 1) {
-      if (verbose) {
+      if (verbosity.sswarnings(verbosity)) {
         warningf(paste0("Parameter '%s' of learner '%s' is the only one with",
                 " parameter id '%s'."),
             idRef[[parid]][[1]]$param$id, idRef[[parid]][[1]]$learner$id, parid)
@@ -208,7 +200,7 @@ checkParamIds = function(idRef, verbose) {
   }
 }
 
-buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbose) {
+buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbosity) {
   lp = getParamSet(l)
   lpids = getParamIds(lp)
   lptypes = getParamTypes(lp, use.names = TRUE)
@@ -328,7 +320,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbose) {
                        (param$type == "cat" &&
                            partype %nin% c("discrete", "discretevector", "character",
                                    "charactervector")))) {
-        if (verbose) {
+        if (verbosity.sswarnings(verbosity)) {
           warningf(paste0("Parameter '%s' for learner '%s' is of type '%s' and",
                   " has different (but feasible) type '%s' listed in search",
                   " space."),
@@ -349,7 +341,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbose) {
         l = removeHyperPars(l, origParamName)
         # we try to use the default, but apparently the value is already set in
         # the learner object.
-        if (verbose &&
+        if (verbosity.sswarnings(verbosity) &&
             (is.null(truedefault) || truedefault != defaultcandidate)) {
           warningf(paste0("Parameter '%s' for learner '%s' is of type",
                   " 'default', but the learner has it already set to a",
@@ -393,7 +385,7 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbose) {
     } else {
       if (origParamName %in% names(getHyperPars(l))) {
         # make sure this is not set at a default.
-        if (verbose) {
+        if (verbosity.sswarnings(verbosity)) {
           warningf(paste("Parameter '%s' for learner '%s' was already set to a",
                   "value; this value has been removed."),
               param$name, l$id)

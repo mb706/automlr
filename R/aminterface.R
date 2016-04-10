@@ -2,8 +2,8 @@
 # (inside the optXXX.R files)
 
 aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
-                       save.interval = default.save.interval, new.seed = FALSE,
-                       verbose, ...) {
+    save.interval = default.save.interval, new.seed = FALSE,
+    max.walltime.overrun, max.learner.time, verbosity, ...) {
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
@@ -65,9 +65,10 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   
   # set backendprivatedata. This gets called once per amstate lifetime.
   if (!amstate$isInitialized) {
-    objectiveLearner = buildLearners(amstate$searchspace, amstate$task, verbose)
+    objectiveLearner = buildLearners(amstate$searchspace, amstate$task,
+        verbosity)
     amsetup(amstate$backendprivatedata, amstate$prior.backlog[[1]],
-        objectiveLearner, amstate$task, amstate$measure)
+        objectiveLearner, amstate$task, amstate$measure, verbosity)
     amstate$prior.backlog[[1]] = NULL
     amstate$isInitialized = TRUE
     updatePriors(amstate)
