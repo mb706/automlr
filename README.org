@@ -76,7 +76,8 @@ Currently the project is undergoing heavy development; while the spirit of the a
 (under consideration, subject to change)
 - [-] release 0.2
   - [X] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
-  - [ ] optRandom: don't abort crossvalidation when time runs out (?)
+  - [X] optRandom: don't abort crossvalidation when time runs out (?)
+  - [ ] optRandom: cut out superfluous entries of out of time errors.
   - [-] event handling
     - [ ] catch Ctrl-C and handle gracefully
     - [ ] maximum walltime overrun

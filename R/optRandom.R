@@ -32,12 +32,14 @@ amgetprior.amrandom = function(env) {
 }
 
 # save all the relevant variables in env
-amsetup.amrandom = function(env, prior, learner, task, measure, verbosity) {
+amsetup.amrandom = function(env, opt, prior, learner, task, measure,
+    verbosity) {
   env$learner = addClasses(learner, "amrandomWrapped")
-  env$rdesc = do.call(makeResampleDesc, resampleOptions)
+  env$rdesc = opt$resampling
   env$task = task
   env$measure = measure
   env$opt.path = NULL
+  env$iters.per.round = opt$iters.per.round
   invisible()
 }
 
@@ -57,43 +59,56 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
   # we build a model wrapper around the learner, which, before checking, checks
   # the budget. if that was exceeded, we change the mlr settings so that errors
   # exit the tuner. then we throw an error, which we catch here.
-  
-  # Save old mlr options, since predictLearner.amrand.wrapped may change it.
-  oldOpts = getMlrOptions()
-  on.exit(do.call(configureMlr, oldOpts))
-  
+
   learner = adjustLearnerVerbosity(env$learner, verbosity)
-  
+
   am.env = new.env(parent = emptyenv())
   am.env$cpus = parallelGetOptions()$settings$cpus
-  if (is.na(am.env$cpus)) {
-    am.env$cpus = 1
-  }
+  am.env$cpus[is.na(am.env$cpus)] = 1
+
+  # am.env is the environment that will be attached to the learner. During the
+  # evaluation it will be used to check the remaining budget.
   am.env$starttime = Sys.time()
   am.env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
   am.env$stepbudget = stepbudget
   am.env$outofbudget = FALSE
+  # unfortunately, when doing parallelMap parallelization, the evaluating
+  # function will get a *copy* of the environment, so will not be able to
+  # communicate back. The `untouched` flag is used to detect this. Whenever
+  # `untouched` is TRUE, we know that the modifications done by trainLearner and
+  # predictLearner were not propagated.
   am.env$untouched = TRUE
   learner$am.env = am.env
   
-  mlrModeltime = 0  # we count the modeltime that mlr gives us
+  # we count the modeltime that mlr gives us
+  mlrModeltime = 0
   
   numcpus = parallelGetOptions()$settings$cpus
   
-  while (!checkoutofbudget(learner$am.env, il = TRUE)) {
+  # the output function for tuneParams depends on the verbosity option.
+  if (verbosity.traceout(verbosity)) {
+    if (verbosity.memtraceout(verbosity)) {
+      # the default output gives memory trace info.
+      log.fun = NULL
+    } else {
+      log.fun = logFunTune
+    }
+  } else {
+    log.fun = logFunQuiet
+  }
+  
+  while (!checkoutofbudget(learner$am.env)) {
     # chop up "evals" budget into 100s so we can stop when time runs out
-    iterations = 100
+    iterations = env$iters.per.round
     if ("evals" %in% names(stepbudget)) {
       iterations = min(stepbudget["evals"] - learner$am$usedbudget["evals"],
           iterations)
     }
-    ctrl = makeTuneControlRandom(maxit = iterations, log.fun = logFunQuiet)
-    
+
+    ctrl = makeTuneControlRandom(maxit = iterations, log.fun = log.fun)
+
     tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure),
         par.set = learner$searchspace, control = ctrl, show.info = FALSE)
-    # we call configureMLR here, in case we loop around. Whenever the error is
-    # not an 'out of budget' error we want the usual behaviour.
-    do.call(configureMlr, oldOpts)
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
@@ -106,7 +121,9 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
       appendOptPath(env$opt.path, tuneresult$opt.path)
     }
     # the following updates walltime and cputime.
-    # It also sets modeltime to cputime if am.env$untouched is TRUE.
+    # It also sets modeltime to cputime if am.env$untouched is TRUE (i.e. if
+    # we know learner$am.env was not communicated back to us due to
+    # parallelization).
     # The obvious objection would be that we know the modeltime from the
     # opt.path. however, that is not the modeltime that is used inside the
     # amrandomWrapped-models, so we shouldn't use it here, otherwise we could
@@ -129,7 +146,26 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
 
 #' @export
 trainLearner.amrandomWrapped = function(.learner, ...) {
-  if (checkoutofbudget(.learner$am.env)) {
+  # We want to test whether the first run of a resampling was over budget.
+  # We can sometimes but not always communicate between runs of the same
+  # resampling. Therefore we always need to check which iteration we are *AND*
+  # whether the first iteration was actually able to communicate with us.
+  # 1) if we are the first iteration, check whether we are over budget. also
+  #    set a flag in am.env (that we touched it) and a flag whether we were over
+  #    budget.
+  # 2) if we are not the first iteration and the over-budget flag is set, or
+  #    [1] we-touched-it-flag not set and [2] we are over budget, return the
+  #    error.
+  if (isFirstResampleIter()) {
+    env$untouched = FALSE
+    checkBudget = TRUE
+  } else {
+    # env$untouched is only TRUE on the non-first iteration when communication
+    # between invocation failed. 
+    checkBudget = env$untouched
+  }
+
+  if (env$outofbudget || (checkBudget && checkoutofbudget(.learner$am.env))) {
     # stop("out of budget"), only we don't use the try() function's way of
     # telling us what we already know
     return(addClasses(out.of.budget.string, c("outOfBudgetError", "error")))
@@ -140,49 +176,46 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
 }
 
 #' @export
+predictLearner.amrandomWrapped = function(.learner, ...) {
+  env = .learner$am.env
+
+  evaltime = system.time(result <- NextMethod("predictLearner"),
+      gcFirst = FALSE)
+
+  .learner$am.env$usedbudget["modeltime"] %+=% evaltime[3]
+  result
+}
+
+# ModelMultiplexer does not consider the possibility of trainLearner() to
+# throw an error; therefore the created ModelMultiplexerModel object handles
+# it poorly. What we do here is we remove the ModelMultiplexerModel class
+# from the resulting object in case there is an error.
+#
+# If one of the models themselves throw an error, the ModelMultiplexer won't
+# have the type "FailureModel".
+# FIXME: this can go when ModelMultiplexer is fixed upstream (?)
+#' @export
 makeWrappedModel.amrandomWrapped = function(learner, learner.model, task.desc,
     subset, features, factor.levels, time) {
   res = NextMethod()
   if ("FailureModel" %in% class(res)) {
-    # ModelMultiplexer does not consider the possibility of trainLearner() to
-    # throw an error; therefore the created ModelMultiplexerModel object handles
-    # it poorly. What we do here is we remove the ModelMultiplexerModel class
-    # from the resulting object in case there is an error.
-    #
-    # If one of the models themselves throw an error, the ModelMultiplexer won't
-    # have the type "FailureModel".
-    # FIXME: this can go when ModelMultiplexer is fixed upstream (?)
     class(res) = c("FailureModel", "WrappedModel")
   }
   res
 }
 
+# since the as.character.error function doesn't do what we want.
 #' @export
 as.character.outOfBudgetError = function(x, ...) {
-  # since the as.character.error function doesn't do what we want.
   x
 }
 
-#' @export
-predictLearner.amrandomWrapped = function(.learner, ...) {
-  env = .learner$am.env
-  # FIXME: what is this?
-#  if (checkoutofbudget(env, numcpus)) {
-#    configureMlr(on.learner.error = "quiet")
-#    stop(out.of.budget.string)
-#  }
-  evaltime = system.time(result <- NextMethod("predictLearner"),
-      gcFirst = FALSE)
-  
-  if (checkoutofbudget(env, evaltime[3])) {
-    # FIXME: check this hack
-    configureMlr(on.learner.error = "quiet", on.learner.warning = "quiet")
-  }
-  env$untouched = FALSE
-  result
-}
-
-checkoutofbudget = function(env, evaltime = 0, il = FALSE) {
+# check whether the learner attached environment `env` is out of budget. This
+# respects the possibility that `env` may or may not be able to communicate
+# between runs and falls back to more or less good proxy values.
+# @param evaltime the time of the current run that has not yet been added to
+#   env$usedbudget["modeltime"] but should be respected when evaluating budget.
+checkoutofbudget = function(env, evaltime = 0) {
   if (env$outofbudget) {
     return(env$outofbudget)
   }

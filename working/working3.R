@@ -13,3 +13,8 @@ roxygenise('..')
 
 devtools::load_all("..")
 options(error=dump.frames)
+
+
+
+# check whether parallelization on the resample level (all)
+# and on the tune level (random, ...?) work.
