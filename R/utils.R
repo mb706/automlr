@@ -227,24 +227,29 @@ verbosity.traceout = function(verbosity) {
   verbosity >= 1
 }
 
+#whether to output memory info
+verbosity.memtraceout = function(verbosity) {
+  verbosity >= 2
+}
+
 # whether to output detailed search space warnings
 verbosity.sswarnings = function(verbosity) {
-  verbosity >= 2
+  verbosity >= 3
 }
 
 # whether to output learner warnings
 verbosity.learnerwarnings = function(verbosity) {
-  verbosity >= 3
+  verbosity >= 4
 }
 
 # whether to give learner output
 verbosity.learneroutput = function(verbosity) {
-  verbosity >= 4
+  verbosity >= 5
 }
 
 # stop on learner error
 verbosity.stoplearnerror = function(verbosity) {
-  verbosity >= 5
+  verbosity >= 6
 }
 
 
@@ -290,3 +295,44 @@ adjustLearnerVerbosity = function(learner, verbosity) {
       "quiet"
   config$show.learner.output = verbosity.learneroutput(verbosity)
 }
+
+# NOTE
+#
+# when max.learner.time is overrun, we want to either give an error or a
+# dummy learner.
+# An error should be given either if the resampling makes only one iterration,
+# or if the first iterration overruns its time by a large amount (10%?).
+# If the first resampling was an error, the other resamplings should also give
+# errors without starting the run. Otherwise they should themselves run (with
+# the correct timeout). If any run goes over budget and does not give an error,
+# it should return a trivial learner that predicts the majority.
+#
+# For this we need a way to determine the current resampling iteration.
+
+
+# return the value of `varname` within the function named `fname`. Use the most
+# recent invocation of `fname` if names collide.
+# Returns NULL if the function was not found.
+getFrameVar = function(fname, varname) {
+  calls = sys.calls()
+  callnames = sapply(calls, function(x) as.character(x[[1]]))
+  frameno = tail(which(callnames == fname), n = 1)
+  if (length(frameno) < 1) {
+    return(NULL)
+  }
+  sys.frame(frameno)[[varname]]
+}
+
+getResampleIterNo = function() {
+  getFrameVar('doResampleIteration', 'i')
+}
+
+isFirstResampleIter = function() {
+  rin = getResampleIterNo()
+  if (is.null(rin)) {
+    stop("'doResampleIteration' not found in call stack when it was expected.")
+  }
+  rin == 1
+}
+
+

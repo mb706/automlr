@@ -33,7 +33,7 @@ amgetprior.amirace = function(env) {
   NULL
 }
 
-amsetup.amirace = function(env, prior, learner, task, measure, verbosity) {
+amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("irace", why = "optIrace", default.method = "load")
   env$learner = learner
   env$task = task

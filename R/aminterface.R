@@ -7,6 +7,8 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
+    oldamstate$backendoptions = NULL
+    oldamstate$backend = NULL
     oldamstate$task = NULL
     oldamstate$measure = NULL
     oldamstate$previous.versions = NULL
@@ -67,8 +69,9 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   if (!amstate$isInitialized) {
     objectiveLearner = buildLearners(amstate$searchspace, amstate$task,
         verbosity)
-    amsetup(amstate$backendprivatedata, amstate$prior.backlog[[1]],
-        objectiveLearner, amstate$task, amstate$measure, verbosity)
+    amsetup(amstate$backendprivatedata, amstate$backendoptions,
+        amstate$prior.backlog[[1]], objectiveLearner, amstate$task,
+        amstate$measure, verbosity)
     amstate$prior.backlog[[1]] = NULL
     amstate$isInitialized = TRUE
     updatePriors(amstate)

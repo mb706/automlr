@@ -36,6 +36,9 @@ amgetprior = function(env) {
 #' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
+#' @param opt [\code{AutomlrBackendConfig}]\cr
+#'   Options given for the backend. This is a list returned by a function that
+#'   was registered for the backend using \code{\link{registerBackend}}.
 #' @param prior [any]\cr
 #'   The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner [\code{Learner}]\cr
@@ -48,7 +51,7 @@ amgetprior = function(env) {
 #'   Output options.
 #' 
 #' @return \code{NULL}
-amsetup= function(env, prior, learner, task, measure, verbosity) {
+amsetup= function(env, opt, prior, learner, task, measure, verbosity) {
   UseMethod("amsetup")
 }
 

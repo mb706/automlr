@@ -37,7 +37,7 @@ amgetprior.ammbo = function(env) {
   NULL
 }
 
-amsetup.ammbo = function(env, prior, learner, task, measure, verbosity) {
+amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
   # fix the dumb mlrMBO bug
   mlrMBO:::.onAttach()
