@@ -296,20 +296,6 @@ adjustLearnerVerbosity = function(learner, verbosity) {
   config$show.learner.output = verbosity.learneroutput(verbosity)
 }
 
-# NOTE
-#
-# when max.learner.time is overrun, we want to either give an error or a
-# dummy learner.
-# An error should be given either if the resampling makes only one iterration,
-# or if the first iterration overruns its time by a large amount (10%?).
-# If the first resampling was an error, the other resamplings should also give
-# errors without starting the run. Otherwise they should themselves run (with
-# the correct timeout). If any run goes over budget and does not give an error,
-# it should return a trivial learner that predicts the majority.
-#
-# For this we need a way to determine the current resampling iteration.
-
-
 # return the value of `varname` within the function named `fname`. Use the most
 # recent invocation of `fname` if names collide.
 # Returns NULL if the function was not found.

@@ -120,16 +120,16 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
     } else {
       appendOptPath(env$opt.path, tuneresult$opt.path)
     }
-    # the following updates walltime and cputime.
-    # It also sets modeltime to cputime if am.env$untouched is TRUE (i.e. if
-    # we know learner$am.env was not communicated back to us due to
-    # parallelization).
-    # The obvious objection would be that we know the modeltime from the
-    # opt.path. however, that is not the modeltime that is used inside the
-    # amrandomWrapped-models, so we shouldn't use it here, otherwise we could
-    # get infinite loops!
     learner$am.env$outofbudget = FALSE
   }
+  # the following updates walltime and cputime.
+  # It also sets modeltime to cputime if am.env$untouched is TRUE (i.e. if
+  # we know learner$am.env was not communicated back to us due to
+  # parallelization).
+  # The obvious objection would be that we know the modeltime from the
+  # opt.path. however, that is not the modeltime that is used inside the
+  # amrandomWrapped-models, so we shouldn't use it here, otherwise we could
+  # get infinite loops!
   if (learner$am.env$untouched) {
     if ("modeltime" %in% names(stepbudget)) {
       mlrModeltime = max(mlrModeltime, stepbudget["modeltime"])
