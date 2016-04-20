@@ -309,16 +309,67 @@ getFrameVar = function(fname, varname) {
   sys.frame(frameno)[[varname]]
 }
 
-getResampleIterNo = function() {
+isInsideResampling = function() {
+  !is.null(getResampleIter)
+}
+
+getResampleIter = function() {
   getFrameVar('doResampleIteration', 'i')
 }
 
+getResampleMaxIters = function() {
+  getFrameVar('doResampleIteration', 'rin')$desc$iters
+}
+
+# test whether mlr parallelizes resample() calls. This does NOT entail that
+# isInsideResampling()!
+isResampleParallel = function() {
+  pmlevel = parallelGetOptions()$level
+  !is.null(pmlevel) && pmlevel == "mlr.resample"
+}
+
 isFirstResampleIter = function() {
-  rin = getResampleIterNo()
+  rin = getResampleIter()
   if (is.null(rin)) {
     stop("'doResampleIteration' not found in call stack when it was expected.")
   }
   rin == 1
 }
+
+# the following is the value in the english locale. Other locales might have a
+# different message. Therefore this value will be modified in .onLoad in zzz.R.
+timeoutMessage = "reached elapsed time limit"
+
+determineTimeoutMessage = function() {
+  on.exit(setTimeLimit())
+  # playing with fire here.
+  setTimeLimit(elapsed = 0.2, transient = TRUE)
+  err = try(Sys.sleep(10), silent = TRUE)
+  conditionMessage(attr(err, "condition"))
+}
+
+# Runs `expr` with timeout `time` (in seconds).
+# a logical(1) indicating success will be returned. If `throwError`, the return
+# value will always be TRUE, and an error will be thrown on timeout.
+runWithTimeout = function(expr, time, throwError = FALSE) {
+  exitOnTimeout = function(cond) {
+    if (conditionMessage(cond) == timeoutMessage) {
+      invokeRestart("automlr.timeout")
+    }
+    signalCondition(cond)
+  }
+  on.exit(setTimeLimit())
+  setTimeLimit(elapsed = time, transient = TRUE)
+  if (throwError) {
+    expr
+    TRUE
+  } else {
+    withRestarts({
+          withCallingHandlers(expr, error = exitOnTimeout)
+          TRUE
+        }, automlr.timeout = function() FALSE)
+  }
+}
+
 
 

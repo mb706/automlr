@@ -81,7 +81,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [-] event handling
     - [ ] catch Ctrl-C and handle gracefully
     - [ ] maximum walltime overrun
-    - [ ] maximum per learner time
+    - [-] maximum per learner time
     - [X] make sure mlr on.learner.error, on.learner.warning are handled well
     - [ ] nicer printing
   - [ ] make debugging easier
