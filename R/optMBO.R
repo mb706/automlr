@@ -20,10 +20,10 @@
 makeBackendconfMbo = registerBackend("mbo",
     function(focussearch.restarts = 1, focussearch.maxit = 5,
         focussearch.points = 100, mbo.save.mode = TRUE, resampling = hout) {
-      checkCount(focussearch.restarts)
-      checkCount(focussearch.maxit)
-      checkCount(focussearch.points)
-      checkClass(resampling, "ResampleDesc")
+      assertCount(focussearch.restarts)
+      assertCount(focussearch.maxit)
+      assertCount(focussearch.points)
+      assertClass(resampling, "ResampleDesc")
       argsToList()
     })
 

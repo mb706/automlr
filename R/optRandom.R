@@ -13,8 +13,8 @@
 #' @export
 makeBackendconfRandom = registerBackend("random",
     function(iters.per.round = 100, resampling = cv5) {
-      checkCount(iters.per.round)
-      checkClass(resampling, "ResampleDesc")
+      assertCount(iters.per.round)
+      assertClass(resampling, "ResampleDesc")
       argsToList()
     })
 

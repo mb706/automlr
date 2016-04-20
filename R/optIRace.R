@@ -18,9 +18,9 @@
 makeBackendconfIrace = registerBackend("irace",
     function(nbIterations = 10, newpopulation = 10,
         resampling = hout) {
-      checkCount(nbIterations)
-      checkCount(newpopulation)
-      checkClass(resampling, "ResampleDesc")
+      assertCount(nbIterations)
+      assertCount(newpopulation)
+      assertClass(resampling, "ResampleDesc")
       argsToList()
     })
 
