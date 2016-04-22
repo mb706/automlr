@@ -301,7 +301,9 @@ adjustLearnerVerbosity = function(learner, verbosity) {
 # Returns NULL if the function was not found.
 getFrameVar = function(fname, varname) {
   calls = sys.calls()
-  callnames = sapply(calls, function(x) as.character(x[[1]]))
+  calls[[length(calls) - 1]] = NULL
+  callnames = sapply(calls,
+      function(x) try(as.character(x[[1]]), silent = TRUE))
   frameno = tail(which(callnames == fname), n = 1)
   if (length(frameno) < 1) {
     return(NULL)
@@ -336,40 +338,19 @@ isFirstResampleIter = function() {
   rin == 1
 }
 
-# the following is the value in the english locale. Other locales might have a
-# different message. Therefore this value will be modified in .onLoad in zzz.R.
-timeoutMessage = "reached elapsed time limit"
-
-determineTimeoutMessage = function() {
-  on.exit(setTimeLimit())
-  # playing with fire here.
-  setTimeLimit(elapsed = 0.2, transient = TRUE)
-  err = try(Sys.sleep(10), silent = TRUE)
-  conditionMessage(attr(err, "condition"))
-}
-
-# Runs `expr` with timeout `time` (in seconds).
-# a logical(1) indicating success will be returned. If `throwError`, the return
-# value will always be TRUE, and an error will be thrown on timeout.
-runWithTimeout = function(expr, time, throwError = FALSE) {
-  exitOnTimeout = function(cond) {
-    if (conditionMessage(cond) == timeoutMessage) {
-      invokeRestart("automlr.timeout")
-    }
-    signalCondition(cond)
-  }
-  on.exit(setTimeLimit())
-  setTimeLimit(elapsed = time, transient = TRUE)
-  if (throwError) {
-    expr
-    TRUE
+# assign functions in locked namespaces. This is the same mechanism that R
+# trace() uses.
+myAssignInNamespace = function(what, value, ns) {
+  w = options("warn")
+  on.exit(options(w))
+  options(warn = -1)
+  where = as.environment(paste("package", ns, sep = ":"))
+  if (bindingIsLocked(what, where)) {
+    unlockBinding(what, where)
+    assign(what, value, where)
+    lockBinding(what, where)
   } else {
-    withRestarts({
-          withCallingHandlers(expr, error = exitOnTimeout)
-          TRUE
-        }, automlr.timeout = function() FALSE)
+    assign(what, value, where)
   }
 }
-
-
 

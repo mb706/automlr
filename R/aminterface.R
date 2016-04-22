@@ -3,7 +3,7 @@
 
 aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, new.seed = FALSE,
-    max.walltime.overrun, max.learner.time, verbosity, ...) {
+    max.walltime.overrun, verbosity, ...) {
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
@@ -15,6 +15,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     oldamstate$prior.backlog = NULL
     oldamstate$prior = NULL
     oldamstate$searchspace = NULL
+    oldamstate$max.learner.time = NULL
     class(oldamstate) = "list"
     amstate$previous.versions = c(amstate$previous.versions, list(oldamstate))
     amstate$creation.time = Sys.time()
@@ -69,6 +70,8 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   if (!amstate$isInitialized) {
     objectiveLearner = buildLearners(amstate$searchspace, amstate$task,
         verbosity)
+    objectiveLearner = makeTimeconstraintWrapper(objectiveLearner,
+        amstate$max.learner.time, amstate$max.learner.time * 1.25)
     amsetup(amstate$backendprivatedata, amstate$backendoptions,
         amstate$prior.backlog[[1]], objectiveLearner, amstate$task,
         amstate$measure, verbosity)

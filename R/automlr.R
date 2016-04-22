@@ -224,7 +224,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
 #' @export
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
     save.interval = default.save.interval, new.seed = FALSE, 
-    max.walltime.overrun = NULL, max.learner.time = NULL, verbosity = 0, ...) {
+    max.walltime.overrun = NULL, verbosity = 0, ...) {
   assertString(task)
   truefilename = gsub("(\\.rds|)$", ".rds", task)
   assert(identical(list(...), list()))
@@ -237,9 +237,9 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
       save.interval = save.interval,
       new.seed = new.seed,
       max.walltime.overrun = max.walltime.overrun,
-      max.learner.time = max.learner.time,
       verbosity = verbosity)
 }
+
 
 #' @title Continue automlr search the result of a previous \code{automlr} run.
 #' 
@@ -247,7 +247,7 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, new.seed = FALSE,
-    max.walltime.overrun = NULL, max.learner.time = NULL, verbosity = 0, ...) {
+    max.walltime.overrun = NULL, verbosity = 0, ...) {
   if (!is.null(budget)) {
     budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)
@@ -259,14 +259,11 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
   if (!is.null(max.walltime.overrun)) {
     assertNumeric(max.walltime.overrun, lower = 0, len = 1)
   }
-  if (!is.null(max.learner.time)) {
-    assertNumeric(max.learner.time, lower = 0, len = 1)
-  }
   assertCount(verbosity)
   assertFlag(new.seed)
   assert(identical(list(...), list()))
   aminterface(task, budget, prior, savefile, save.interval, new.seed,
-      max.walltime.overrun, max.learner.time, verbosity)
+      max.walltime.overrun, verbosity)
 }
 
 #' @title Converte the \code{AMState} object as returned by
