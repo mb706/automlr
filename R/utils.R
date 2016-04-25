@@ -203,7 +203,7 @@ patchMlrPredict = function() {
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  assignInNamespace("predictLearner.ModelMultiplexer", ns = "mlr",
+  myAssignInNamespace("predictLearner.ModelMultiplexer", ns = "mlr",
       function(.learner, .model, .newdata, ...) {
         # simply predict with the model
         sl = .learner$par.vals$selected.learner
@@ -218,7 +218,7 @@ patchMlrPredict = function() {
 }
 
 unpatchMlr = function() {
-  assignInNamespace("predictLearner.ModelMultiplexer", ns = "mlr",
+  myAssignInNamespace("predictLearner.ModelMultiplexer", ns = "mlr",
       mlr.predictLearner.ModelMultiplexer)
 }
 
@@ -310,6 +310,24 @@ getFrameVar = function(fname, varname) {
   }
   sys.frame(frameno)[[varname]]
 }
+
+# assign the value of `varname` within the function named `fname`. Use the most
+# recent invocation of `fname` if names collide.
+# Returns TRUE if successful, FALSE if the function `fname` was not in the call
+# stack.
+assignFrameVar = function(fname, varname, value) {
+  calls = sys.calls()
+  calls[[length(calls) - 1]] = NULL
+  callnames = sapply(calls,
+      function(x) try(as.character(x[[1]]), silent = TRUE))
+  frameno = tail(which(callnames == fname), n = 1)
+  if (length(frameno) < 1) {
+    return(FALSE)
+  }
+  assign(varname, value, sys.frame(frameno))
+  TRUE
+}
+
 
 isInsideResampling = function() {
   !is.null(getResampleIter)

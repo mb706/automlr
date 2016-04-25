@@ -1,6 +1,4 @@
 
-
-
 #' @title Run a given expression with a given (walltime) timeout.
 #' 
 #' @description
@@ -53,7 +51,7 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
 
     # be extra careful we won't be interrupted in all of this.
     setTimeLimit()
-    on.exit(unpatchFunctions(patchObj))
+    on.exit(quickSuspendInterrupts(unpatchFunctions(patchObj)))
     patchFunctions(patchObj)
     nextTimeout = Inf
   } else {

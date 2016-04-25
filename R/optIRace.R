@@ -185,17 +185,17 @@ amoptimize.amirace = function(env, stepbudget, verbosity) {
   env$stepbudget = stepbudget
   env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
   # install the wrapper and make sure it gets removed as soon as we exit
-  on.exit(assignInNamespace("irace", env$iraceOriginal, ns = "irace"),
-      add = TRUE)
-  assignInNamespace("irace", env$iraceWrapper, ns = "irace")
-  
   # patch mlr on CRAN
   originalTuneIrace = mlr:::tuneIrace
-  on.exit(assignInNamespace("tuneIrace", originalTuneIrace, ns = "mlr"),
-      add = TRUE)
-  assignInNamespace("tuneIrace", workingTuneIrace, ns = "mlr")
   
-  
+  on.exit(quickSuspendInterrupts({
+            myAssignInNamespace("irace", env$iraceOriginal, "irace")
+            myAssignInNamespace("tuneIrace", originalTuneIrace, "mlr")
+          }))
+
+  myAssignInNamespace("irace", env$iraceWrapper, ns = "irace")
+  myAssignInNamespace("tuneIrace", workingTuneIrace, ns = "mlr")
+
   myTuneIrace = mlr:::tuneIrace
   environment(myTuneIrace) = new.env(parent = asNamespace("mlr"))
   environment(myTuneIrace)$convertParamSetToIrace = function(par.set) {

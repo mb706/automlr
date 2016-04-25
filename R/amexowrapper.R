@@ -283,7 +283,7 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   # setting the LearnerParam$when = train / test value.
   # The learner.model we are given is just an mlr WrappedModel that we can use
   # predict on.
-  on.exit(unpatchMlr())
+  on.exit(quickSuspendInterrupts(unpatchMlr()))
   patchMlrPredict()
   getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
 }
