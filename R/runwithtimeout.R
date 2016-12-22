@@ -11,7 +11,8 @@
 #' @param expr [any]\cr
 #' The expression that will be run with the given timeout.
 #' @param time [\numeric(1)]\cr
-#' The runtime, in seconds, after which to abort evaluation of expr.
+#' The runtime, in seconds, after which to abort evaluation of expr. If this is
+#' smaller or equal zero, expr will not be run and a timeout will be reported.
 #' @param throwError [\logical(1)]\cr
 #' If \code{TRUE}, throw an error on timeout instead of just returning
 #' \code{FALSE}.
@@ -34,9 +35,19 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
     # ) we need to call it again, this time with the right name.
     return(runWithTimeout(expr, time, throwError))
   }
-  assertNumeric(time, lower = 0, length = 1, any.missing = FALSE)
+  assertNumeric(time, length = 1, any.missing = FALSE)
   assertFlag(throwError)
   checkParallelMapAllowed()
+  
+  errMsg = paste("Timeout:", timeoutMessage)
+  
+  if (time <= 0) {
+    if (throwError) {
+      stop(errMsg)
+    } else {
+      structure(FALSE, elapsed = 0)
+    }
+  }
 
   # we use fixed point numbers with ms resolution.
   time = ifelse(is.infinite(time), time, as.integer(round(time * 1000)))
@@ -129,11 +140,11 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
 
   if (aborted && throwError) {
     # need to give a message that is guaranteed not to be the timeout message.
-    msg = paste("Timeout:", timeoutMessage)
+    
     if (is.null(timeoutError)) {
-      stop(msg)
+      stop(errMsg)
     } else {
-      stop(simpleError(msg, conditionCall(timeoutError)))
+      stop(simpleError(errMsg, conditionCall(timeoutError)))
     }
   }
 

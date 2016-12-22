@@ -51,6 +51,156 @@ assignInNamespace("checkResultsAndStopWithErrorsMessages", ns = "parallelMap", f
 # the setTimeLimit stuff
 
 library("parallelMap")
+library("RSQLite")
+
+tmp <- dbConnect(SQLite(), "/tmp/b")
+tmp2 <- dbConnect(SQLite(), "/tmp/b")
+tmp3 <- dbConnect(SQLite(), "/tmp/b")
+
+dbRollback(tmp)
+
+dbBegin(tmp)
+dbBegin(tmp2)
+
+file = tempfile()
+conn1 = dbConnect(SQLite(), file)
+conn2 = dbConnect(SQLite(), file)
+
+dbGetQuery(conn1, "begin immediate transaction")
+e = try(dbGetQuery(conn2, "begin immediate transaction"), silent = TRUE)
+conditionMessage(attr(e, "condition"))
+
+
+
+
+
+dbGetQuery(tmp, "begin immediate transaction")
+dbGetQuery(tmp2, "begin immediate transaction")
+
+dbCommit(tmp)
+dbCommit(tmp2)
+
+dbDisconnect(tmp)
+
+
+
+
+tmp <- NULL
+tmp2 <- NULL
+tmp3 <- NULL
+gc()
+
+dbRemoveTable(tmp, "test3")
+dbRemoveTable(tmp, "object")
+dbWriteTable(tmp, "test3", data.frame(a=integer(0), b=character(0)))
+dbGetQuery(tmp, "alter table test3 add column c BLOB;")
+
+dbGetQuery(tmp, "create table object (object blob)")
+dbGetPreparedQuery(tmp, "insert into object values (:c)", data.frame(c=I(list(serialize(list(new.env()), NULL)))))
+
+c = sqliteQuickColumn(tmp, "object", "object")
+unserialize(c[[1]])
+str(c)
+dbIsValid(tmp)
+
+dbQuoteIdentifier((unserialize(serialize(tmp, NULL))), "test")
+
+cbind(data.frame(a=1, b=2), c=3)
+
+dbDisconnect(tmp)
+
+dbIsValid(tmp)
+dbGetInfo(tmp)
+
+dbGetRowCount(tmp, "object")
+
+q = dbQuoteIdentifier(tmp, 'te"\'st')
+
+cat(sprintf("test %s\n", q))
+str(q)
+
+iris[TRUE, 1]
+
+dbGetQuery(tmp, "select count(*) from object")[[1]]
+
+dbGetQuery(tmp, "insert into test3 values (1, 'test', 'a')")
+
+dbGetPreparedQuery(tmp, "insert into test3 values (:a, :b, :c)", data.frame(a=99, b="test", c=I(list(serialize(list(new.env()), NULL)))))
+
+dbGetPreparedQuery(tmp, "insert into test3 values (:a, :b, :c)", cbind(data.frame(a=NA, b="test"), list(c=I(list(serialize(list(new.env()), NULL))))))
+
+dbGetQuery(tmp, sprintf("select rowid, %s from test3", dbQuoteIdentifier(tmp, ":c")))
+
+dbGetQuery(tmp, "select rowid, a from test3")
+dbGetQuery(tmp, "select * from test3")
+dbGetQuery(tmp2, "select a from test3")
+dbGetQuery(tmp, "select a from test3")
+
+dbGetQuery(tmp, "update test3 set a=a+1 where rowid=1")
+dbGetQuery(tmp2, "update test3 set a=a+1 where rowid=1")
+
+dbGetQuery(tmp2, "create table o2 (object blob)")
+gc()
+
+number=checkmate::asInteger(NA)
+row=checkmate::asInteger(2)
+(str = sprintf("update test3 set a=%s where rowid=%s", number, row))
+
+
+dbGetPreparedQuery(tmp, sprintf("update test3 set a=:number, %s=:n2 where rowid=:row", dbQuoteIdentifier(tmp, ":c")), data.frame(number=number, n2=9, row=row))
+
+
+
+x = dbQuoteIdentifier(tmp, c("colid", "rowid"))
+paste(x, "1", sep = "=", collapse = ", ")
+
+dbListFields(tmp, "test3")
+
+dbGetQuery(tmp, "PRAGMA table_info(test3)")
+
+dbGetQuery(tmp, "select a, b from test3")
+
+dbGetQuery(tmp, "replace into test3 (rowid, *) values (1, 1, 0, 0)")
+
+x
+x$c[[1]]
+
+x[TRUE, ]
+
+lapply(x[TRUE, ], unserialize)
+
+x$
+y = as.list(x)
+y$c = 0
+y
+x[c("a", "b", "x")]
+
+x$a
+
+dbReadTable(tmp, "object")
+dbReadTable(tmp, "test3")
+
+dbListTables(tmp)
+
+paste0("test", "a", "b", NULL, NULL, "c")
+s = dbQuoteString(tmp, serialize(list(new.env()), NULL))
+catf("%s", s)
+
+paste0(":", c("a", "b", "c"), collapse=",")
+
+data.frame(g = I(lapply(list(list(new.env()), new.env()), function(x) serialize(x, NULL))))
+
+x = serialize(list(new.env()), NULL)
+x
+
+parallelStartSocket()
+parallelLibrary("parallelMap")
+parallelLibrary("RSQLite")
+parallelMap(function(i, t) dbReadTable(dbConnect(SQLite(), "/tmp/b"), 'test')[i, 2], 1:3, more.args=list(t=tmp))
+parallelStop()
+
+duplicate = function(expr) { for (i in 1:2) substitute(eval.parent(expr)) }
+
 
 # modes:
 # local, multicore, socket, mpi, BatchJobs
@@ -61,7 +211,7 @@ parallelLibrary("parallelMap")
 parallelStartSocket(2)  # frame not visible
 parallelStartLocal()  # frame visible
 parallelStartMulticore(2)  # frame visible
-#parallelStartMPI(2)  # frame not visible
+parallelStartMPI(2)  # frame not visible
 #parallelStartBatchJobs(2)  # does not work
 z <- NULL
 (z <- withRestarts({withCallingHandlers(y <- dopar(), error = exitOnTimeout); TRUE }, automlr.timeout = function() { print("oto"); FALSE }))
@@ -91,15 +241,15 @@ f = function(i) {
     sys.frame(frameno)[[varname]]
   }
   print("starting sleep")
-  Sys.sleep(5)
+  stop("reached elapsed time limit")
   print("done sleeping")
   getFrameVar("dopar", "a")
 }
-
+debugonce(parallelMap:::checkResultsAndStopWithErrorsMessages)
 dopar = function() {
   a = 1
   on.exit(setTimeLimit())
-  setTimeLimit(elapsed = 10, transient = TRUE)
+#  setTimeLimit(elapsed = 2, transient = TRUE)
   parallelMap(f, 1:2)
 }
 
@@ -200,6 +350,7 @@ withCallingHandlers(
 
 
 b = function() {
+  z = 3
   Sys.sleep(1)
   on.exit(setTimeLimit(elapsed = 1e-15, transient = TRUE))
 }
@@ -256,11 +407,47 @@ gz
 
 
 
-tryCatch({
-    a()
-    try(stop(structure(list(message="msg"), class=c("myerrclass", "condition"))))
+zz = tryCatch({
+   a()
+   try(signalCondition(structure(list(message="msg"), class=c("myerrclass", "condition"))))
+    'x'
   },
-#         error = function(e) print("error"),
-         myerrclass = function(e) print("myerr"))
+         error = function(e) { print("error") ; e},
+         myerrclass = function(e) { print("myerr") ; 2 })
 
-try
+str(zz)
+
+ff = function(exp) {
+  print(parent.frame())
+  system.time(exp)
+}
+
+ss = function(expr) {
+  x = 9
+  eval.parent(substitute(do.call(ff, list(quote(expr)))))
+}
+
+x = 1
+ss({ print(x) ; Sys.sleep(2) ; x <- 3})
+x
+
+x = 1
+ff({ print(x) ; Sys.sleep(2) ; x <- 3})
+x
+
+tryCatch({ stop("test") }, error = function() print("test") )
+
+withCallingHandlers(withCallingHandlers(stop('yo'), error=function(c) print("handler 1")), error = function(c) print("handler 2"))
+
+
+res = tryCatch(Sys.sleep(10), condition = function(e) e)
+
+
+withCallingHandlers(
+  for (i in 1:10) {
+    print(i)
+    Sys.sleep(1)
+  },
+    interrupt = function(c) print(c))
+
+

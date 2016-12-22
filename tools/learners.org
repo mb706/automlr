@@ -442,10 +442,9 @@
    - seed :: NULL: no seed
    - do.trace :: FALSE: no verbose output
    - statistics :: FALSE: no statistics
-   - fast.restore :: FALSE: don't even know what this does but its marked as not tunable
 **** Changed (fixed) Parameters:
    - bootstrap :: none: no bootstrap
-   - na.action :: na.impute: TODO this sucks, it is the only value both in mlr 2.8 and on github. imputation, if it happens, should happen during preprocessing.
+   - na.action :: na.omit: TODO this sucks, it is the only value both in mlr 2.8 and on github. imputation, if it happens, should happen during preprocessing.
    - membership :: FALSE: don't need inbag info
 *** classif.ranger
 - guess what, another random forest (yay)
@@ -700,7 +699,7 @@
    - tol :: .0001: termination criterion
 **** Changed (fixed) Parameters:
    - scaled :: FALSE: we do that ourselves
-   - fitted :: FALSE: TODO is named 'fitted' in mlr, which is a BUG?
+   - fit :: FALSE: include fitted values
 *** classif.svm
 **** Variable Parameters:
    - type :: C-classification, nu-classification

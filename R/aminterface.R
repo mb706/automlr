@@ -87,9 +87,15 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   # performance cost.
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
+    if ("walltime" %in% amstate$budget) {
+      deadline = stepbudget["walltime"] + max.walltime.overrun
+    } else {
+      deadline = Inf
+    }
     nextstop = min(stepbudget["walltime"], save.interval, na.rm = TRUE)
     stepbudget["walltime"] = nextstop
-    usedbudget = amoptimize(amstate$backendprivatedata, stepbudget)
+    usedbudget = amoptimize(amstate$backendprivatedata, stepbudget, verbosity,
+        deadline)
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     # if usedbudget does not contain all names that it should contain and the
     # backend is buggy, amstate$spent could contain NAs

@@ -27,7 +27,7 @@
 #' @return [\code{any}]
 #' The result of the evaluation of \code{expr}.
 #'
-#' @example
+#' @examples
 #' \dontrun{
 #' # This example will lapply expensive_function(i). If the user wants to abort
 #' # one of these runs without killing the whole run, he can press Ctrl-C -- 
@@ -46,7 +46,7 @@ suspendInterruptsFor = function(expr, hardKillInterval = 0) {
   myCallName = as.character(sys.call()[[1]])
   if (!identical(myName, myCallName)) {
     # the name of the function on the call stack must be 'suspendInterruptsFor'.
-    # If this function was called with a different name (e.g. by things like
+    # If this function was called with a different name (e.g. using things like
     # > x = suspendInterruptsFor
     # > x(1 + 1, 100)
     # ) we need to call it again, this time with the right name.

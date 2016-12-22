@@ -76,10 +76,15 @@ amsetup.amdummy = function(env, opt, prior, learner, task, measure, verbosity) {
 #'   \code{\link{automlr}} for details.
 #' @param verbosity [\code{numeric(1)}]\cr
 #'   Output options.
+#' @param deadline [\code{numeric(1)}]\cr
+#'   The number of seconds of runtime that this call should not exceed. While
+#'   the time budget gives a soft limit and tries to finish calculations that
+#'   have started by the time the budget is spent, this is a hard limit which
+#'   should be kept as closely as possible, even if it means throwing away data.
 #' 
 #' @return [\code{numeric(4)}]
 #' The budget spent during this invocation.
-amoptimize.amdummy = function(env, stepbudget, verbosity) {
+amoptimize.amdummy = function(env, stepbudget, verbosity, deadline) {
   cat("Called 'optimize' with budget:\n")
   print(stepbudget)
   env$evals = env$evals + 1
@@ -116,9 +121,9 @@ amresult.amdummy = function(env) {
   cat("Called 'result'\n")
   list(learner = env$learner,
       opt.val = 0,
-      opt.point = removeMissingValues(sampleValue(env$learner$searchspace,
+      opt.point = removeMissingValues(sampleValue(getSearchspace(env$learner),
               trafo = TRUE)),
-      opt.path = makeOptPathDF(env$learner$searchspace, "y",
+      opt.path = makeOptPathDF(getSearchspace(env$learner), "y",
           env$measure$minimize),
       result = NULL)
 }

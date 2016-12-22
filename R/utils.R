@@ -264,7 +264,7 @@ getLLConfig = function(learner) {
 
 # setLearnerOptions, basically
 setLLConfig = function(learner, config) {
-  if (getLLConfig(learner) == config) {
+  if (identical(getLLConfig(learner), config)) {
     # avoid too much copy-on-write action for nothing
     learner
   } else {
@@ -294,6 +294,7 @@ adjustLearnerVerbosity = function(learner, verbosity) {
     else
       "quiet"
   config$show.learner.output = verbosity.learneroutput(verbosity)
+  setLLConfig(learner, config)
 }
 
 # return the value of `varname` within the function named `fname`. Use the most
@@ -372,3 +373,15 @@ myAssignInNamespace = function(what, value, ns) {
   }
 }
 
+#' @title Retrieve a suggested search space of the given learner
+#' 
+#' @param learner [\code{Learner}]\cr
+#'   Learner
+#' @export
+getSearchspace = function(learner) {
+  UseMethod("getSearchspace")
+}
+
+getSearchspace.BaseWrapper = function(learner) {
+  getSearchspace(learner$next.learner)
+}

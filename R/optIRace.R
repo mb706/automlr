@@ -33,6 +33,8 @@ amgetprior.amirace = function(env) {
   NULL
 }
 
+noResTimeout = "Premature timeout: No result in irace."
+
 amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("irace", why = "optIrace", default.method = "load")
   env$learner = learner
@@ -40,7 +42,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   env$measure = measure
   env$rdesc = makeResampleDesc("Holdout")
   
-  dimParams = getParamNr(learner$searchspace, TRUE)
+  dimParams = getParamNr(getSearchspace(learner), TRUE)
   
   # the 'default', but I'm not taking chances
   minNbSurvival = as.integer(2 + log2(dimParams))
@@ -72,7 +74,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       log.fun = logFunQuiet)  # make our life easy for now
   
   # we do the following to imitade mlr::tuneParams()
-  env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace,
+  env$opt.path = mlr:::makeOptPathDFFromMeasures(getSearchspace(env$learner),
       list(env$measure), include.extra = env$ctrl$tune.threshold)
 
   # the following generates the wrapper around irace::irace that checks our
@@ -87,6 +89,11 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   # this is assuming we don't use the irace package's parallel functionality.
   numcpus = parallelGetOptions()$settings$cpus
   numcpus[is.na(numcpus)] = 1
+  
+  # hard time limit, to be enforced even when progress may be lost. This will be
+  # set by amoptimize.amirace
+  env$hardTimeout = 0
+  
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(tunerConfig, parameters, ...) {
     modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE)
@@ -144,8 +151,19 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       tunerResults$state$remainingBudget = 1  # arbitrary positive number
       save(tunerResults, file = tunerConfig$logFile)
       
-      res = iraceFunction(tunerConfig, parameters, ...)
-      
+      # perform iraceFunction as a kind of transaction: If it is aborted due to
+      # timeout, we return the old env$res and reinstate the old env$opt.path.
+      optPathBackup = deepcopy(env$opt.path)
+      runWithTimeout(res <- iraceFunction(tunerConfig, parameters, ...),
+          env$hardTimeout - proc.time()[3])
+      if (!runWithTimeout) {
+        env$opt.path = optPathBackup
+        if (!exists("res", envir = env)) {
+          stop(noResTimeout)
+        }
+        return(env$res)
+      }
+      env$res = res
       load(tunerConfig$logFile)
       env$usedbudget["evals"] =
           tunerResults$state$experimentsUsedSoFar - evals.zero
@@ -160,7 +178,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       if (stopcondition(env$stepbudget, env$usedbudget)) {
         # since we are guaranteed to have finished one iteration, this is never
         # empty *I hope*
-        return(res)
+        return(env$res)
       }
     }
   }
@@ -180,10 +198,11 @@ amresult.amirace = function(env) {
 }
 
 # now this is where the fun happens
-amoptimize.amirace = function(env, stepbudget, verbosity) {
+amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   env$starttime = Sys.time()
   env$stepbudget = stepbudget
   env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
+  env$hardTimeout = deadline + proc.time()[3]
   # install the wrapper and make sure it gets removed as soon as we exit
   # patch mlr on CRAN
   originalTuneIrace = mlr:::tuneIrace
@@ -206,10 +225,21 @@ amoptimize.amirace = function(env, stepbudget, verbosity) {
   }
   
   env$learner = adjustLearnerVerbosity(env$learner, verbosity)
-  
-  env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
-      list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
-  env$opt.path = env$tuneresult$opt.path
+
+  tryCatch({
+      env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
+          list(env$measure), getSearchspace(env$learner), env$ctrl,
+          env$opt.path, TRUE)
+    }, error = function(e) {
+      if (conditionMessage(e) == noResTimeout) {
+        # NOOP
+      } else {
+        stop(e)
+      }
+    })
+  # FIXME: why was this here? It interferes with my 'rollback' mechanism in
+  # iraceWrapper
+  # env$opt.path = env$tuneresult$opt.path
   env$usedbudget
 }
 

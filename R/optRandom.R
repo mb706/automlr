@@ -44,8 +44,9 @@ amsetup.amrandom = function(env, opt, prior, learner, task, measure,
 }
 
 amresult.amrandom = function(env) {
-  res = mlr:::makeTuneResultFromOptPath(env$learner, env$learner$searchspace,
-      list(env$measure), makeTuneControlRandom(maxit = 100), env$opt.path)
+  res = mlr:::makeTuneResultFromOptPath(env$learner,
+      getSearchspace(env$learner), list(env$measure),
+      makeTuneControlRandom(maxit = 100), env$opt.path)
   list(learner = env$learner,
       opt.point = removeMissingValues(res$x),
       opt.val = res$y,
@@ -54,7 +55,7 @@ amresult.amrandom = function(env) {
 }
 
 # now this is where the fun happens
-amoptimize.amrandom = function(env, stepbudget, verbosity) {
+amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   # so the strategy is as following:
   # we build a model wrapper around the learner, which, before checking, checks
   # the budget. if that was exceeded, we change the mlr settings so that errors
@@ -72,6 +73,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
   am.env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
   am.env$stepbudget = stepbudget
   am.env$outofbudget = FALSE
+  am.env$hardTimeout = proc.time()[3] + deadline
   # unfortunately, when doing parallelMap parallelization, the evaluating
   # function will get a *copy* of the environment, so will not be able to
   # communicate back. The `untouched` flag is used to detect this. Whenever
@@ -108,7 +110,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
     ctrl = makeTuneControlRandom(maxit = iterations, log.fun = log.fun)
 
     tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure),
-        par.set = learner$searchspace, control = ctrl, show.info = FALSE)
+        par.set = getSearchspace(learner), control = ctrl, show.info = FALSE)
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
@@ -144,8 +146,12 @@ amoptimize.amrandom = function(env, stepbudget, verbosity) {
   learner$am.env$usedbudget
 }
 
+timeoutErr = addClasses(out.of.budget.string, c("outOfBudgetError", "error"))
+
 #' @export
 trainLearner.amrandomWrapped = function(.learner, ...) {
+  env = .learner$am.env
+  hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
   # We want to test whether the first run of a resampling was over budget.
   # We can sometimes but not always communicate between runs of the same
   # resampling. Therefore we always need to check which iteration we are *AND*
@@ -168,22 +174,31 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   if (env$outofbudget || (checkBudget && checkoutofbudget(.learner$am.env))) {
     # stop("out of budget"), only we don't use the try() function's way of
     # telling us what we already know
-    return(addClasses(out.of.budget.string, c("outOfBudgetError", "error")))
+    return(timeoutErr)
   }
-  evaltime = system.time(result <- NextMethod("trainLearner"), gcFirst = FALSE)
+  rwt = runWithTimeout(res <- NextMethod("trainLearner"), hardTimeoutRemaining)
+  if (!rwt) {
+    return(timeoutErr)
+  }
+  evaltime = attr(rwt, "elapsed")
   .learner$am.env$usedbudget["modeltime"] %+=% evaltime[3]
-  result
+  res
 }
 
 #' @export
 predictLearner.amrandomWrapped = function(.learner, ...) {
   env = .learner$am.env
+  hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
 
-  evaltime = system.time(result <- NextMethod("predictLearner"),
-      gcFirst = FALSE)
+  rwt = runWithTimeout(res <- NextMethod("predictLearner"),
+      hardTimeoutRemaining)
+  if (!rwt) {
+    return(timeoutErr)
+  }
+  evaltime = attr(rwt, "elapsed")
 
   .learner$am.env$usedbudget["modeltime"] %+=% evaltime[3]
-  result
+  res
 }
 
 # ModelMultiplexer does not consider the possibility of trainLearner() to

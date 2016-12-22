@@ -103,12 +103,12 @@ print.AutomlrBackendConfig = function(x, ...) {
 #' fun()
 #' @export
 argsToList = function() {
-  substitute(list(...), parent.frame())
-  if ("..." %in% names(ret)) {
-    ret$`...` = NULL
-    ret = insert(ret, eval.parent(quote(list(...))))
-  }
-  ret
+  defaults = formals(sys.function(-1))
+  defaults$`...` = NULL
+  defaults = sapply(defaults, eval, envir = sys.frame(-1))
+  assigns = as.list(eval.parent(quote(match.call())))
+  assigns[[1]] = NULL
+  insert(defaults, assigns)
 }
 
 

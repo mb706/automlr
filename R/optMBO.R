@@ -66,7 +66,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   
   objectiveFun = function(x) {
     if (mboSaveMode) {
-      x = complicateParams(x, learner$searchspace)
+      x = complicateParams(x, getSearchspace(learner))
     } else {
       x = removeMissingValues(x)
     }
@@ -74,7 +74,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
     resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
   }
   
-  usedParset = learner$searchspace
+  usedParset = getSearchspace(learner)
   if (mboSaveMode) {
     usedParset = simplifyParams(usedParset)
   }
@@ -144,7 +144,7 @@ amresult.ammbo = function(env) {
       result = mboResult)
 }
 
-amoptimize.ammbo = function(env, stepbudget, verbosity) {
+amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # initialize for spent budget computation
   zero = env$runtimeEnv
   zero$numcpus = parallelGetOptions()$settings$cpus

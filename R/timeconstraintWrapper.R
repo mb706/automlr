@@ -12,7 +12,7 @@
 #' If the first resampling was an error, the other resamplings should also give
 #' errors without starting the run. Otherwise they should themselves run (with
 #' the correct timeout). If any run goes over budget and does not give an error,
-#' it should return a trivial learner that predicts the majority.
+#' it should return a trivial learner that predicts a constant.
 #' 
 #' @param learner [\code{Learner}]\cr
 #'   The learner to be wrapped.
@@ -47,7 +47,7 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
       cl = "TimeconstraintWrapper",
       short.name = "tcw",
       name = "TimeconstraintWrapper",
-      properties = getLearnerProperties(properties),
+      properties = getLearnerProperties(learner),
       par.set = getParamSet(learner),
       par.vals = getHyperPars(learner),
       package = "automlr")
@@ -61,6 +61,7 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
 
   wrapper$env$untouched = TRUE
   wrapper$env$wasError = FALSE
+  wrapper
 }
 
 trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
@@ -184,6 +185,10 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
   }
   assert(runinfo$ontimeout == "dummy" || runinfo$specialFirstIter)
   getPredictionResponse(predict(runinfo$dummyModel, newdata = .newdata))
+}
+
+getSearchspace.TimeconstraintWrapper = function(learner) {
+  getSearchspace(learner$learner)
 }
 
 

@@ -102,6 +102,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] other things?
   - [ ] simultaneous multiple task optimization
   - [ ] write a nicer readme **selfconscious**
+  - [ ] impute: dummy column
 - [ ] release 0.3
   - [ ] memory handling
   - [ ] regression learners

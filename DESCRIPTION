@@ -71,6 +71,7 @@ ByteCompile: yes
 Version: 0.1.0
 RoxygenNote: 5.0.1
 Collate:
+    'abortHandler.R'
     'amexowrapper.R'
     'aminterface.R'
     'autolearner.R'
@@ -86,6 +87,8 @@ Collate:
     'optMBO.R'
     'optRandom.R'
     'preprocess.R'
+    'runwithtimeout.R'
+    'timeconstraintWrapper.R'
     'utils.R'
     'wrappers.R'
     'zzz.R'

@@ -702,3 +702,7 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
       substitutions = substitutions,
       finalSubstitutions = finalSubstitutions)
 }
+
+getSearchspace.AMExoWrapper = function(learner) {
+  learner$searchspace
+}
