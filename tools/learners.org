@@ -570,7 +570,6 @@
    - nu :: .001...3 exp
    - risk :: inbag, oobag, none: req: m != "aic"
    - stopintern :: TRUE, FALSE
-   - m :: mstop, cv, aic
 **** Default Parameters:
    - center :: FALSE
    - trace :: FALSE
@@ -594,12 +593,12 @@
    - silent :: 0: some output
    - eval_metric :: error: use default
    - maximize :: TRUE: does not matter since early.stop.round is NULL.
-   - early.stop.round :: 1: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
+   - early_stopping_rounds :: 1: we don't want to use the early stopping feature, but passing NULL seems to be not an option.
    - feval :: NULL: no custom evaluation function
 **** Changed (fixed) Parameters:
    - nthread :: 1: only one thread
    - verbose :: 1: stay almost silent -- setting this to 0 gives error!
-   - print.every.n :: 1000: stay silent
+   - print_every_n :: 1000: stay silent
    - missing :: 2147359313: we don't have a missing indicator, but we can't give NULL here, so we take a number that is unlikely to be chosen.
    - objective :: NULL: we must set this to NULL so it gets chosen automatically.
 ** SVM
