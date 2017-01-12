@@ -301,15 +301,19 @@ adjustLearnerVerbosity = function(learner, verbosity) {
 # recent invocation of `fname` if names collide.
 # Returns NULL if the function was not found.
 getFrameVar = function(fname, varname) {
-  calls = sys.calls()
-  calls[[length(calls) - 1]] = NULL
-  callnames = sapply(calls,
-      function(x) try(as.character(x[[1]]), silent = TRUE))
-  frameno = tail(which(callnames == fname), n = 1)
+  frameno = getFrameNo(fname)
   if (length(frameno) < 1) {
     return(NULL)
   }
   sys.frame(frameno)[[varname]]
+}
+
+getFrameNo = function(fname) {
+  calls = sys.calls()
+  calls[[length(calls) - 1]] = NULL
+  callnames = sapply(calls,
+      function(x) try(as.character(x[[1]]), silent = TRUE))
+  tail(which(callnames == fname), n = 1)
 }
 
 # assign the value of `varname` within the function named `fname`. Use the most
@@ -331,15 +335,23 @@ assignFrameVar = function(fname, varname, value) {
 
 
 isInsideResampling = function() {
-  !is.null(getResampleIter)
+  !is.null(getResampleIter())
 }
 
 getResampleIter = function() {
-  getFrameVar('doResampleIteration', 'i')
+  frameno = getFrameNo('train')
+  if (length(frameno) < 1) {
+    return(NULL)
+  }
+  sys.frame(frameno - 1)[['i']]
 }
 
 getResampleMaxIters = function() {
-  getFrameVar('doResampleIteration', 'rin')$desc$iters
+  frameno = getFrameNo('train')
+  if (length(frameno) < 1) {
+    return(NULL)
+  }
+  sys.frame(frameno - 1)[['rin']]$desc$iters
 }
 
 # test whether mlr parallelizes resample() calls. This does NOT entail that

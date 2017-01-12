@@ -22,7 +22,8 @@ options(error=dump.frames)
 pid.task
 ##
 
-automlr(pid.task, budget=c(evals=10), backend="random")
+resRand <- automlr(pid.task, budget=c(evals=10), backend="random", verbosity=6)
+debugonce(automlr:::trainLearner.TimeconstraintWrapper)
 
 getParamSet(makeLearner("classif.lssvm"))
 

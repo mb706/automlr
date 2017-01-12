@@ -1,4 +1,6 @@
 
+mboSaveMode = TRUE
+
 #' @title mbo backend configuration
 #' 
 #' @description
@@ -39,8 +41,6 @@ amgetprior.ammbo = function(env) {
 
 amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
-  # fix the dumb mlrMBO bug
-  mlrMBO:::.onAttach()
   requirePackages("smoof", why = "optMBO", default.method = "load")
   # FIXME things that could be variable:
   #  resampling: holdout, cv, or something adaptive?
@@ -109,7 +109,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
       opt.focussearch.maxit = mbo.focussearch.maxit,
       opt.restarts = mbo.focussearch.restarts)
   control = mlrMBO::setMBOControlTermination(control, iters = NULL,
-      more.stop.conds = list(function(opt.state) {
+      more.termination.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
               list(term = TRUE, message = "automlr term", code = "iter")
             } else {
@@ -119,7 +119,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   
   
   
-  mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
+  mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control, objective)
   mboLearner$config = list(on.learner.error = "stop",
       on.learner.warning = "warn", show.learner.output = TRUE)
   mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor = "distinct",

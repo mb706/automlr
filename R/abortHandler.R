@@ -53,7 +53,7 @@ suspendInterruptsFor = function(expr, hardKillInterval = 0) {
     return(suspendInterruptsFor(expr, hardKillInterval))
   }
 
-  assertNumeric(hardKillInterval, lower = 0, length = 1, any.missing = FALSE)
+  assertNumeric(hardKillInterval, lower = 0, len = 1, any.missing = FALSE)
 
   # handleInterrupts reads and writes `lastInterrupt`
   lastInterrupt = -Inf

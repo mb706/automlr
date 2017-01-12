@@ -167,7 +167,7 @@
    - zero.temp :: .001..0.1 exp: temp at which to set temperature to 0 req: SimAnn == TRUE && schedule == 1
    - halflife :: 5..1000 exp: steps that reduce temperature to 1/2. req: SimAnn == TRUE && schedule == 1
    - T.start :: .01..100 exp: starting temp; req: SimAnn == TRUE
-   - schedule :: 1, 2: req: SimAnn == FALSE
+   - schedule :: 1, 2: req: SimAnn == TRUE
    - trafo :: TRUE, FALSE: use transformed variables
    - SimAnn :: TRUE, FALSE: use simulated annealing
 **** Default Parameters:
@@ -565,10 +565,9 @@
 *** classif.glmboost
 **** Variable Parameters:
    - family :: AdaExp, Binomial
-   - mstop :: int 25..400 exp: req: m == "mstop"
-   - mstop.AMLRFIX1 :: 400: req: m != "mstop"
+   - mstop :: int 25..400 exp: used to require m == "mstop", but that is the default
    - nu :: .001...3 exp
-   - risk :: inbag, oobag, none: req: m != "aic"
+   - risk :: inbag, oobag, none: used to require m != "aic"
    - stopintern :: TRUE, FALSE
 **** Default Parameters:
    - center :: FALSE

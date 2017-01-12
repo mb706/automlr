@@ -35,7 +35,7 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
     # ) we need to call it again, this time with the right name.
     return(runWithTimeout(expr, time, throwError))
   }
-  assertNumeric(time, length = 1, any.missing = FALSE)
+  assertNumeric(time, len = 1, any.missing = FALSE)
   assertFlag(throwError)
   checkParallelMapAllowed()
   
@@ -180,7 +180,7 @@ determineTimeoutMessage = function() {
 
 # check whether parallelMap uses a method that is compatible.
 checkParallelMapAllowed = function() {
-  parmode = getParallelOptions()$settings$mode
+  parmode = parallelGetOptions()$settings$mode
   # FIXME: maybe it does work with BatchJobs? Need to test this.
   disallowed = c("mpi", "BatchJobs")
 
@@ -210,7 +210,7 @@ getPatchFunctions = function() {
           return(NULL)
         }
       }
-      handler()
+      handler(cond)
     }
   }
   wrapAllHandlers = function(handlers, signal) {
@@ -238,25 +238,38 @@ getPatchFunctions = function() {
           ns = "base",
           orig = base::tryCatch,
           replacement = function(expr, ..., finally) {
+            # make local copy of 'patches' list so that
+            # eval.parent(substitute()) can refer to it
+            lpatches <- patches
             # the replacement function takes all the handlers in `...`, replaces
             # them with functions that ignore our special errors, and then calls
             # the true tryCatch.
             handlers = wrapAllHandlers(list(...), TRUE)
             # need to quote expr and finally, since they are promises
-            tcArgs = c(list(expr = quote(expr), finally = quote(finally)),
-                handlers)
-            eval.parent(substitute(do.call(patches$tryCatch$orig, tcArgs)))
+            #tcArgs = 
+            if (missing(finally)) {
+              eval.parent(substitute(do.call(lpatches$tryCatch$orig,
+                          c(list(expr = quote(expr)), handlers))))
+            } else {
+              eval.parent(substitute(do.call(lpatches$tryCatch$orig,
+                          c(list(expr = quote(expr)),
+                              list(finally = quote(finally)),
+                              handlers))))
+            }
           }),
       withCallingHandlers = list(
           # make withCallingHandlers ignore 'reached elapsed time limit' errors
           ns = "base",
           orig = base::withCallingHandlers,
           replacement = function(expr, ...) {
+            # make local copy of 'patches' list so that
+            # eval.parent(substitute()) can refer to it
+            lpatches <- patches
             # similar to the tryCatch wrapper
             handlers = wrapAllHandlers(list(...), FALSE)
-            wchArgs = c(list(expr = quote(expr)), handlers)
-            eval.parent(substitute(do.call(patches$withCallingHandlers$orig,
-                        wchArgs)))
+            #wchArgs = 
+            eval.parent(substitute(do.call(lpatches$withCallingHandlers$orig,
+                        c(list(expr = quote(expr)), handlers))))
           }))
   # TODO: maybe checkResultsAndStopWithErrorsMessages in parallelMap needs to
   # be patched; this depends on how well it handles my tryCatch modifications.
@@ -278,7 +291,7 @@ patchFunctions = function(patchObj) {
   }
 }
 
-unpatchFunction = function(patchObj) { 
+unpatchFunctions = function(patchObj) { 
   for (n in names(patchObj)) {
     myAssignInNamespace(n, patchObj[[n]]$orig, patchObj[[n]]$ns)
   }
