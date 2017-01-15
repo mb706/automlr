@@ -301,7 +301,12 @@ adjustLearnerVerbosity = function(learner, verbosity) {
 # recent invocation of `fname` if names collide.
 # Returns NULL if the function was not found.
 getFrameVar = function(fname, varname) {
-  frameno = getFrameNo(fname)
+  # can not call getFrameNo, because then the last call will be in the list also.
+  calls = sys.calls()
+  calls[[length(calls) - 1]] = NULL
+  callnames = sapply(calls,
+      function(x) try(as.character(x[[1]]), silent = TRUE))
+  frameno = tail(which(callnames == fname), n = 1)
   if (length(frameno) < 1) {
     return(NULL)
   }

@@ -54,6 +54,8 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
 
   # if runWithTimeout is called *within another* runWithTimeout, firstCall is
   # FALSE, otherwise it is TRUE
+  print("querying firstcall")
+  print(getFrameVar(myName, "firstCall"))
   firstCall = is.null(getFrameVar(myName, "firstCall"))
 
   if (firstCall) {
@@ -238,38 +240,36 @@ getPatchFunctions = function() {
           ns = "base",
           orig = base::tryCatch,
           replacement = function(expr, ..., finally) {
-            # make local copy of 'patches' list so that
-            # eval.parent(substitute()) can refer to it
-            lpatches <- patches
             # the replacement function takes all the handlers in `...`, replaces
             # them with functions that ignore our special errors, and then calls
             # the true tryCatch.
             handlers = wrapAllHandlers(list(...), TRUE)
             # need to quote expr and finally, since they are promises
-            #tcArgs = 
+ 
             if (missing(finally)) {
-              eval.parent(substitute(do.call(lpatches$tryCatch$orig,
-                          c(list(expr = quote(expr)), handlers))))
+              # we do not want to touch 'expr', but we do need to turn the
+              # handlers list into `...`, so we have another wrapper.
+              tcwrapper <- function(...) {
+                patches$tryCatch$orig(expr, ...)
+              }
             } else {
-              eval.parent(substitute(do.call(lpatches$tryCatch$orig,
-                          c(list(expr = quote(expr)),
-                              list(finally = quote(finally)),
-                              handlers))))
+              tcwrapper <- function(...) {
+                patches$tryCatch$orig(expr, ..., finally)
+              }
             }
+            do.call(tcwrapper, handlers)
           }),
       withCallingHandlers = list(
           # make withCallingHandlers ignore 'reached elapsed time limit' errors
           ns = "base",
           orig = base::withCallingHandlers,
           replacement = function(expr, ...) {
-            # make local copy of 'patches' list so that
-            # eval.parent(substitute()) can refer to it
-            lpatches <- patches
             # similar to the tryCatch wrapper
             handlers = wrapAllHandlers(list(...), FALSE)
-            #wchArgs = 
-            eval.parent(substitute(do.call(lpatches$withCallingHandlers$orig,
-                        c(list(expr = quote(expr)), handlers))))
+            wcwrapper <- function(...) {
+              patches$withCallingHandlers$orig(expr, ...)
+            }
+            do.call(wcwrapper, handlers)
           }))
   # TODO: maybe checkResultsAndStopWithErrorsMessages in parallelMap needs to
   # be patched; this depends on how well it handles my tryCatch modifications.
