@@ -78,42 +78,53 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [X] optRandom: don't abort crossvalidation when time runs out (?)
   - [ ] optRandom: cut out superfluous entries of out of time errors.
+  - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
+  - [ ] simplification and cleaning up
+    - [ ] remove budgets that are not walltime or nevals
+    - [ ] collect backend shims and re-use them
   - [-] event handling
     - [ ] catch Ctrl-C and handle gracefully
     - [ ] maximum walltime overrun
     - [-] maximum per learner time
     - [X] make sure mlr on.learner.error, on.learner.warning are handled well
     - [ ] nicer printing
+  - [ ] memory handling
   - [ ] make debugging easier
     - [ ] debug flag sets all show.learner.output to TRUE
     - [ ] optionally sets some variables to small values (thinking of you, ~infill.opt.focussearch.points~) so do.call doesn't clog the call stack so much
     - [ ] nicer printing of results
     - [ ] some output about memory usage, maybe
   - [ ] searchspace
-    - [ ] add metalearner wrappers
-    - [ ] respect parameter equality IDs
     - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
     - [ ] searchspace definitions for certain mlr versions
   - [ ] tests
+    - [ ] quick compatibility test with mlr
     - [ ] differentiate expensive tests from fast tests
-    - [ ] 100% test coverage
     - [ ] tests for preprocessing
     - [ ] test for all possible wrong arguments
+    - [ ] test timeouting and timeout wrapper
+  - [ ] consistent randomness
+    - [ ] test that execution with same seed gets same result
+    - [ ] use seeds in learners that use external RNGs
+  - [ ] more consistent S3-based searchspace definition
+  - [ ] write a nicer readme **selfconscious**
+  - [ ] preprocessing
+    - [ ] impute dummy column
+    - [ ] external preprocessing library
+- [ ] release 0.3
+  - [ ] searchspace
+    - [ ] add metalearner wrappers
+    - [ ] respect parameter equality IDs
+  - [ ] tests
+    - [ ] 100% test coverage
     - [ ] other things?
   - [ ] simultaneous multiple task optimization
-  - [ ] write a nicer readme **selfconscious**
-  - [ ] impute: dummy column
-- [ ] release 0.3
-  - [ ] memory handling
   - [ ] regression learners
-  - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
-  - [ ] use seeds in learners that use external RNGs
   - [ ] installation on Win32
-  - [ ] more consistent OO-based searchspace definition
   - [ ] more empirical grounding for mlrLightweight.
 - [ ] release 0.4
   - [ ] other backends?
-  - [ ] batchJobs integration? (e.g. break run down into smaller jobs)
+  - [ ] batchJobs integration? (e.g. break run down into smaller jobs automatically)
   - [ ] priors for learners?
 - [ ] release 1.0
   - [ ] everything is really, really stable

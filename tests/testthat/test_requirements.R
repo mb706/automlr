@@ -1,14 +1,16 @@
-
-
+# Check influence of requirements on presence/absence and range of parameters
+# Also check interplay of automlr.has.X and automlr.remove.X requirements
 context("requirements")
 
 test_that("requirements including pseudoparameters are simplified as they should", {
 
   theTask = createTestClassifTask("MissingsNumericsFactorsTask", 200, nNumeric = 3, nFactor = 3, missings = TRUE)
 
+  # simple learner with one parameter
   l0 = autolearner(
       testLearner("l0", makeParamSet(predefParams$int1), c("numerics", "twoclass")),
       list(sp("int1", "int", c(0, 10))))
+  # learner with parameter requirements, among others depending on task properties 
   l1 = autolearner(
       testLearner("l1", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1, predefParams$cat1),
                   c("numerics", "twoclass", "factors", "ordered", "missings")),
@@ -25,6 +27,7 @@ test_that("requirements including pseudoparameters are simplified as they should
            sp("cat1.AMLRFIX1", "cat", "c", req = quote(int1!=2)),
            sp("nevertrue", "bool", special = "dummy", req = quote(bool1 == FALSE))))
 
+  # wrapper that removes NAs, factors, simple parameter space
   NAFactorRemover1 = autolearner(
       autoWrapper("NAFactorRemover1", function(learner, ...) changeColsWrapper(learner, "NAFactorRemover1", ...),
                   function(x) switch(x, missings = c("missings", ""), factors = c("factors", ""))),
@@ -32,6 +35,7 @@ test_that("requirements including pseudoparameters are simplified as they should
            sp("NAFactorRemover1.remove.factors", "fix", TRUE, req = quote(automlr.remove.factors == TRUE))),
       "requiredwrapper")
 
+  # wrapper that removes NAs & factors, more complicated parameter space 
   NAFactorRemover2 = autolearner(
       autoWrapper("NAFactorRemover2", function(learner, ...) changeColsWrapper(learner, "NAFactorRemover2", ...),
                   function(x) switch(x, missings = c("missings", ""), factors = c("factors", ""))),
@@ -47,8 +51,10 @@ test_that("requirements including pseudoparameters are simplified as they should
            sp("NAFactorRemover2.spare1.AMLRFIX1", "int", c(4, 4), req = quote(NAFactorRemover2.intermediate2!=1))),
       "requiredwrapper")
 
+  # work with the learner containing all the above
   l = buildLearners(list(l0, l1, NAFactorRemover1, NAFactorRemover2), theTask)
 
+  # all expected parameters are present
   expect_set_equal(getParamIds(getParamSet(l)),
                    c("selected.learner", "automlr.wrappersetup", "automlr.remove.missings", "automlr.wremoving.missings",
                      "automlr.remove.factors", "automlr.wremoving.factors",
@@ -57,7 +63,22 @@ test_that("requirements including pseudoparameters are simplified as they should
                      "NAFactorRemover2.intermediate2", "NAFactorRemover2.intermediate2.AMLRFIX1",
                      "NAFactorRemover2.spare1"))
 
-  expect_equal(deparse(getParamSet(l)$pars[["l1.real1"]]$requires), 'selected.learner == "l1"')  # remove always true requirement
+  # always true requirement is removed
+  expect_equal(deparse(getParamSet(l)$pars[["l1.real1"]]$requires), 'selected.learner == "l1"')
+
+  # check that parameter requirements work correctly:
+  # for learners (l1):
+  #  - l1.int1 needs to be given if there are no missings, or (AMLRFIX2) if missings and factors are present
+  #  - l1.intermediate never shows up, since it is a fixed dummy
+  #  - l1.intermediate2 is present if int1 is 0
+  #  - l1.intermediate3 is present if int1 == 2 or if missings are present but factors are not
+  #  - l1.real1 is always present, real1.AMLRFIX1 and l1.nevertrue is never present
+  #  - l1.cat1 is present if intermediate3 is present and TRUE and defaults to c if int1 is not 2
+  # for wrappers:
+  #  - NAFactorRemover1 never shows up
+  #  - NAFR2.remove.factors is TRUE as expected by virtue of NAFR2.intermediate assuming the correct value
+  #  - NAFR2.intermediate2 present / absent depending on automlr.remove.x
+  #  - NAFR2.spare1 present if removing factors, otherwise defaults to 4
 
   checkLearnerBehaviour(l, theTask,
                         list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
@@ -128,15 +149,13 @@ test_that("requirements including pseudoparameters are simplified as they should
   checkLearnerBehaviour(l, theTask,
                         list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
                              automlr.remove.missings = FALSE, automlr.remove.factors = FALSE,
-                             l1.int1.AMLRFIX2 = 3,
+                             l1.int1.AMLRFIX2 = 4,
                              l1.real1 = 5,
                              NAFactorRemover2.intermediate2.AMLRFIX1 = 1,
                              NAFactorRemover2.spare1 = 2),
-                        "l1", list(int1 = 3, bool1 = TRUE, real1 = 5, cat1 = "c"),
+                        "l1", list(int1 = 4, bool1 = TRUE, real1 = 5, cat1 = "c"),
                         NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0),
                         NAFactorRemover2 = list(NAFactorRemover2.spare1 = 2, NAFactorRemover2.spare2 = 0))
 
 })
-
-
 
