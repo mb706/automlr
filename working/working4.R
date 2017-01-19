@@ -22,7 +22,10 @@ options(error=dump.frames)
 pid.task
 ##
 
-resRand <- automlr(pid.task, budget=c(evals=10), backend="random", verbosity=6)
+library(utils)
+evalWithTimeout
+
+resRand <- automlr(pid.task, budget=c(evals=10), backend="random", verbosity=6, searchspace=list(mlrLearners$classif.logreg, mlrLearners$classif.knn))
 debugonce(automlr:::trainLearner.TimeconstraintWrapper)
 
 getParamSet(makeLearner("classif.lssvm"))
@@ -66,3 +69,18 @@ do.call(fun, list(y=100))
 
 
 formals(fx)
+
+##
+
+automlr::runWithTimeout(Sys.sleep(10), 1)
+
+automlr::runWithTimeout(mean(rnorm(100000000)), 2)
+
+automlr::runWithTimeout(
+    automlr::runWithTimeout(
+        {stop("fayul") 
+    resample(learner=makeLearner("classif.nodeHarvest"), task=pid.task, resampling=cv10)},
+    10), 15)
+
+resample(learner=automlr:::makeTimeconstraintWrapper(makeLearner("classif.nodeHarvest"), 10), task=pid.task, resampling=cv10)
+

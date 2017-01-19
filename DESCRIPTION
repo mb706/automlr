@@ -81,6 +81,7 @@ Collate:
     'automlr.R'
     'buildLearners.R'
     'convertParamSetToIrace.R'
+    'failImputationWrapper.R'
     'optDummy.R'
     'optGeneric.R'
     'optIRace.R'
