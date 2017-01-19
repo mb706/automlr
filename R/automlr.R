@@ -161,7 +161,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
     searchspace = mlrLearners, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, backend,
     max.walltime.overrun = if ("walltime" %in% names(budget))
-      budget['walltime'] * 0.1 else 3600, max.learner.time = Inf,
+      budget['walltime'] * 0.1 + 30 else 3600, max.learner.time = Inf,
     verbosity = 0, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
