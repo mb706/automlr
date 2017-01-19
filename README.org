@@ -78,7 +78,6 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [X] optRandom: don't abort crossvalidation when time runs out (?)
   - [ ] optRandom: cut out superfluous entries of out of time errors.
-  - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
   - [ ] simplification and cleaning up
     - [ ] remove budgets that are not walltime or nevals
     - [ ] collect backend shims and re-use them
@@ -113,7 +112,6 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] external preprocessing library
 - [ ] release 0.3
   - [ ] searchspace
-    - [ ] add metalearner wrappers
     - [ ] respect parameter equality IDs
   - [ ] tests
     - [ ] 100% test coverage
@@ -123,6 +121,10 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] installation on Win32
   - [ ] more empirical grounding for mlrLightweight.
 - [ ] release 0.4
+  - [ ] more sophisticated search space extensions
+    - [ ] task property transformation by wrappers (e.g. recognize a wrapper converts factors to numerics and allow numerics learners)
+    - [ ] metalearner wrappers
+- [ ] release 0.5
   - [ ] other backends?
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs automatically)
   - [ ] priors for learners?
