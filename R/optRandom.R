@@ -181,7 +181,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
     return(timeoutErr)
   }
   evaltime = attr(rwt, "elapsed")
-  .learner$am.env$usedbudget["modeltime"] %+=% evaltime[3]
+  .learner$am.env$usedbudget["modeltime"] %+=% evaltime
   res
 }
 
@@ -197,7 +197,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
   }
   evaltime = attr(rwt, "elapsed")
 
-  .learner$am.env$usedbudget["modeltime"] %+=% evaltime[3]
+  .learner$am.env$usedbudget["modeltime"] %+=% evaltime
   res
 }
 
