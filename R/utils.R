@@ -340,7 +340,8 @@ assignFrameVar = function(fname, varname, value) {
 
 
 isInsideResampling = function() {
-  !is.null(getResampleIter())
+  (length(getFrameNo('resample') < 1) ||
+        !is.null(getResampleIter()))
 }
 
 getResampleIter = function() {
@@ -349,6 +350,18 @@ getResampleIter = function() {
     return(NULL)
   }
   sys.frame(frameno - 1)[['i']]
+}
+
+setResampleUID = function() {
+  frameno = getFrameNo('resample')
+  uid = runif(1)
+  assign('$UID$', uid, envir=sys.frame(frameno - 1))
+  uid
+}
+
+getResampleUID = function() {
+  frameno = getFrameNo('resample')
+  sys.frame(frameno - 1)[['$UID$']]
 }
 
 getResampleMaxIters = function() {
@@ -401,4 +414,13 @@ getSearchspace = function(learner) {
 
 getSearchspace.BaseWrapper = function(learner) {
   getSearchspace(learner$next.learner)
+}
+
+# make a copy of paramSet that has all 'when' attributes set to 'train'. 
+makeAllTrainPars = function(paramSet) {
+  paramSet$pars = lapply(paramSet$pars, function(x) {
+        x$when = "train"
+        x
+      })
+  paramSet
 }

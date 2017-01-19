@@ -3,8 +3,8 @@
 #' 
 #' @description
 #' Runs `expr` with timeout `time` (in seconds) and returns a logical(1)
-#' indicating success will be returned. If `throwError`, the return value will
-#' always be TRUE, and an error will be thrown on timeout.
+#' indicating success. If `throwError`, the return value will always be TRUE,
+#' and an error will be thrown on timeout.
 #'
 #' runWithTimeout can also be called in a nested fashion.
 #' 
@@ -54,8 +54,6 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
 
   # if runWithTimeout is called *within another* runWithTimeout, firstCall is
   # FALSE, otherwise it is TRUE
-  print("querying firstcall")
-  print(getFrameVar(myName, "firstCall"))
   firstCall = is.null(getFrameVar(myName, "firstCall"))
 
   if (firstCall) {
@@ -113,7 +111,7 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
               }, error = onTimeout)
           NULL
         }, automlr.timeout = function(e) e)
-    aborted = is.null(timeoutError)
+    aborted = !is.null(timeoutError)
   }
   finishTime = as.integer(round(proc.time()[3] * 1000))
   runtime = finishTime - invocationTime
@@ -175,8 +173,10 @@ timeoutMessage = "reached elapsed time limit"
 determineTimeoutMessage = function() {
   on.exit(setTimeLimit())
   # playing with fire here.
-  setTimeLimit(elapsed = 0.2, transient = TRUE)
-  err = try(Sys.sleep(10), silent = TRUE)
+  err = try({
+    setTimeLimit(elapsed = 0.2, transient = TRUE)
+    try(Sys.sleep(1), silent = TRUE)
+  })
   conditionMessage(attr(err, "condition"))
 }
 

@@ -5,14 +5,11 @@
 #'   cycle.
 #' 
 #' @description
-#' When max.learner.time, given to automlr, is overrun, we want to either give
-#' an error or a dummy learner.
-#' An error should be given either if the resampling makes only one iterration,
-#' or if the first iterration overruns its time by a large amount (10%?).
+#' When max.learner.time, given to automlr, is overrun, we want to give an
+#' error.
 #' If the first resampling was an error, the other resamplings should also give
 #' errors without starting the run. Otherwise they should themselves run (with
-#' the correct timeout). If any run goes over budget and does not give an error,
-#' it should return a trivial learner that predicts a constant.
+#' the correct timeout). 
 #' 
 #' @param learner [\code{Learner}]\cr
 #'   The learner to be wrapped.
@@ -48,7 +45,7 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
       short.name = "tcw",
       name = "TimeconstraintWrapper",
       properties = getLearnerProperties(learner),
-      par.set = getParamSet(learner),
+      par.set = makeAllTrainPars(getParamSet(learner)),
       par.vals = getHyperPars(learner),
       package = "automlr")
   wrapper$fix.factors.prediction = learner$fix.factors.prediction
@@ -59,8 +56,8 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
   wrapper$time = time
   wrapper$timeFirstIter = timeFirstIter
 
-  wrapper$env$untouched = TRUE
-  wrapper$env$wasError = FALSE
+  wrapper$env$resampleUID = -1
+  wrapper$env$firstResampleError = FALSE
   wrapper
 }
 
@@ -74,77 +71,47 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
   runinfo = list(
       specialFirstIter = FALSE,
       time = .learner$time,
-      ontimeout = "error",
       dummyModel = NULL,
-      traintime = NULL,
-      finished = NULL)
+      traintime = NULL)
 
-  if (isInsideResampling() && getResampleMaxIters() > 1) {
-    if (isResampleParallel()) {
-      # if doing resampling in parallel, all iterations are treated the same.
-      # on error, an imputed value is generated.
-      runinfo$ontimeout = "dummy"
+  if (isInsideResampling() &&
+      getResampleMaxIters() > 1 &&
+      !isResampleParallel()) {
+    # (if doing resampling in parallel, all iterations are treated the same.)
+    if (isFirstResampleIter()) {
+      runinfo$time = coalesce(.learner$timeFirstIter, .learner$time)
+      runinfo$specialFirstIter = TRUE
+      .learner$env$resampleUID = setResampleUID()
+      # set firstResampleError to TRUE and set it to FALSE after train() again.
+      # It will not be reached if an error occurs.
+      .learner$env$firstResampleError = TRUE
     } else {
-      if (isFirstResampleIter()) {
-        runinfo$time = coalesce(.learner$timeFirstIter, .learner$time)
-        runinfo$specialFirstIter = TRUE
-      } else {
-        if (.learner$env$untouched) {
-          # if we are not parallelized and are in the >1st iteration. therefore,
-          # if env is untouched, some error happened.
-          stop("TimeconstraintWrapper communication by environment failed.")
-        }
-        if (.learner$env$wasError) {
-          # if the first iteration timed out we abort all the other iterations
-          # right away.
-          stop("First resampling run was timeout.")
-        }
-        runinfo$ontimeout = "dummy"
+      if (.learner$env$resampleUID != getResampleUID()) {
+        # we are not parallelized and are in the >1st iteration. therefore,
+        # if env is untouched, some error happened.
+        stop("TimeconstraintWrapper communication by environment failed.")
+      }
+      if (.learner$env$firstResampleError) {
+        # if the first iteration timed out we abort all the other iterations
+        # right away.
+        stop("First resampling run was timeout.")
       }
     }
-  } else {
-    .learner$env$untouched = TRUE
-    .learner$env$wasError = FALSE
-  }
-  assert(runinfo$ontimeout %in% c("error", "dummy"))
-  if (runinfo$ontimeout == "dummy" || runinfo$specialFirstIter) {
-    # we also need the dummyModel for the specialFirstIter, since it might
-    # default to a dummy prediction.
-    trivialTask = dropFeatures(.task, getTaskFeatureNames(.task))
-    runinfo$dummyModel = train(learner, task = trivialTask, subset = .subset,
-        weights = .weights)
   }
 
-  if (runinfo$specialFirstIter) {
-    .learner$env$untouched = FALSE
-    # set wasError to TRUE and set it to FALSE after train() again. It will not
-    # be reached if an error occurs.
-    .learner$env$wasError = TRUE
-  }
-  
-  result = list()
-  exec.time = system.time({
-        runinfo$finished <- runWithTimeout({
-              result <- train(learner, task = .task, subset = .subset,
-                  weights = .weights)
-            }, runinfo$time, runinfo$ontimeout == "error")
-      }, gcFirst = FALSE)
+  exec.time = system.time(runWithTimeout({
+            result <- train(learner, task = .task, subset = .subset,
+                weights = .weights)
+          }, runinfo$time, TRUE) , gcFirst = FALSE)
 
   runinfo$traintime = exec.time[3]
   
-  if (runinfo$finished && runinfo$traintime > runinfo$time + 0.5) {
+  if (runinfo$traintime > runinfo$time + 0.5) {
     # we allow ourselves 0.5 seconds buffer or bad things might happen.
-    # Putting the 0.5 into runWithTimeout won't do, since exec.time might be
-    # more than the timeout value due to overhead.
-    if (runinfo$ontimeout == "error") {
-      stop(timeoutMessage)
-    } else {
-      runinfo$finished = FALSE
-      result = list()
-    }
+    stop(timeoutMessage)
   }
 
-  .learner$env$wasError = FALSE
+  .learner$env$firstResampleError = FALSE
   
   result$runinfo = runinfo
   result
@@ -153,38 +120,30 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
 predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
     ...) {
   runinfo = .model$learner.model$runinfo
-  if (runinfo$finished) {
-    # we go here if the training run finished without timeout
-    remainingTime = runinfo$time - runinfo$traintime
-    
-    if (runinfo$specialFirstIter) {
-      .learner$env$wasError = TRUE
-    }
-
-    exec.time = system.time({
-          finished <- runWithTimeout({
-                result <- getPredictionResponse(predict(.model$learner.model,
-                        newdata = .newdata))
-              }, remainingTime, runinfo$ontimeout == "error")
-        }, gcFirst = FALSE)
-    predicttime = exec.time[3]
-    totalTime = predicttime + runinfo$traintime
-
-    .learner$env$wasError = FALSE
-
-    if (runinfo$specialFirstIter && totalTime > .learner$time) {
-      # on the first 'special' run, we might be below the timeFirstIter timeout
-      # value, but still above the regular timeout value. In that case, we 
-      # treat the run as if it did produce a timeout on a subsequent resampling
-      # iteration and do the dummy prediction. 
-      finished = FALSE
-    }
-    if (finished) {
-      return(result)
-    }
+  # we go here if the training run finished without timeout
+  remainingTime = max(runinfo$time - runinfo$traintime, 1)
+  
+  if (runinfo$specialFirstIter) {
+    .learner$env$firstResampleError = TRUE
   }
-  assert(runinfo$ontimeout == "dummy" || runinfo$specialFirstIter)
-  getPredictionResponse(predict(runinfo$dummyModel, newdata = .newdata))
+
+  exec.time = system.time(runWithTimeout({
+            result <- getPredictionResponse(predict(.model$learner.model,
+                    newdata = .newdata))
+          }, remainingTime, TRUE), gcFirst = FALSE)
+  predicttime = exec.time[3]
+  totalTime = predicttime + runinfo$traintime
+
+  .learner$env$firstResampleError = FALSE
+
+  if (runinfo$specialFirstIter && totalTime > .learner$time) {
+    # on the first 'special' run, we might be below the timeFirstIter timeout
+    # value, but still above the regular timeout value. In that case, we 
+    # treat the run as if it did produce a timeout on a subsequent resampling
+    # iteration and do the dummy prediction. 
+    stop(timeoutMessage)
+  }
+  result
 }
 
 getSearchspace.TimeconstraintWrapper = function(learner) {
