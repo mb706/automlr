@@ -77,9 +77,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
 - [-] release 0.2
   - [X] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [X] optRandom: don't abort crossvalidation when time runs out (?)
-  - [ ] optRandom: cut out superfluous entries of out of time errors.
-  - [ ] simplification and cleaning up
-    - [ ] remove budgets that are not walltime or nevals
+  - [X] optRandom: cut out superfluous entries of out of time errors.
+  - [-] simplification and cleaning up
+    - [X] remove budgets that are not walltime or nevals
     - [ ] collect backend shims and re-use them
   - [-] event handling
     - [ ] catch Ctrl-C and handle gracefully
@@ -135,7 +135,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
 - [ ] merge my mlr debug dump implementation
 - [ ] check what is taking random so long with some evals
 - [ ] write some easy timeout tests
-- [ ] implement fork timeout wrapper
+- [X] implement fork timeout wrapper
 - [ ] check the imputation wrapper
 - [ ] see what can be done about communication when using imputation wrapper
 - [ ] check automlr option handling
