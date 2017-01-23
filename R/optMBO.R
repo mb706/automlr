@@ -29,8 +29,6 @@ makeBackendconfMbo = registerBackend("mbo",
       argsToList()
     })
 
-
-
 amaddprior.ammbo = function(env, prior) {
   NULL
 }
@@ -70,7 +68,13 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
       x = removeMissingValues(x)
     }
     l = setHyperPars(learner, par.vals = x)
-    resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
+
+    hardTimeoutRemaining = hardTimeout - proc.time()[3]
+
+    rwt = runWithTimeout(
+        resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr,
+        hardTimeoutRemaining, throwError = TRUE)
+    rwt$result
   }
   
   usedParset = getSearchspace(learner)
@@ -146,12 +150,20 @@ amresult.ammbo = function(env) {
 amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # initialize for spent budget computation
   zero = env$runtimeEnv
+  
+  # FIXME: right now, the infill crit optimization does not respect the
+  # deadline. It is possible to change this, by changing the termination
+  # criterion of the mbo run so that only one iteration gets performed per
+  # call, and additionally creating backups of the opt.state before each call.
+  # I will choose the elegant over the correct solution here though.
+  zero$hardTimeout = proc.time()[3] + deadline
+  
   zero$budget = stepbudget
 
   zero$learner = adjustLearnerVerbosity(zero$learner, verbosity)
   
-  env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
-  
+  result = runWithTimeout(mlrMBO:::mboTemplate.OptState(env$opt.state),
+      deadline, backend = "native")
   spent = spentBudget(env$opt.state, zero)
   zero$zeroWalltime %+=% spent["walltime"]
   zero$zeroEvals %+=% spent["evals"]

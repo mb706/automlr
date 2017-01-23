@@ -147,16 +147,16 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       # perform iraceFunction as a kind of transaction: If it is aborted due to
       # timeout, we return the old env$res and reinstate the old env$opt.path.
       optPathBackup = deepcopy(env$opt.path)
-      runWithTimeout(res <- iraceFunction(tunerConfig, parameters, ...),
+      res = runWithTimeout(iraceFunction(tunerConfig, parameters, ...),
           env$hardTimeout - proc.time()[3])
-      if (!runWithTimeout) {
+      if (res$timeout) {
         env$opt.path = optPathBackup
         if (!exists("res", envir = env)) {
           stop(noResTimeout)
         }
         return(env$res)
       }
-      env$res = res
+      env$res = res$result
       load(tunerConfig$logFile)
       env$usedbudget["evals"] =
           tunerResults$state$experimentsUsedSoFar - evals.zero

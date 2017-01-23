@@ -101,8 +101,9 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     # backend is buggy, amstate$spent could contain NAs
     assert(!anyNA(amstate$spent))
 
-    if (!exists(".Random.seed", .GlobalEnv))
+    if (!exists(".Random.seed", .GlobalEnv)) {
       set.seed(NULL)
+    }
     amstate$seed = get(".Random.seed", .GlobalEnv)
 
     amstate$finish.time = Sys.time()
