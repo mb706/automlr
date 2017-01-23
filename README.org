@@ -78,9 +78,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] instead of backend string, accept backend objects that carry optimization arguments specific to the backend
   - [X] optRandom: don't abort crossvalidation when time runs out (?)
   - [X] optRandom: cut out superfluous entries of out of time errors.
-  - [-] simplification and cleaning up
+  - [X] simplification and cleaning up
     - [X] remove budgets that are not walltime or nevals
-    - [ ] collect backend shims and re-use them
+    - [X] collect backend shims and re-use them
   - [-] event handling
     - [ ] catch Ctrl-C and handle gracefully
     - [ ] maximum walltime overrun
