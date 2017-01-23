@@ -1,42 +1,79 @@
+runWithTimeoutBackend = "native"
+
+#' @title Set the default runWithTimeout backend
+#' 
+#' @description
+#' Sets the default backend used by \code{runWithTimeout}.
+#' 
+#' @param backend [\code{character(1)}]\cr
+#' The backend to use by \code{runWithTimeout}. The two implemented backends are
+#' \code{"fork"} (default) and \code{"native"}. The fork backend uses the
+#' operating system's \code{fork} functionality. This is safer and protects
+#' against crashes of most kind, but it prevents communication by reference
+#' (e.g. S4 objects or environments) and it only works on UNIX kinds of
+#' operating systems.
+#' The native backend uses the crude and unreliable R internal
+#' \code{setTimeLimit} functionality to facilitate timeout. This is system
+#' independent.
+#' @export
+setDefaultRWTBackend = function(backend) {
+  assertChoice(backend, c("native", "fork"))
+  runWithTimeoutBackend <<- backend
+}
 
 #' @title Run a given expression with a given (walltime) timeout.
 #' 
 #' @description
 #' Runs `expr` with timeout `time` (in seconds) and returns a logical(1)
-#' indicating success. If `throwError`, the return value will always be TRUE,
-#' and an error will be thrown on timeout.
+#' indicating success. The return value contains the result of the evaluated
+#' expression, as well as information about the execution.
 #'
-#' runWithTimeout can also be called in a nested fashion.
+#' \code{runWithTimeout} can also be called in a nested fashion.
 #' 
 #' @param expr [any]\cr
 #' The expression that will be run with the given timeout.
-#' @param time [\numeric(1)]\cr
+#' @param time [\code{numeric(1)}]\cr
 #' The runtime, in seconds, after which to abort evaluation of expr. If this is
 #' smaller or equal zero, expr will not be run and a timeout will be reported.
 #' @param throwError [\logical(1)]\cr
 #' If \code{TRUE}, throw an error on timeout instead of just returning
 #' \code{FALSE}.
-#' @return [\code{logical(1)}]\
-#' \code{TRUE} if the evaluation of \code{expr} finished successfully.
-#' \code{FALSE} if \code{throwError} is \code{FALSE} and the evaluation timed
-#' out.
-#' The return value will have an attribute 'elapsed' indicating the time spent
-#' evaluating expr. The value is guaranteed to be lower or equal to \code{time}
-#' if TRUE is returned and to be greater than \code{time} if FALSE is returned.
+#' @return [\code{list}]\cr
+#' a list with three items:\cr
+#' \code{$result} contains the result of the evaluated expression \code{expr}.
+#' If a timeout occurred and \code{throwError} is \code{FALSE}, this will be
+#' \code{NULL}.\cr
+#' \code{$timeout} if \code{throwError} is \code{FALSE}, this is \code{TRUE} if
+#' a timeout occurred, \code{FALSE} otherwise. If \code{throwError} is
+#' \code{TRUE}, this is always \code{TRUE}.\cr
+#' \code{$elapsed} contains the time spent evaluating \code{expr}. The value is
+#' guaranteed to be lower or equal to \code{time} if the returned
+#' \code{$timeout} is \code{FALSE}, and is greater than \code{TIME} otherwise.
 #' @export
-runWithTimeout = function(expr, time, throwError = FALSE) {
-  myName = "runWithTimeout"
-  myCallName = as.character(sys.call()[[1]])
-  if (!identical(myName, myCallName)) {
-    # the name of the function on the call stack must be 'runWithTimeout'.
-    # If this function was called with a different name (e.g. by things like
-    # > x = runWithTimeout
-    # > x(1 + 1, 100)
-    # ) we need to call it again, this time with the right name.
-    return(runWithTimeout(expr, time, throwError))
-  }
+runWithTimeout = function(expr, time, throwError = FALSE, backend) {
+#  FIXME: is the following necessary?
+#  myName = "runWithTimeout"
+#  myCallName = as.character(sys.call()[[1]])
+#  if (!identical(myName, myCallName)) {
+#    # the name of the function on the call stack must be 'runWithTimeout'.
+#    # If this function was called with a different name (e.g. by things like
+#    # > x = runWithTimeout
+#    # > x(1 + 1, 100)
+#    # ) we need to call it again, this time with the right name.
+#    return(runWithTimeout(expr, time, throwError))
+#  }
+
   assertNumeric(time, len = 1, any.missing = FALSE)
   assertFlag(throwError)
+
+  if (runWithTimeoutBackend == "native") {
+    runWithTimeoutNative(expr, time, throwError, "runWithTimeoutNative")
+  } else {
+    runWithTimeoutFork(expr, time, throwError, "runWithTimeoutFork")
+  }
+}
+
+runWithTimeoutNative = function(expr, time, throwError, myName) {
   checkParallelMapAllowed()
   
   errMsg = paste("Timeout:", timeoutMessage)
@@ -93,20 +130,23 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
   thisTimeout = invocationTime + time
   
   timeoutNotNew = thisTimeout >= nextTimeout
+
+  result = NULL
+
   if (timeoutNotNew) {
     # this runWithTimeout is a no-op, since a higher nesting level
     # runWithTimeout will trigger before `time` is spent. We need to make sure
     # the lower nested runWithTimeout have the correct `nextTimeout`, however.
     thisTimeout = nextTimeout
     trueSetTimeLimitMs(nextTimeout - invocationTime)
-    expr
+    result = expr
     # if we arrive here, time did not run out.
     aborted = FALSE
   } else {
     timeoutError = trueTryCatch({
           trueWithCallingHandlers({
                 trueSetTimeLimitMs(thisTimeout - invocationTime)
-                expr
+                result <- expr
                 trueSetTimeLimitMs()
               }, error = onTimeout)
           NULL
@@ -129,13 +169,14 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
 
   if (aborted && !isTimeout) {
     stopf("Running expression with timeout %s aborted, but runtime was %s.",
-        time, runtime)
+        time / 1000, runtime / 1000)
   }
 
   if (isTimeout) {
     # even if the execution was not aborted, if the time is above the limit,
     # we treat it as an abort.
     aborted = TRUE
+    result = NULL
   }
 
   if (aborted && throwError) {
@@ -148,7 +189,9 @@ runWithTimeout = function(expr, time, throwError = FALSE) {
     }
   }
 
-  structure(!aborted, elapsed = runtime / 1000)
+  list(result = result,
+      timeout = aborted,
+      elapsed = runtime / 1000)
 }
 
 

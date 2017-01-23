@@ -130,3 +130,14 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] priors for learners?
 - [ ] release 1.0
   - [ ] everything is really, really stable
+
+** COMMENT immediate TODO
+- [ ] merge my mlr debug dump implementation
+- [ ] check what is taking random so long with some evals
+- [ ] write some easy timeout tests
+- [ ] implement fork timeout wrapper
+- [ ] check the imputation wrapper
+- [ ] see what can be done about communication when using imputation wrapper
+- [ ] check automlr option handling
+- [ ] check MBO backend
+- [ ] repair irace backend
