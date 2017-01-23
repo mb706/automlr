@@ -16,8 +16,6 @@
 #'   A named list or named vector with one or several of the entries
 #'   \describe{
 #'     \item{\code{walltime}}{time since invocation}
-#'     \item{\code{cputime}}{total cpu time of optimization process}
-#'     \item{\code{modeltime}}{time spent executing model fits}
 #'     \item{\code{evals}}{number of model fit evaluations}
 #'   }
 #'   (Time is always given in seconds.)\cr
@@ -89,8 +87,11 @@
 #'   especially when the learner code runs into a C function that can not be
 #'   interrupted.
 #' @param max.learner.time [\code{numeric(1)}]\cr
-#'   Maximum time that one combined \code{train()}-\code{predict()} evaluation
-#'   of a learner may take after which it is aborted.
+#'   Maximum time, in seconds, that one combined \code{train()}-\code{predict()}
+#'   evaluation of a learner may take after which it is aborted. Note that for
+#'   performance measurements that use multiple evaluations, e.g.
+#'   crossvalidation, a single datapoint takes a multiple of
+#'   \code{max.learner.time} seconds. 
 #' @param verbosity [\code{integer(1)}]\cr
 #'   Level of warning and info messages which to show.
 #'   \describe{
@@ -139,7 +140,7 @@
 #' # almost minimal invocation. Will save progress to './iris.rds'.
 #' automlr(iris.task, budget = c(evals = 1000), backend = "random",
 #'   savefile = "iris")
-#' > SOME RESULT YOU GUYS
+#' > SOME RESULT
 #' 
 #' # optimize for another 1000 evaluations, loading the 'iris.rds' savefile
 #' # automatically and saving back to it during evaluation.
@@ -161,7 +162,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
     searchspace = mlrLearners, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, backend,
     max.walltime.overrun = if ("walltime" %in% names(budget))
-      budget['walltime'] * 0.1 + 30 else 3600, max.learner.time = Inf,
+      budget['walltime'] * 0.1 + 60 else 3600, max.learner.time = Inf,
     verbosity = 0, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
@@ -199,7 +200,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
           task = task,
           measure = coalesce(measure, getDefaultMeasure(task)),
           budget = budget,
-          spent = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0),
+          spent = c(walltime = 0, evals = 0),
           searchspace = searchspace,
           prior = prior,
           backend = attr(backend, "automlr.backend"),

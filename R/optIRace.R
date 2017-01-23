@@ -1,5 +1,4 @@
 
-
 #' @title irace backend configuration
 #' 
 #' @description
@@ -23,7 +22,6 @@ makeBackendconfIrace = registerBackend("irace",
       assertClass(resampling, "ResampleDesc")
       argsToList()
     })
-
 
 amaddprior.amirace = function(env, prior) {
   NULL
@@ -85,10 +83,6 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   # breaking more rules than a maths teacher with anger management problems:
   environment(iraceFunction) = new.env(parent = asNamespace("irace"))
   environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix
-
-  # this is assuming we don't use the irace package's parallel functionality.
-  numcpus = parallelGetOptions()$settings$cpus
-  numcpus[is.na(numcpus)] = 1
   
   # hard time limit, to be enforced even when progress may be lost. This will be
   # set by amoptimize.amirace
@@ -96,7 +90,6 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(tunerConfig, parameters, ...) {
-    modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE)
     if (exists("tunerResults", envir = env)) {
       # 'env' is the backendprivatedata env.
       # if tunerResults is in the environment then we are continuing, so we load
@@ -167,11 +160,8 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       load(tunerConfig$logFile)
       env$usedbudget["evals"] =
           tunerResults$state$experimentsUsedSoFar - evals.zero
-      env$usedbudget["modeltime"] =
-          sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE) - modeltime.zero
       env$usedbudget["walltime"] =
           as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
-      env$usedbudget["cputime"] = env$usedbudget["walltime"] * numcpus
       
       env$tunerResults = tunerResults
       
@@ -201,7 +191,7 @@ amresult.amirace = function(env) {
 amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   env$starttime = Sys.time()
   env$stepbudget = stepbudget
-  env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
+  env$usedbudget = c(walltime = 0, evals = 0)
   env$hardTimeout = deadline + proc.time()[3]
   # install the wrapper and make sure it gets removed as soon as we exit
   # patch mlr on CRAN

@@ -139,8 +139,8 @@ extractSubList = function(xs, element, element.value, simplify = TRUE,
 checkBudgetParam = function(budget) {
   if (!identical(budget, 0) && !identical(budget, 0L)) {
     assertNamed(budget)
-    assertNumeric(budget, lower = 0, min.len = 1, max.len = 4)
-    legalnames = c("walltime", "cputime", "evals", "modeltime")
+    assertNumeric(budget, lower = 0, min.len = 1, max.len = 2)
+    legalnames = c("walltime", "evals")
     budgetNamesOk = names(budget) %in% legalnames
     assert(all(budgetNamesOk))
   }

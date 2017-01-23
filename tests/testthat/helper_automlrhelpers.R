@@ -366,12 +366,10 @@ checkLegitAMResult = function(amobject, budget, budgettest) {
 
 # check that the AM object spent time satisfy certain propperties
 checkSpentVsBudget = function(amobject, budget, budgettest, runtime) {
-  if (budgettest %in% c("walltime", "modeltime")) {
+  if (budgettest == "walltime") {
     expect_lte(budget, runtime + 1)
   }
   expect_lte(budget, amobject$spent[budgettest])
-  expect_lte(amobject$spent['modeltime'], amobject$spent['walltime'])
-  expect_lte(amobject$spent['walltime'], amobject$spent['cputime'])
   expect_lte(amobject$spent['walltime'], runtime + 1)
 }
 
@@ -383,16 +381,15 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
     SHORTRUN = TRUE
   }
   if (SHORTRUN) {
-    typicalBudget = list(walltime = 3, cputime = 3, modeltime = 3, evals = 40)
+    typicalBudget = list(walltime = 3, evals = 40)
   } else {
-    typicalBudget = list(walltime = 30, cputime = 30, modeltime = 20,
-        evals = 300)
+    typicalBudget = list(walltime = 30, evals = 300)
   }
   
   oc = if (verbose) identity else utils::capture.output
   
   methodsToTest = c("file", "object")
-  budgetsToTest = c("walltime", "cputime", "modeltime", "evals")
+  budgetsToTest = c("walltime", "evals")
 
   if (SHORTRUN && !thorough) {
     methodsToTest = "file"
@@ -425,9 +422,9 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
 
   for (methodOfContinuation in methodsToTest) {
     for (budgettest in budgetsToTest) {
-      STALLTIME <<- (budgettest == "modeltime")
+      STALLTIME <<- (budgettest == "walltime")
       budget = typicalBudget[[budgettest]]
-      if (backendToTest == "mbo" && budgettest %in% c("modeltime", "evals")) {
+      if (backendToTest == "mbo" && budgettest == "evals") {
         # mbo takes much longer than others for same number of evals
         budget = budget / 10
       }
@@ -463,7 +460,7 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
       checkLegitAMResult(amobject, budget, budgettest)    
       checkSpentVsBudget(amobject, budget, budgettest, runtime)
 
-      for (property in c('modeltime', 'walltime', 'cputime', 'evals')) {
+      for (property in c('walltime', 'evals')) {
         expect_lte(spentBefore[property], amobject$spent[property])
       }
     }

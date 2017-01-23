@@ -65,8 +65,7 @@ amsetup= function(env, opt, prior, learner, task, measure, verbosity) {
 #'   The private data of this backend.
 #' @param stepbudget [\code{numeric}]\cr
 #'   The budget for this optimization step with one or several of the entries
-#'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
-#'   \code{\link{automlr}} for details.
+#'   \code{walltime} and \code{evals}. See \code{\link{automlr}} for details.
 #' @param verbosity [\code{numeric(1)}]\cr
 #'   Output options.
 #' @param deadline [\code{numeric(1)}]\cr

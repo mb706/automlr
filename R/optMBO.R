@@ -48,7 +48,6 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   env$runtimeEnv = environment()
   
   zeroWalltime = 0
-  zeroModeltime = 0
   zeroEvals = 0
   
   # the following must be set here since mbo() creates the initial design,
@@ -147,17 +146,14 @@ amresult.ammbo = function(env) {
 amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # initialize for spent budget computation
   zero = env$runtimeEnv
-  zero$numcpus = parallelGetOptions()$settings$cpus
-  zero$numcpus[is.na(zero$numcpus)] = 1
   zero$budget = stepbudget
-  
+
   zero$learner = adjustLearnerVerbosity(zero$learner, verbosity)
   
   env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
   
   spent = spentBudget(env$opt.state, zero)
   zero$zeroWalltime %+=% spent["walltime"]
-  zero$zeroModeltime %+=% spent["modeltime"]
   zero$zeroEvals %+=% spent["evals"]
   
   spent
@@ -166,10 +162,7 @@ amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
 spentBudget = function(opt.state, zero) {
   spent = numeric(0)
   totalWallTime = as.numeric(opt.state$time.used, units = "secs")
-  totalModelTime = sum(getOptPathExecTimes(opt.state$opt.path))
   spent["walltime"] = totalWallTime - zero$zeroWalltime
-  spent["cputime"] = spent["walltime"] * zero$numcpus
-  spent["modeltime"] = totalModelTime - zero$zeroModeltime
   spent["evals"] = getOptPathLength(opt.state$opt.path) - zero$zeroEvals
   spent
 }

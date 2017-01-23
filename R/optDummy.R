@@ -72,8 +72,7 @@ amsetup.amdummy = function(env, opt, prior, learner, task, measure, verbosity) {
 #'   The private data of this backend.
 #' @param stepbudget [\code{numeric}]\cr
 #'   The budget for this optimization step with one or several of the entries
-#'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
-#'   \code{\link{automlr}} for details.
+#'   \code{walltime} and \code{evals}. See \code{\link{automlr}} for details.
 #' @param verbosity [\code{numeric(1)}]\cr
 #'   Output options.
 #' @param deadline [\code{numeric(1)}]\cr
@@ -89,7 +88,7 @@ amoptimize.amdummy = function(env, stepbudget, verbosity, deadline) {
   print(stepbudget)
   env$evals = env$evals + 1
   env$prior = env$prior + 1
-  c(walltime = 10, cputime = 10, modeltime = 10, evals = 1)
+  c(walltime = 10, evals = 1)
 }
 
 #' @title Reference implementation that exemplifies the backend interface.

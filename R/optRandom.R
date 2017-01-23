@@ -70,7 +70,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   # am.env is the environment that will be attached to the learner. During the
   # evaluation it will be used to check the remaining budget.
   am.env$starttime = Sys.time()
-  am.env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
+  am.env$usedbudget = c(walltime = 0, evals = 0)
   am.env$stepbudget = stepbudget
   am.env$outofbudget = FALSE
   am.env$hardTimeout = proc.time()[3] + deadline
@@ -81,11 +81,6 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   # predictLearner were not propagated.
   am.env$untouched = TRUE
   learner$am.env = am.env
-  
-  # we count the modeltime that mlr gives us
-  mlrModeltime = 0
-  
-  numcpus = parallelGetOptions()$settings$cpus
   
   # the output function for tuneParams depends on the verbosity option.
   if (verbosity.traceout(verbosity)) {
@@ -115,8 +110,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
     learner$am.env$usedbudget["evals"] %+=% sum(notOOB)
-    mlrModeltime %+=% sum(getOptPathExecTimes(tuneresult$opt.path)[notOOB],
-        na.rm = TRUE)
+
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
     } else {
@@ -124,25 +118,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
     }
     learner$am.env$outofbudget = FALSE
   }
-  # the following updates walltime and cputime.
-  # It also sets modeltime to cputime if am.env$untouched is TRUE (i.e. if
-  # we know learner$am.env was not communicated back to us due to
-  # parallelization).
-  # The obvious objection would be that we know the modeltime from the
-  # opt.path. however, that is not the modeltime that is used inside the
-  # amrandomWrapped-models, so we shouldn't use it here, otherwise we could
-  # get infinite loops!
-  if (learner$am.env$untouched) {
-    if ("modeltime" %in% names(stepbudget)) {
-      mlrModeltime = max(mlrModeltime, stepbudget["modeltime"])
-    }
-    learner$am.env$usedbudget["modeltime"] = mlrModeltime
-    if (!stopcondition(stepbudget, learner$am.env$usedbudget)) {
-      # if "modeltime" is the decisive constraint, we need to lie a little here,
-      # otherwise amoptimize() gets called again and we are in an endless loop.
-      learner$am.env$usedbudget["modeltime"] = stepbudget["modeltime"]
-    }
-  }
+
   learner$am.env$usedbudget
 }
 
@@ -152,6 +128,8 @@ timeoutErr = addClasses(out.of.budget.string, c("outOfBudgetError", "error"))
 trainLearner.amrandomWrapped = function(.learner, ...) {
   env = .learner$am.env
   hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
+
+  
   # We want to test whether the first run of a resampling was over budget.
   # We can sometimes but not always communicate between runs of the same
   # resampling. Therefore we always need to check which iteration we are *AND*
@@ -172,33 +150,31 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   }
 
   if (env$outofbudget || (checkBudget && checkoutofbudget(.learner$am.env))) {
-    # stop("out of budget"), only we don't use the try() function's way of
-    # telling us what we already know
+    # stop("out of budget"), but since we are inside try() anyways we function's
+    # skip some overhead by just *return*ing an error.
     return(timeoutErr)
   }
-  rwt = runWithTimeout(res <- NextMethod("trainLearner"), hardTimeoutRemaining)
-  if (!rwt) {
+  # its kind of amazing that NextMethod works like this.
+  rwt = runWithTimeout(NextMethod("trainLearner"), hardTimeoutRemaining)
+  
+  if (rwt$timeout) {
     return(timeoutErr)
   }
-  evaltime = attr(rwt, "elapsed")
-  .learner$am.env$usedbudget["modeltime"] %+=% evaltime
-  res
+  rwt$result
 }
 
 #' @export
 predictLearner.amrandomWrapped = function(.learner, ...) {
+  # if we reach this point, the run started before anything went out of budget,
+  # so we finish what we started. Exception: The hardTimeout must be respected.
   env = .learner$am.env
   hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
 
-  rwt = runWithTimeout(res <- NextMethod("predictLearner"),
-      hardTimeoutRemaining)
-  if (!rwt) {
+  rwt = runWithTimeout(NextMethod("predictLearner"), hardTimeoutRemaining)
+  if (rwt$timeout) {
     return(timeoutErr)
   }
-  evaltime = attr(rwt, "elapsed")
-
-  .learner$am.env$usedbudget["modeltime"] %+=% evaltime
-  res
+  rwt$result
 }
 
 # ModelMultiplexer does not consider the possibility of trainLearner() to
@@ -225,36 +201,13 @@ as.character.outOfBudgetError = function(x, ...) {
   x
 }
 
-# check whether the learner attached environment `env` is out of budget. This
-# respects the possibility that `env` may or may not be able to communicate
-# between runs and falls back to more or less good proxy values.
-# @param evaltime the time of the current run that has not yet been added to
-#   env$usedbudget["modeltime"] but should be respected when evaluating budget.
-checkoutofbudget = function(env, evaltime = 0) {
-  if (env$outofbudget) {
-    return(env$outofbudget)
+# update walltime and check whether the learner attached environment `env` is
+# out of budget. 
+checkoutofbudget = function(env) {
+  if (!env$outofbudget) {
+    env$usedbudget["walltime"] = as.numeric(difftime(Sys.time(), env$starttime,
+            units = "secs"))
+    env$outofbudget = stopcondition(env$stepbudget, env$usedbudget)
   }
-  env$usedbudget["walltime"] = as.numeric(difftime(Sys.time(), env$starttime,
-          units = "secs"))
-  
-  env$usedbudget["cputime"] = env$usedbudget["walltime"] * env$cpus
-  modeltime = env$usedbudget["modeltime"] + evaltime
-  
-  # when doing parallel stuff, this is unknowable.
-  if (env$untouched) {
-    # either this is the first execution of predictLearner, or the whole thing
-    # is being parallelized and the state of env is forgotten. We make the
-    # assumption that the modeltime budget is not smaller than the time required
-    # from initialization until here.
-    env$usedbudget["modeltime"] = env$usedbudget["cputime"]
-  } else {
-    env$usedbudget["modeltime"] = modeltime
-  }
-  if (stopcondition(env$stepbudget, env$usedbudget)) {
-    env$outofbudget = TRUE
-  }
-  
-  env$usedbudget["modeltime"] = modeltime
-  env$outofbudget
-  
+  return(env$outofbudget)
 }
