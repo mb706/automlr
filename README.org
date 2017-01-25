@@ -83,10 +83,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [X] collect backend shims and re-use them
   - [-] event handling
     - [ ] catch Ctrl-C and handle gracefully
-    - [ ] maximum walltime overrun
-    - [-] maximum per learner time
+    - [X] maximum walltime overrun
+    - [X] maximum per learner time
     - [X] make sure mlr on.learner.error, on.learner.warning are handled well
-    - [ ] nicer printing
   - [ ] memory handling
   - [ ] make debugging easier
     - [ ] debug flag sets all show.learner.output to TRUE

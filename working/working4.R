@@ -17,6 +17,7 @@ roxygenise('..')
 
 devtools::load_all("..")
 options(error=dump.frames)
+options(warn=1)
 
 ##
 pid.task
@@ -25,7 +26,12 @@ pid.task
 library(utils)
 evalWithTimeout
 
-resRand <- automlr(pid.task, budget=c(evals=10), backend="random", verbosity=6, searchspace=list(mlrLearners$classif.logreg, mlrLearners$classif.knn))
+resRand <- automlr(pid.task, budget=c(evals=100), backend="random", verbosity=5, max.learner.time=3,
+                   searchspace=list(mlrLearners$classif.logreg, mlrLearners$classif.nodeHarvest))
+
+amfinish(resRand)
+as.data.frame(amfinish(resRand)$opt.path)
+
 debugonce(automlr:::trainLearner.TimeconstraintWrapper)
 
 getParamSet(makeLearner("classif.lssvm"))
@@ -82,5 +88,80 @@ automlr::runWithTimeout(
     resample(learner=makeLearner("classif.nodeHarvest"), task=pid.task, resampling=cv10)},
     10), 15)
 
-resample(learner=automlr:::makeTimeconstraintWrapper(makeLearner("classif.nodeHarvest"), 10), task=pid.task, resampling=cv10)
+resample(learner=automlr:::makeTimeconstraintWrapper(
+             setHyperPars(makeLearner("classif.nodeHarvest"), nodesize=9, nodes=510, maxinter=3, mode="outbag", biascorr=FALSE)
+           , 3), task=pid.task, resampling=cv5)
 
+runWithTimeout(train(makeLearner("classif.nodeHarvest"), task=pid.task), 20000)
+
+system.time(R.utils::evalWithTimeout(train(makeLearner("classif.nodeHarvest"), task=pid.task), timeout=10))
+
+undebug(runWithTimeout)
+
+
+##
+bigMeanTO <- function(doTO) runWithTimeout(mean(rnorm(10 + doTO * 1e7)), 1, backend="native")
+
+
+dorun <- function(doTO) {
+  suspendInterruptsFor({
+    result = lapply(1:10, function(i) {
+      print(i)
+      print('noabort')
+      print(bigMeanTO(doTO)$result)
+      print(handleInterrupts({ print('allowabort') ; bigMeanTO(doTO)$result}, "aborted"))
+    })
+  }, hardKillInterval = 0.5)
+  result
+}
+
+devtools::load_all("..")
+
+dorun(1)
+
+
+(x <- 1) + 1
+
+
+
+xf <- function() {
+  on.exit(print(i))
+  i = 1
+  j = 2
+  on.exit()
+}
+
+xf()
+lapply(1:40, function(i) handleInterrupts({ print(i) ; bigMeanTO(1)$result}, "aborted"))
+
+
+bigMeanTO(0)$result
+
+lapply(1:4, function(i) {
+  print("run ***************")
+  print(i)
+  job = parallel::mcparallel(mean(rnorm(10 + doTO * 1e7)), mc.set.seed=FALSE, silent=FALSE)
+  print("JOB*******************")
+  print(job)
+  print(system.time(result <- parallel::mccollect(job, wait=FALSE, timeout=2), gcFirst=FALSE))
+  print("RS1*******************")  
+  print(result)
+  print(system.time(result2 <- parallel::mccollect(job, wait=FALSE), gcFirst=FALSE))
+  print("R23*******************")  
+  print(result2)
+  print(system.time(result3 <- parallel::mccollect(job, wait=TRUE), gcFirst=FALSE))
+  print(result3)
+  i
+})
+
+library(parallel)
+print(.Internal(interruptsSuspended(TRUE)))
+job <- parallel::mcparallel(mean(rnorm(10 + 1 * 1e7)), mc.set.seed=FALSE, silent=FALSE)
+parallel::mccollect(job, wait=FALSE, timeout=2)
+
+mccollect()
+print(system.time(Sys.sleep(1), gcFirst=FALSE))
+
+i = 3
+while(i>0) i <- i - 1
+i

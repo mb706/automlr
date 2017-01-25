@@ -5,6 +5,51 @@
 # mostly because mbo doesn't handle parameters well that are neither numeric nor
 # categorical.
 
+# the whole stack down: simplify requirements, types, vectors
+simplifyParams = function(parset) {
+  parset = mboRequirements(parset)
+  parset = untypeParams(parset)
+  parset = unvectorParams(parset)
+  parset
+}
+
+# after generating concrete parameters using the simplifyParams() simplified
+# parameters, convert these back so the learner receives them as the original
+# parameter set.
+complicateParams = function(params, origparset) {
+  simpleTypeOrig = untypeParams(origparset)
+
+  types = getParamTypes(simpleTypeOrig, df.cols = TRUE)
+  for (parin in seq_along(params)) {
+    params[[parin]] = switch(types[parin],
+        integer = as.integer,
+        numeric = as.numeric,
+        factor = as.character,
+        stop("complicateParam got bad type"))(params[[parin]])
+  }
+  
+  params = as.data.frame(params, stringsAsFactors = FALSE)
+  params = dfRowsToList(params, simpleTypeOrig)[[1]]
+  params = removeMissingValues(params)
+  
+  ret = lapply(names(params), function(parname) {
+        vals = origparset$pars[[parname]]$values
+        type = origparset$pars[[parname]]$type
+        par = params[[parname]]
+        if (is.null(vals)) {
+          # don't change anything
+          return(par)
+        }
+        switch(type,
+            logicalvector = unlist(vals[unlist(par)]),
+            logical = vals[[par]],
+            discretevector = lapply(par, function(x) vals[[x]]),
+            discrete = vals[[par]])
+      })
+  names(ret) = names(params)
+  ret
+}
+
 # convert discrete to discrete-string parameters
 # also convert logical to discrete parameters
 untypeParams = function(parset) {
@@ -47,49 +92,6 @@ unvectorParams = function(parset) {
                 })
           }))
   parset
-}
-
-simplifyParams = function(parset) {
-  parset = mboRequirements(parset)
-  parset = untypeParams(parset)
-  parset = unvectorParams(parset)
-  parset
-}
-
-# undo the 'simplifyParams' operation
-complicateParams = function(params, origparset) {
-  simpleTypeOrig = untypeParams(origparset)
-  
-  types = getParamTypes(simpleTypeOrig, df.cols = TRUE)
-  for (parin in seq_along(params)) {
-    params[[parin]] = switch(types[parin],
-        integer = as.integer,
-        numeric = as.numeric,
-        factor = as.character,
-        stop("complicateParam got bad type"))(params[[parin]])
-  }
-  
-  params = as.data.frame(params, stringsAsFactors = FALSE)
-  params = dfRowsToList(params, simpleTypeOrig)[[1]]
-  
-  params = removeMissingValues(params)
-  
-  ret = lapply(names(params), function(parname) {
-        vals = origparset$pars[[parname]]$values
-        type = origparset$pars[[parname]]$type
-        par = params[[parname]]
-        if (is.null(vals)) {
-          # don't change anything
-          return(par)
-        }
-        switch(type,
-            logicalvector = unlist(vals[unlist(par)]),
-            logical = vals[[par]],
-            discretevector = lapply(par, function(x) vals[[x]]),
-            discrete = vals[[par]])
-      })
-  names(ret) = names(params)
-  ret
 }
 
 # adapt requirements to parameter simplification we are doing above.
@@ -225,23 +227,27 @@ iraceRequirements = function(searchspace) {
   searchspace
 }
 
+
 # this works since irace 1.05
+# The point of this fix is to preserve the hookRun function given as argument
+# to irace, instead of using the one loaded from file. This has the effect of
+# preserving the environment reference that contains the true opt.path.
 iraceRecoverFromFileFix = function(file)  {
   # we don't want to overwrite our tunerConfig$hookRun with the saved one.
   eval.parent(substitute({
-                    load(file)
-                    for (name in names(tunerResults$state)) {
-                        pos = if (name == ".Random.seed") .GlobalEnv else -1
-                        assign(name, tunerResults$state[[name]], pos)
-                    }
-                    hookRunTemp = tunerConfig$hookRun
-                    for (name in c("parameters", "allCandidates", "tunerConfig")) {
-                        assign(name, tunerResults[[name]])
-                    }
-                    tunerConfig$hookRun = hookRunTemp
-                    options(.race.debug.level = tunerConfig$debugLevel)
-                    options(.irace.debug.level = tunerConfig$debugLevel)
-                }))
+            load(file)
+            for (name in names(tunerResults$state)) {
+                pos = if (name == ".Random.seed") .GlobalEnv else -1
+                assign(name, tunerResults$state[[name]], pos)
+            }
+            hookRunTemp = tunerConfig$hookRun
+            for (name in c("parameters", "allCandidates", "tunerConfig")) {
+                assign(name, tunerResults[[name]])
+            }
+            tunerConfig$hookRun = hookRunTemp
+            options(.race.debug.level = tunerConfig$debugLevel)
+            options(.irace.debug.level = tunerConfig$debugLevel)
+          }))
 }
 
 
