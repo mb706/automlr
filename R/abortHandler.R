@@ -55,11 +55,14 @@ suspendInterruptsFor = function(expr, hardKillInterval = 0) {
 
   assertNumeric(hardKillInterval, lower = 0, len = 1, any.missing = FALSE)
 
-  # handleInterrupts reads and writes `lastInterrupt`
+  # handleInterrupts reads and writes `lastInterrupt` and lastUIAnounce
   lastInterrupt = -Inf
+  lastUIAnounce = -Inf
+
+  ordinaryEnd = FALSE
   on.exit({
         suspension = .Internal(interruptsSuspended(lastState))
-        if (!suspension) {
+        if (!suspension && ordinaryEnd) {
           warning('Interrupts were enabled at the end of suspendInterruptsFor')
         }
         if (!lastState) {
@@ -67,7 +70,9 @@ suspendInterruptsFor = function(expr, hardKillInterval = 0) {
         }
       })
   lastState = .Internal(interruptsSuspended(TRUE))
-  expr
+  result = expr
+  ordinaryEnd = TRUE
+  result
 }
 
 #' @title Quickly evaluate an expression that won't be killed by Ctrl-C
@@ -139,29 +144,55 @@ handleInterrupts = function(expr, onInterrupt) {
   # window of vulnerability where Ctrl-C kills the program.
   on.exit(.Internal(interruptsSuspended(previousState)))
   
+  hardKillInterval = getFrameVar("suspendInterruptsFor", "hardKillInterval")
+
+  lastTime = getFrameVar("suspendInterruptsFor", "lastInterrupt")
+  lastUIAnounce = getFrameVar("suspendInterruptsFor", "lastUIAnounce")
+  assert(is.null(lastTime) == is.null(lastUIAnounce))
+  assert(is.null(lastTime) == is.null(hardKillInterval))
+  currentTime = proc.time()[3]
+  anounceUI = !is.null(lastTime) && currentTime - lastTime < hardKillInterval
+
   # need to check whether the user pressed Ctrl-C while interrupts were
-  # suspended. If that happened (and the hardKillInterval is > 0) we kill even
-  # if the time difference to the last Ctrl-C is greater than hardKillInterval.
-  interruptCarryover = TRUE
+  # suspended. If that happened, we set the 'lastInterrupt' to right now but
+  # don't abort.
+
   tryCatch({
         .Internal(interruptsSuspended(FALSE))
         checkPendingInterrupts()
-        # if we reach this code, there was no interrupt while interrupts were
-        # suspended.
-        interruptCarryover = FALSE
-        expr
         .Internal(interruptsSuspended(previousState))
+      }, interrupt = function(cond) {
+        if (!is.null(lastTime)) {
+          print("carryover")
+          assignFrameVar("suspendInterruptsFor", "lastInterrupt",
+              proc.time()[3])
+          anounceUI <<- TRUE
+        }
+      })
+  if (anounceUI)  {
+    # this is the case if either Ctrl-C was pressed less than HKI before OR
+    # a Ctrl-C was detected while interrupts were suspended.
+    # But we don't want to spam the user with messages if handleInterrupts gets
+    # called in quick succession, so we make sure we display the message only
+    # once per hardKillInterval
+    if (!currentTime - lastUIAnounce < hardKillInterval) {
+      assignFrameVar("suspendInterruptsFor", "lastUIAnounce", proc.time()[3])
+      catf("Press Ctrl-C in quick succession (%gs) to abort.", hardKillInterval)
+    }
+  }
+  tryCatch({
+        .Internal(interruptsSuspended(FALSE))
+        result = expr
+        .Internal(interruptsSuspended(previousState))
+        result
       }, interrupt = function(cond) {
         # if two interrupts come in very close succession, we cannot prevent the
         # program from dying.
         .Internal(interruptsSuspended(TRUE))
         currentTime = proc.time()[3]
-        lastTime = getFrameVar("suspendInterruptsFor", "lastInterrupt")
         assignFrameVar("suspendInterruptsFor", "lastInterrupt", currentTime)
-        hardKillInterval = getFrameVar("suspendInterruptsFor",
-            "hardKillInterval")
-        if (is.null(lastTime) || (currentTime - lastTime < hardKillInterval) ||
-            (hardKillInterval > 0 && interruptCarryover)) {
+        if (is.null(lastTime) || (currentTime - lastTime < hardKillInterval)) {
+          print("Ctrl-C Abort")
           signalCondition(cond)
           invokeRestart("abort")
         }
