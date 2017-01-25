@@ -65,11 +65,11 @@ runWithTimeout = function(expr, time, throwError = FALSE, backend) {
 
   assertNumeric(time, len = 1, any.missing = FALSE)
   assertFlag(throwError)
-  
-  usedBackend = runWithTimeoutBackend
-  if (!missing(backend)) {
+
+  if (missing(backend)) {
+    backend = runWithTimeoutBackend
+  } else {
     assertChoice(backend, c("native", "fork"))
-    usedBackend = backend
   }
 
   if (backend == "native") {

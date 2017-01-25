@@ -3,6 +3,11 @@
 # see runwithtimeout.R
 runWithTimeoutFork = function(expr, time, throwError, myName) {
 
+  if (areInterruptsSuspended()) {
+    stop(paste("runWithTimeout with backend 'fork'",
+            "must not be called with disabled interrupts"))
+  }
+  
   errMsg = paste("Timeout:", timeoutMessage)
   
   if (time <= 0) {
@@ -31,13 +36,28 @@ runWithTimeoutFork = function(expr, time, throwError, myName) {
     result = expr
     # if we arrive here, time did not run out.
   } else {
+    job = list()
+    # in case we get interrupted before the job finishes, we prepare to kill
+    # it quickly on exit.
+    on.exit(if (!is.null(job$pid)) {
+          tools::pskill(job$pid, tools::SIGKILL)
+          parallel::mccollect(job, wait=FALSE)
+        })
     # fork()
     # supposedly silent=TRUE is buggy
     job = parallel::mcparallel(expr, mc.set.seed = FALSE, silent = FALSE)
 
     thisTimeout = proc.time()[3] + time  # is used by nested runWithTimeoutFork
     # wait()
-    result = parallel::mccollect(job, wait=FALSE, timeout=time + 1)
+    result = NULL
+
+    # sometimes waiting for the process fails the first time, so do it in a loop
+    while (
+        is.null(result) &&
+        (remainingTime <- (thisTimeout - proc.time()[3])) > 0) {
+      Sys.sleep(0.001)  # yield so that process can be created
+      result = parallel::mccollect(job, wait=FALSE, timeout=remainingTime + 1)
+    }
     
     if (is.null(result)) {  # timeout
       aborted = TRUE
@@ -45,9 +65,15 @@ runWithTimeoutFork = function(expr, time, throwError, myName) {
       Sys.sleep(1)
       tools::pskill(job$pid, tools::SIGKILL)
       parallel::mccollect(job, wait=FALSE)
+      on.exit()
     }
 
     result = result[[1]]
+    
+    if (is.error(result)) {
+      # if errors happen, the caller needs to tryCatch them.
+      stop(attr(result, "condition"))
+    }
   }
 
   finishTime = as.integer(round(proc.time()[3] * 1000))
