@@ -1,24 +1,14 @@
 #!/usr/bin/env python
-
 # coding: utf-8
-
-# In[39]:
-
 import itertools
 import re
-
-
-# In[40]:
 
 outfile = "../R/mlrLearners.R"
 infile = "learners.org"
 prefixfile = "learners.prefix"
 
 
-# In[41]:
-
 def reduceDescription(stringlist, info, debug=False):
-#    print(info)
     varis = []
     fixis = []
     defis = []
@@ -27,9 +17,8 @@ def reduceDescription(stringlist, info, debug=False):
     for line in stringlist:
         if not line:
             continue
-#        print(line)
         if state == "exiting":  # should have exited already
-            raise Error("should have exited. %s" % (info,))
+            raise Exception("should have exited. %s" % (info,))
         if debug:
             dstring = line.strip(' -').split("::")[1].strip()
             if dstring.find("MANUAL") < 0:  # if not manual, can strip some meta info
@@ -37,7 +26,7 @@ def reduceDescription(stringlist, info, debug=False):
                 dstring = re.sub(r"\{[^}]*\}", "", dstring)
                 dstring = '  # ' + re.sub(r"[^a-zA-Z]req:[^:]*", "", dstring).strip()
             else:
-                dbstring = ""
+                dstring = ""
         if line == "**** Variable Parameters:":
             assert(not varis)
             state = "variable"
@@ -56,7 +45,7 @@ def reduceDescription(stringlist, info, debug=False):
             continue
         if state == "pre":
             if line.startswith('   -'):
-                raise Error("found indentation in pre context")
+                raise Exception("found indentation in pre context")
             else:
                 continue
         assert(line.startswith('   -'))
@@ -71,8 +60,6 @@ def reduceDescription(stringlist, info, debug=False):
     return (varis, defis, fixis)
 
 
-# In[42]:
-
 def parsevari(line):
     sides = line.strip(" -").split("::")
     assert(len(sides) == 2)
@@ -84,6 +71,12 @@ def parsevari(line):
             return inner.group()[6:].strip("{}")
         else:
             return '## sp(%s, ...) # %s' % tuple(sides)
+    versionmatch = re.search(r"(.*)VERSION\{([^}]*)\}(.*)", info)
+    if versionmatch:
+        info = "%s %s" % (versionmatch.group(1), versionmatch.group(3))
+        versionstring = ', version = "%s"' % (versionmatch.group(2),)
+    else:
+        versionstring = ""
     idmatch = re.search(r"\{[^}]*\}", info)
     if idmatch:
         idstring = ', id = "%s"' % (idmatch.group().strip("{}"),)
@@ -112,28 +105,28 @@ def parsevari(line):
         info = info.strip("int ")
         rng = info.split(" ")[0].strip(" ,:").split("..")
         isexp = len(info.split(" ")) > 1 and info.split(" ")[1].find("exp") >= 0
-        return 'sp("%s", "%s", c(%s, %s)%s%s%s%s%s)' % (name,
-                                                    "int" if intness else "real",
-                                                    rng[0], rng[1], ', "exp"' if isexp else '',
-                                                    idstring, dummystring, reqstring, lenstring)
+        return 'sp("%s", "%s", c(%s, %s)%s%s%s%s%s%s)' % (name,
+                                                          "int" if intness else "real",
+                                                          rng[0], rng[1], ', "exp"' if isexp else '',
+                                                          idstring, dummystring, reqstring, lenstring,
+                                                          versionstring)
     values = [x.strip() for x in info.split(":")[0].split(",")]
     if len(values) == 2 and "TRUE" in values and "FALSE" in values:
         return 'sp("%s", "bool"%s%s%s%s)' % (name, idstring, dummystring, reqstring, lenstring)
     if not all(re.match(r"^[0-9.][-+e0-9.]*$", x) for x in values):
         values = ['"%s"' % (x,) for x in values]
-    return 'sp("%s", "cat", c(%s)%s%s%s%s)' % (name, ", ".join(values),
-                                             idstring, dummystring, reqstring, lenstring)
+    return 'sp("%s", "cat", c(%s)%s%s%s%s%s)' % (name, ", ".join(values),
+                                                 idstring, dummystring, reqstring, lenstring,
+                                                 versionstring)
 
-
-# In[43]:
 
 def parsefixi(line):
     return parseone(line, "fix")
+
+
 def parsedefi(line):
     return parseone(line, "def")
 
-
-# In[44]:
 
 def parseone(line, tp):
     sides = line.strip(" -").split("::")
@@ -146,6 +139,12 @@ def parseone(line, tp):
             return inner.group()[6:].strip("{}")
         else:
             return '## sp(%s, ...) # %s' % tuple(sides)
+    versionmatch = re.search(r"(.*)VERSION\{([^}]*)\}(.*)", info)
+    if versionmatch:
+        info = "%s %s" % (versionmatch.group(1), versionmatch.group(3))
+        versionstring = ', version = "%s"' % (versionmatch.group(2),)
+    else:
+        versionstring = ""
     assert(info.find('req:') == -1)
     if info.find("DUMMY") >= 0:
         dummystring = ', special = "dummy"'
@@ -155,24 +154,22 @@ def parseone(line, tp):
     else:
         dummystring = ""
     assert(info.find('ONNA') == -1)
-    assert(not re.search(r"\{[^}]*\}",info))
+    assert(not re.search(r"\{[^}]*\}", info))
     val = re.findall(r"[-+_a-zA-Z0-9.]+", info)[0]
     if not(val == "TRUE" or val == "FALSE" or val == "NULL"):
         if not re.match(r"^[0-9.][-+e0-9.]*", val):
             val = '"%s"' % val
-    return 'sp("%s", "%s", %s%s)' % (name, tp, val, dummystring)
+    return 'sp("%s", "%s", %s%s%s)' % (name, tp, val, dummystring, versionstring)
 
-
-# In[45]:
 
 def rdi(i):
     return reduceDescription(clisted[i], cheadings[i])
 
 
-# In[46]:
-
 def makeDS(content):
     return "            " + ",\n            ".join(content)
+
+
 def completeOutput(includeManual):
     manuals = []
     nonmanuals = []
@@ -206,10 +203,7 @@ def completeOutput(includeManual):
         retstring += "##### automatically generated:\n" + ",\n".join(nonmanuals)
     retstring += ")"
     return retstring
-        
 
-
-# In[47]:
 
 c = list(x.strip('\n') for x in open(infile))
 for i, line in enumerate(c):
@@ -223,55 +217,7 @@ del clisted[0]
 cheadings = [x.strip("* ") for x in content if x.startswith('*** ')]
 
 
-# In[48]:
-
 f = open(outfile, "w")
 for l in open(prefixfile):
     f.write(l)
 f.write(completeOutput(False))
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-

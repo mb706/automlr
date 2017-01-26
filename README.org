@@ -81,20 +81,19 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [X] simplification and cleaning up
     - [X] remove budgets that are not walltime or nevals
     - [X] collect backend shims and re-use them
-  - [-] event handling
-    - [ ] catch Ctrl-C and handle gracefully
+  - [X] event handling
+    - [X] catch Ctrl-C and handle gracefully
     - [X] maximum walltime overrun
     - [X] maximum per learner time
     - [X] make sure mlr on.learner.error, on.learner.warning are handled well
-  - [ ] memory handling
   - [ ] make debugging easier
     - [ ] debug flag sets all show.learner.output to TRUE
     - [ ] optionally sets some variables to small values (thinking of you, ~infill.opt.focussearch.points~) so do.call doesn't clog the call stack so much
     - [ ] nicer printing of results
     - [ ] some output about memory usage, maybe
-  - [ ] searchspace
+  - [-] searchspace
     - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
-    - [ ] searchspace definitions for certain mlr versions
+    - [X] searchspace definitions for certain mlr versions
   - [ ] tests
     - [ ] quick compatibility test with mlr
     - [ ] differentiate expensive tests from fast tests
@@ -109,7 +108,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] preprocessing
     - [ ] impute dummy column
     - [ ] external preprocessing library
+  - [ ] learner error imputation wrapper
 - [ ] release 0.3
+  - [ ] memory handling
   - [ ] searchspace
     - [ ] respect parameter equality IDs
   - [ ] tests
@@ -131,12 +132,18 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] everything is really, really stable
 
 ** COMMENT immediate TODO
-- [ ] merge my mlr debug dump implementation
-- [ ] check what is taking random so long with some evals
-- [ ] write some easy timeout tests
+- [X] write some easy timeout tests
 - [X] implement fork timeout wrapper
-- [ ] check the imputation wrapper
-- [ ] see what can be done about communication when using imputation wrapper
-- [ ] check automlr option handling
+- [ ] write searchspace to table
 - [ ] check MBO backend
 - [ ] repair irace backend
+- [ ] experimental setup
+
+- [ ] merge my mlr debug dump implementation
+- [ ] check what is taking random so long with some evals
+- [ ] error imputation wrapper
+  - [ ] make the imputation result wrapper work
+  - [ ] get some way to communicate nature of error
+- [ ] timeout tests
+- [ ] check automlr option handling
+- [ ] make rng consistent
