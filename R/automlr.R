@@ -214,7 +214,8 @@ automlr.Task = function(task, measure = NULL, budget = 0,
           previous.versions = list(),
           isInitialized = FALSE,
           max.walltime.overrun = max.walltime.overrun,
-          max.learner.time = max.learner.time),
+          max.learner.time = max.learner.time,
+          `.interruptedBPD` = list()),
       savefile = savefile, save.interval = save.interval, verbosity = verbosity)
 }
 
@@ -263,8 +264,10 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
   assertCount(verbosity)
   assertFlag(new.seed)
   assert(identical(list(...), list()))
-  aminterface(task, budget, prior, savefile, save.interval, new.seed,
-      max.walltime.overrun, verbosity)
+  suspendInterruptsFor(
+      aminterface(task, budget, prior, savefile, save.interval, new.seed,
+          max.walltime.overrun, verbosity),
+      15)
 }
 
 #' @title Converte the \code{AMState} object as returned by

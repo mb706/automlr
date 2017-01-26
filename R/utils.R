@@ -373,3 +373,17 @@ makeAllTrainPars = function(paramSet) {
       })
   paramSet
 }
+
+setSeed = function(seed) {
+  if (!exists(".Random.seed", .GlobalEnv)) {
+    set.seed(NULL)
+  }
+  assign(".Random.seed", seed, envir = .GlobalEnv)
+}
+
+getSeed = function() {
+  if (!exists(".Random.seed", .GlobalEnv)) {
+    set.seed(NULL)
+  }
+  get(".Random.seed", .GlobalEnv)
+}

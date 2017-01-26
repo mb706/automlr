@@ -7,6 +7,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
+    oldamstate$.interruptedBPD = NULL
     oldamstate$backendoptions = NULL
     oldamstate$backend = NULL
     oldamstate$task = NULL
@@ -61,23 +62,24 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   }
   
   if (!new.seed) {
-    if (!exists(".Random.seed", .GlobalEnv))
-      set.seed(NULL)
-    assign(".Random.seed", amstate$seed, envir = .GlobalEnv)
+    setSeed(amstate$seed)
   }
+  amstate$seed = getSeed()
   
   # set backendprivatedata. This gets called once per amstate lifetime.
   if (!amstate$isInitialized) {
-    objectiveLearner = buildLearners(amstate$searchspace, amstate$task,
-        verbosity)
-    objectiveLearner = makeTimeconstraintWrapper(objectiveLearner,
-        amstate$max.learner.time, amstate$max.learner.time * 1.25)
-    amsetup(amstate$backendprivatedata, amstate$backendoptions,
-        amstate$prior.backlog[[1]], objectiveLearner, amstate$task,
-        amstate$measure, verbosity)
-    amstate$prior.backlog[[1]] = NULL
-    amstate$isInitialized = TRUE
-    updatePriors(amstate)
+    handleInterrupts({
+          objectiveLearner = buildLearners(amstate$searchspace, amstate$task,
+              verbosity)
+          objectiveLearner = makeTimeconstraintWrapper(objectiveLearner,
+              amstate$max.learner.time, amstate$max.learner.time * 1.25)
+          amsetup(amstate$backendprivatedata, amstate$backendoptions,
+              amstate$prior.backlog[[1]], objectiveLearner, amstate$task,
+              amstate$measure, verbosity)
+          amstate$prior.backlog[[1]] = NULL
+          amstate$isInitialized = TRUE
+          updatePriors(amstate)
+        }, stop("Ctrl-C Abort"))
   }
   
   
@@ -94,17 +96,26 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     }
     nextstop = min(stepbudget["walltime"], save.interval, na.rm = TRUE)
     stepbudget["walltime"] = nextstop
-    usedbudget = amoptimize(amstate$backendprivatedata, stepbudget, verbosity,
-        deadline)
+    setSeed(amstate$seed)
+    backupBPD = deepcopy(amstate$backendprivatedata)
+    wasInterrupted = handleInterrupts({
+          usedbudget = amoptimize(amstate$backendprivatedata, stepbudget,
+              verbosity, deadline)
+          FALSE
+        }, TRUE)
+    if (wasInterrupted) {
+      amstate$.interruptedBPD[[length(amstate$.interruptedBPD) + 1]] = (
+            amstate$backendprivatedata)
+      amstate$backendprivatedata = backupBPD
+      next
+    }
     amstate$spent = amstate$spent + usedbudget[names(amstate$spent)]
     # if usedbudget does not contain all names that it should contain and the
     # backend is buggy, amstate$spent could contain NAs
     assert(!anyNA(amstate$spent))
 
-    if (!exists(".Random.seed", .GlobalEnv)) {
-      set.seed(NULL)
-    }
-    amstate$seed = get(".Random.seed", .GlobalEnv)
+
+    amstate$seed = getSeed()
 
     amstate$finish.time = Sys.time()
     if (!is.null(savefile)) {

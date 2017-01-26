@@ -4,6 +4,10 @@
 runWithTimeoutFork = function(expr, time, throwError, myName) {
 
   if (areInterruptsSuspended()) {
+    # runWithTimeoutFork works splendidly with abortHandler when interrupts are
+    # enabled.
+    # When interrupts are disabled and Ctrl-C is pressed however, R crashes
+    # completely.
     stop(paste("runWithTimeout with backend 'fork'",
             "must not be called with disabled interrupts"))
   }
