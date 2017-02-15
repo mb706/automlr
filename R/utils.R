@@ -262,12 +262,16 @@ getFrameVar = function(fname, varname) {
   sys.frame(frameno)[[varname]]
 }
 
-getFrameNo = function(fname) {
+getFrameNo = function(fname, getAll = FALSE) {
   calls = sys.calls()
   calls[[length(calls) - 1]] = NULL
   callnames = sapply(calls,
       function(x) try(as.character(x[[1]]), silent = TRUE))
-  tail(which(callnames == fname), n = 1)
+  if (getAll) {
+    which(callnames == fname)
+  } else {
+    tail(which(callnames == fname), n = 1)
+  }
 }
 
 # assign the value of `varname` within the function named `fname`. Use the most
@@ -287,6 +291,19 @@ assignFrameVar = function(fname, varname, value) {
   TRUE
 }
 
+getResampleFrameNo = function() {
+  resFrame = getFrameNo("resample")
+  if (length(resFrame) < 1) {
+    return(NULL)
+  }
+  tpFrame = c(getFrameNo("train", TRUE), getFrameNo("predict", TRUE))
+  if (length(tpFrame) < 1) {
+    return(NULLk)
+  }
+  # smallest 'train' or 'predict' frame greater than the 'resample' frame:
+  tpFrame = sort(tpFrame)
+  tpFrame[tpFrame > resFrame][1] - 1
+}
 
 isInsideResampling = function() {
   (length(getFrameNo('resample') < 1) ||
@@ -294,31 +311,31 @@ isInsideResampling = function() {
 }
 
 getResampleIter = function() {
-  frameno = getFrameNo('train')
+  frameno = getResampleFrameNo()
   if (length(frameno) < 1) {
     return(NULL)
   }
-  sys.frame(frameno - 1)[['i']]
+  sys.frame(frameno)[['i']]
 }
 
 setResampleUID = function() {
   frameno = getFrameNo('resample')
   uid = runif(1)
-  assign('$UID$', uid, envir=sys.frame(frameno - 1))
+  assign('$UID$', uid, envir=sys.frame(frameno))
   uid
 }
 
 getResampleUID = function() {
   frameno = getFrameNo('resample')
-  sys.frame(frameno - 1)[['$UID$']]
+  sys.frame(frameno)[['$UID$']]
 }
 
 getResampleMaxIters = function() {
-  frameno = getFrameNo('train')
+  frameno = getResampleFrameNo()
   if (length(frameno) < 1) {
     return(NULL)
   }
-  sys.frame(frameno - 1)[['rin']]$desc$iters
+  sys.frame(frameno)[['rin']]$desc$iters
 }
 
 # test whether mlr parallelizes resample() calls. This does NOT entail that
