@@ -19,6 +19,9 @@ makeBackendconfRandom = registerBackend("random",
     })
 
 # error message to put in opt.path
+timeout.string = "timeout"
+
+# error message to put in opt.path
 out.of.budget.string = "out of budget"
 
 # 'random' has no prior, so do nothing here
@@ -109,7 +112,8 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
     ctrl = makeTuneControlRandom(maxit = iterations, log.fun = log.fun)
 
     tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure),
-        par.set = getSearchspace(learner), control = ctrl, show.info = TRUE)
+        par.set = getSearchspace(learner), control = ctrl,
+        show.info = verbosity.traceout(verbosity))
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
@@ -127,7 +131,8 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   learner$am.env$usedbudget
 }
 
-timeoutErr = addClasses(out.of.budget.string, c("outOfBudgetError", "error"))
+oobErr = addClasses(out.of.budget.string, c("outOfBudgetError", "error"))
+timeoutErr = addClasses(timeout.string, c("timeoutError", "error"))
 
 #' @export
 trainLearner.amrandomWrapped = function(.learner, ...) {
@@ -157,7 +162,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   if (env$outofbudget || (checkBudget && checkoutofbudget(.learner$am.env))) {
     # stop("out of budget"), but since we are inside try() anyways we function's
     # skip some overhead by just *return*ing an error.
-    return(timeoutErr)
+    return(oobErr)
   }
   # its kind of amazing that NextMethod works like this.
   rwt = runWithTimeout(NextMethod("trainLearner"), hardTimeoutRemaining)
@@ -168,8 +173,39 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   rwt$result
 }
 
+# need to pacify checkPredictLearnerOutput, so create an object that won't be
+# admonished by it while still counting as an error.
+createDummyError = function(.learner, .model) {
+  if (.learner$type == "classif") {
+    lx = .model$task.desc$class.levels
+    if (.learner$predict.type == "response") {
+      dummy.result = factor(lx[1], levels=lx)
+    } else {
+      dummy.result = matrix(0, ncol = length(lx))
+      colnames(dummy.result) = lx
+    }
+  } else{
+    result = list()
+    if (.learner$predict.type == "response") {
+      result = list(cluster=0L, multilabel=FALSE)
+    }
+    dummy.result = coalesce(result[[.learner$type]], 0.0)
+    if (.learner$type %in% c("cluster", "regr") &&
+        .learner$predict.type == "response") {
+      # in this case, the first member of the class needs to be
+      # numeric / integer
+      class(dummy.result) = c(class(dummy.result),
+          c("timeoutError", "error"))
+      return(dummy.result)
+    } else {
+      dummy.result = matrix(dummy.result, ncol=2)
+    }
+  }
+  addClasses(dummy.result, c("timeoutError", "error"))
+}
+
 #' @export
-predictLearner.amrandomWrapped = function(.learner, ...) {
+predictLearner.amrandomWrapped = function(.learner, .model, ...) {
   # if we reach this point, the run started before anything went out of budget,
   # so we finish what we started. Exception: The hardTimeout must be respected.
   env = .learner$am.env
@@ -177,7 +213,7 @@ predictLearner.amrandomWrapped = function(.learner, ...) {
 
   rwt = runWithTimeout(NextMethod("predictLearner"), hardTimeoutRemaining)
   if (rwt$timeout) {
-    return(timeoutErr)
+    return(createDummyError(.learner, .model))
   }
   rwt$result
 }
@@ -203,7 +239,13 @@ makeWrappedModel.amrandomWrapped = function(learner, learner.model, task.desc,
 # since the as.character.error function doesn't do what we want.
 #' @export
 as.character.outOfBudgetError = function(x, ...) {
-  x
+  out.of.budget.string
+}
+
+# since the as.character.error function doesn't do what we want.
+#' @export
+as.character.timeoutError = function(x, ...) {
+  timeout.string
 }
 
 # update walltime and check whether the learner attached environment `env` is
