@@ -125,11 +125,8 @@ runWithTimeoutNative = function(expr, time, throwError, myName) {
     }
     patchObj$setTimeLimit$orig(elapsed = elaps, transient = TRUE)
   }
-  trueWithCallingHandlers = if (firstCall) {
-    patchObj$withCallingHandlers$orig
-  } else {
-    function(expression, ...) expression
-  }
+
+  trueWithCallingHandlers = patchObj$withCallingHandlers$orig
   trueTryCatch = patchObj$tryCatch$orig
 
   invocationTime = as.integer(round(proc.time()[3] * 1000))
