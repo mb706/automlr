@@ -67,12 +67,22 @@ writefile = function(filename, object, basename) {
 
 # append opt path op2 to opt path op1. This happens in-place.
 appendOptPath = function(op1, op2) {
-  # FIXME: handle extra: is a LIST
   # FIXME: check equality of par.set etc.
-  for (vect in c("error.message", "exec.time", "dob", "eol")) {
+  for (vect in c("error.message", "exec.time", "dob", "eol", "extra")) {
     op1$env[[vect]] = c(op1$env[[vect]], op2$env[[vect]])
   }
   op1$env$path = rbind(op1$env$path, op2$env$path)
+  NULL
+}
+
+# in-place subset an opt.path
+subsetOptPath = function(op1, subset) {
+  
+  for (vect in c("error.message", "exec.time", "dob", "eol", "extra")) {
+    op1$env[[vect]] = op1$env[[vect]][subset]
+  }
+  op1$env$path = op1$env$path[subset, , drop = FALSE]
+  NULL
 }
 
 # copied this from mlr logFunOpt.R

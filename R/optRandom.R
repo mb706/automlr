@@ -5,15 +5,15 @@
 #' Create an \code{AutomlrBackendConfig} object that can be fed to
 #' \code{\link{automlr}} to perform optimization with the "random" backend.
 #' 
-#' @param iters.per.round [\code{integer(1)}]\cr
+#' @param max.iters.per.round [\code{integer(1)}]\cr
 #'   Number of iterations to perform between timeout checks. Do not set too
 #'   small; you probably don't want to change this.
 #' @param resampling [\code{ResampleDesc}]\cr
 #'   resampling to evaluate model performance.
 #' @export
 makeBackendconfRandom = registerBackend("random",
-    function(iters.per.round = 100, resampling = cv5) {
-      assertCount(iters.per.round)
+    function(max.iters.per.round = 100, resampling = cv5) {
+      assertCount(max.iters.per.round)
       assertClass(resampling, "ResampleDesc")
       argsToList()
     })
@@ -39,7 +39,7 @@ amsetup.amrandom = function(env, opt, prior, learner, task, measure,
   env$task = task
   env$measure = measure
   env$opt.path = NULL
-  env$iters.per.round = opt$iters.per.round
+  env$max.iters.per.round = opt$max.iters.per.round
   invisible()
 }
 
@@ -95,8 +95,12 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   }
   
   while (!checkoutofbudget(learner$am.env)) {
-    # chop up "evals" budget into 100s so we can stop when time runs out
-    iterations = env$iters.per.round
+    # chop up "evals" budget into small bunches so we can stop if and when
+    # time runs out
+    iterations = env$max.iters.per.round
+    if ("walltime" %in% names(stepbudget)) {
+      iterations = min(iterations, stepbudget["walltime"])
+    }
     if ("evals" %in% names(stepbudget)) {
       iterations = min(stepbudget["evals"] - learner$am$usedbudget["evals"],
           iterations)
@@ -105,11 +109,12 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
     ctrl = makeTuneControlRandom(maxit = iterations, log.fun = log.fun)
 
     tuneresult = tuneParams(learner, env$task, env$rdesc, list(env$measure),
-        par.set = getSearchspace(learner), control = ctrl, show.info = FALSE)
+        par.set = getSearchspace(learner), control = ctrl, show.info = TRUE)
     # we want to ignore all the 'out of budget' evals
     errorsvect = getOptPathErrorMessages(tuneresult$opt.path)
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
     learner$am.env$usedbudget["evals"] %+=% sum(notOOB)
+    subsetOptPath(tuneresult$opt.path, notOOB)
 
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
