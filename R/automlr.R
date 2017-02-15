@@ -213,10 +213,10 @@ automlr.Task = function(task, measure = NULL, budget = 0,
           finish.time = NULL,
           previous.versions = list(),
           isInitialized = FALSE,
-          max.walltime.overrun = max.walltime.overrun,
           max.learner.time = max.learner.time,
           `.interruptedBPD` = list()),
-      savefile = savefile, save.interval = save.interval, verbosity = verbosity)
+      savefile = savefile, save.interval = save.interval,
+      max.walltime.overrun = max.walltime.overrun, verbosity = verbosity)
 }
 
 #' @title Continue automlr search from an \code{.rds} savefile, given as a
@@ -226,7 +226,8 @@ automlr.Task = function(task, measure = NULL, budget = 0,
 #' @export
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
     save.interval = default.save.interval, new.seed = FALSE, 
-    max.walltime.overrun = NULL, verbosity = 0, ...) {
+    max.walltime.overrun = if ("walltime" %in% names(budget))
+                budget['walltime'] * 0.1 + 60 else 3600, verbosity = 0, ...) {
   assertString(task)
   truefilename = gsub("(\\.rds|)$", ".rds", task)
   assert(identical(list(...), list()))
@@ -249,7 +250,8 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, new.seed = FALSE,
-    max.walltime.overrun = NULL, verbosity = 0, ...) {
+    max.walltime.overrun = if ("walltime" %in% names(budget))
+                budget['walltime'] * 0.1 + 60 else 3600, verbosity = 0, ...) {
   if (!is.null(budget)) {
     budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)

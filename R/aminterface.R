@@ -89,7 +89,8 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   # performance cost.
   while (!stopcondition(amstate$budget, amstate$spent)) {
     stepbudget = remainingbudget(amstate$budget, amstate$spent)
-    if ("walltime" %in% amstate$budget) {
+    if ("walltime" %in% names(amstate$budget) &&
+        !is.null(max.walltime.overrun)) {
       deadline = stepbudget["walltime"] + max.walltime.overrun
     } else {
       deadline = Inf
