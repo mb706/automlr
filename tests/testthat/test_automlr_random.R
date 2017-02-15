@@ -51,3 +51,23 @@ test_that("backend 'random' works with search space with requirements", {
   searchSpaceToTest = reqstestSearchSpace
   checkBackend(searchSpaceToTest, backendToTest)
 })
+
+###
+# Test the optRandom faux error machinery
+
+test_that("backend 'random' generates credible error objects", {
+
+  .model = list(task.desc=list(class.levels=c('a', 'b', 'c')))
+  for (t in c('classif', 'regr', 'surv', 'multilabel')) {
+    for (p in c('prob', 'response', 'se')) {
+      if (t == 'surv' && p == 'prob') {
+        next
+      }
+      .learner = list(type=t, predict.type=p)
+      res <- mlr:::checkPredictLearnerOutput(.learner, .model, automlr:::createDummyError(.learner, .model))
+      expect_true(is.error(res))
+      expect_equal(as.character(res), automlr:::timeout.string)
+    }
+  }
+
+})

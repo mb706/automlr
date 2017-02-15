@@ -6,28 +6,34 @@
 
 
 options(width=150)
+unloadNamespace("automlr")
+unloadNamespace("mlrMBO")
+unloadNamespace("smoof")
+unloadNamespace("mlr")
+unloadNamespace("ParamHelpers")
 devtools::load_all("../../ParamHelpers")
 devtools::load_all("../../mlr")
 devtools::load_all("../../smoof")
 devtools::load_all("../../mlrMBO")
 library('testthat')
-
+#
 library(roxygen2)
 roxygenise('..')
 
 devtools::load_all("..")
 options(error=dump.frames)
+
 options(warn=1)
 
 ##
 pid.task
 ##
 
-library(utils)
-evalWithTimeout
 
 resRand <- automlr(pid.task, budget=c(evals=100), backend="random", verbosity=5, max.learner.time=3,
                    searchspace=list(mlrLearners$classif.logreg, mlrLearners$classif.nodeHarvest))
+
+configureMlr(on.error.dump=TRUE)
 
 amfinish(resRand)
 as.data.frame(amfinish(resRand)$opt.path)
@@ -165,3 +171,36 @@ print(system.time(Sys.sleep(1), gcFirst=FALSE))
 i = 3
 while(i>0) i <- i - 1
 i
+
+
+
+##############
+
+debugger(getOptPathEl(amfinish(res)$opt.path, 1)$extra$.dump[[1]]$train)
+
+fx <- function() {
+  tryCatch({
+    withCallingHandlers({
+      tryCatch({
+        withCallingHandlers({
+          setTimeLimit(elapsed=1)
+          interruptibleSleep(10)
+        }, error = function(cond) {
+          print('inner wch')
+          signalCondition(makeS3Obj(c("automlr.timeout", "condition"),
+                                    msg = "automlr timeout", call = conditionCall(cond)))
+        })
+        print('reached inner')
+      }, automlr.timeout = function(e) { print('inner') })
+    }, error = function(e) {
+      print('outer wch')
+      signalCondition(makeS3Obj(c("automlr.timeout", "condition"),
+                                msg = "automlr timeout", call = conditionCall(cond)))
+      
+    })
+    print('reached outer')
+  }, automlr.timeout = function(e) { print('outer') })
+  setTimeLimit()
+}
+
+fx()

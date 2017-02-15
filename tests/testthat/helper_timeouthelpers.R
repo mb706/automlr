@@ -28,14 +28,11 @@ predictLearner.slowLearner = function(.learner, .model, .newdata, predictlag,
   factor(.model$factor.levels[[1]][1 + rbinom(nrow(.newdata), 1, rate)])
 }
 
+######################## TODO: make getResampleIter smarter (recognize last 'resample' call and first 'train' / 'predict' call after that)
 
 
-ccAL = autolearner(slowLearner, list(
-        sp("rate", "real", c(0, 1))))
+slAL = function(learner) autolearner(learner, list(sp("rate", "real", c(0, 1))))
 
-# test: no timeout, timeout on late (but not early) ri,
-# timeout on early (but not late) ri, constant timeout
 
 # walltime overrun without exceeding max.walltime.overrun,
 # walltime overrun with exceeding max.walltime.overrun
-

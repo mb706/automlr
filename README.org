@@ -86,20 +86,20 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [X] maximum walltime overrun
     - [X] maximum per learner time
     - [X] make sure mlr on.learner.error, on.learner.warning are handled well
-  - [ ] make debugging easier
-    - [ ] debug flag sets all show.learner.output to TRUE
+  - [-] make debugging easier
+    - [X] debug flag sets all show.learner.output to TRUE
     - [ ] optionally sets some variables to small values (thinking of you, ~infill.opt.focussearch.points~) so do.call doesn't clog the call stack so much
     - [ ] nicer printing of results
     - [ ] some output about memory usage, maybe
   - [-] searchspace
     - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
     - [X] searchspace definitions for certain mlr versions
-  - [ ] tests
+  - [-] tests
     - [ ] quick compatibility test with mlr
     - [ ] differentiate expensive tests from fast tests
     - [ ] tests for preprocessing
     - [ ] test for all possible wrong arguments
-    - [ ] test timeouting and timeout wrapper
+    - [X] test timeouting and timeout wrapper
   - [ ] consistent randomness
     - [ ] test that execution with same seed gets same result
     - [ ] use seeds in learners that use external RNGs
@@ -134,12 +134,12 @@ Currently the project is undergoing heavy development; while the spirit of the a
 ** COMMENT immediate TODO
 - [X] write some easy timeout tests
 - [X] implement fork timeout wrapper
-- [ ] write searchspace to table
+- [X] write searchspace to table
 - [ ] check MBO backend
 - [ ] repair irace backend
 - [ ] experimental setup
 
-- [ ] merge my mlr debug dump implementation
+- [X] merge my mlr debug dump implementation
 - [ ] check what is taking random so long with some evals
 - [ ] error imputation wrapper
   - [ ] make the imputation result wrapper work
