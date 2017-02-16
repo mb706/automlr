@@ -35,6 +35,11 @@ resRand <- automlr(pid.task, budget=c(evals=100), backend="random", verbosity=5,
 
 configureMlr(on.error.dump=TRUE)
 
+resRand <- automlr(pid.task, budget=c(evals=100), backend="irace", verbosity=3,
+                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.sda))
+
+debugonce(automlr:::amoptimize.amirace)
+
 amfinish(resRand)
 as.data.frame(amfinish(resRand)$opt.path)
 

@@ -35,6 +35,7 @@ noResTimeout = "Premature timeout: No result in irace."
 
 amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("irace", why = "optIrace", default.method = "load")
+  #try(attachNamespace("irace"), silent = TRUE)
   env$learner = learner
   env$task = task
   env$measure = measure
@@ -46,15 +47,14 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   minNbSurvival = as.integer(2 + log2(dimParams))
   mu = 5L
   firstTest = 5L
-  expPerIter = as.integer((irace.newpopulation + minNbSurvival + 1) *
+  expPerIter = as.integer((opt$newpopulation + minNbSurvival + 1) *
           (max(firstTest, mu) + 5))
 
   env$ctrl = makeTuneControlIrace(
-      timeBudget = 0,
-      timeEstimate = 0,
+      maxTime = 0,
       minNbSurvival = minNbSurvival,
       mu = mu,
-      nbCandidates = 0L,
+      nbConfigurations = 0L,
       softRestart = TRUE,
       firstTest = firstTest,
       eachTest = 1L,
@@ -81,73 +81,81 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   env$iraceOriginal = iraceFunction
 
   # breaking more rules than a maths teacher with anger management problems:
-  environment(iraceFunction) = new.env(parent = asNamespace("irace"))
-  environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix
+#  environment(iraceFunction) = new.env(parent = asNamespace("irace"))
+#  environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix
   
   # hard time limit, to be enforced even when progress may be lost. This will be
   # set by amoptimize.amirace
   env$hardTimeout = 0
   
   # we use some dark magic to run irace with our custom budget
-  iraceWrapper = function(tunerConfig, parameters, ...) {
-    if (exists("tunerResults", envir = env)) {
+  iraceWrapper = function(scenario, parameters, ...) {
+    print('hier')
+    if (exists("iraceResults", envir = env)) {
       # 'env' is the backendprivatedata env.
-      # if tunerResults is in the environment then we are continuing, so we load
+      # if iraceResults is in the environment then we are continuing, so we load
       # the optimization state into the recover file
-      tunerResults = env$tunerResults
+      iraceResults = env$iraceResults
       # use the newly generated file
-      tunerResults$tunerConfig$logFile = tunerConfig$logFile
+      iraceResults$scenario$logFile = scenario$logFile
       # take this round's hookRun, not the one from file.
-      tunerResults$tunerConfig$hookRun = tunerConfig$hookRun
+      iraceResults$scenario$targetRunnerParallel =
+          scenario$targetRunnerParallel
       # everything else stays the same from last round
-      tunerConfig = tunerResults$tunerConfig
+      scenario = iraceResults$scenario
       # don't carry the heavyweight hookRun function's environment to the
       # savefile. cf iraceRecoverFromFileFix()
-      tunerResults$tunerConfig$hookRun = NULL
-      evals.zero = tunerResults$state$experimentsUsedSoFar
+      iraceResults$scenario$targetRunnerParallel = NULL
+      evals.zero = iraceResults$state$experimentsUsedSoFar
     } else {
       # this is the first round.
-      assert(tunerConfig$maxExperiments == 100000)
-      assert(tunerConfig$timeBudget == 0)
-      assert(tunerConfig$timeEstimate == 0)
-      assert(tunerConfig$nbIterations == -1)
-      tunerConfig$recoveryFile = NULL
+      assert(scenario$maxExperiments == 100000)
+      assert(scenario$maxTime == 0)
+      assert(scenario$nbIterations == -1)
+      scenario$recoveryFile = NULL
 
       # we start but immediately stop because maxExperiments == 0
-      iraceFunction(tunerConfig, parameters, ...)
+      iraceFunction(scenario, parameters, ...)
 
       # .... and load the state file to play with it
-      load(tunerConfig$logFile)
+      load(scenario$logFile)
       # since the hookRun's environment gets broken up by saving and restoring
-      tunerResults$tunerConfig$hookRun = tunerConfig$hookRun
-      # the above assignment is for us to keep the hookRun in our tunerConfig
-      tunerConfig = tunerResults$tunerConfig
+      iraceResults$scenario$targetRunnerParallel =
+          scenario$targetRunnerParallel
+      # the above assignment is for us to keep the hookRun in our scenario
+      scenario = iraceResults$scenario
       # this is a heavyweight object which would get saved every iteration, even
       # though we also give it as argument
-      tunerResults$tunerConfig$hookRun = NULL
+      iraceResults$scenario$targetRunnerParallel = NULL
 
       # influences how discrete probability weights are scaled
-      tunerResults$state$nbIterations = irace.nbIterations
-      tunerResults$tunerConfig$nbIterations = 0
+      iraceResults$state$nbIterations = opt$nbIterations
+      iraceResults$scenario$nbIterations = 0
       # in theory this is loaded from the recovery file, but you never know
-      tunerConfig$nbIterations = 0
+      scenario$nbIterations = 0
       # timeUsedSoFar: arbitrary positive number
-      tunerResults$state$timeUsedSoFar = 1
+      iraceResults$state$timeUsed = 1
       # timeBudget: arbitrary positive number smaller than timeUsedSoFar
       # --> we abort after one loop
-      tunerResults$state$timeBudget = 0.5
+      iraceResults$state$maxTime = 0.5
       evals.zero = 0
     }
 
-    tunerConfig$recoveryFile = tunerConfig$logFile
+    scenario$recoveryFile = scenario$logFile
+    if ("logFile" %nin% irace:::.irace.params.recover) {
+      myAssignInNamespace(".irace.params.recover",
+          c(irace:::.irace.params.recover, "logFile"), "irace")
+    }
     while (TRUE) {
-      tunerResults$state$remainingBudget = 1  # arbitrary positive number
-      save(tunerResults, file = tunerConfig$logFile)
+      scenario$logFile = paste0(scenario$logFile, ".unused")
+      
+      iraceResults$state$remainingBudget = 1  # arbitrary positive number
+      save(iraceResults, file = scenario$recoveryFile)
       
       # perform iraceFunction as a kind of transaction: If it is aborted due to
       # timeout, we return the old env$res and reinstate the old env$opt.path.
       optPathBackup = deepcopy(env$opt.path)
-      res = runWithTimeout(iraceFunction(tunerConfig, parameters, ...),
+      res = runWithTimeout(iraceFunction(scenario, parameters, ...),
           env$hardTimeout - proc.time()[3])
       if (res$timeout) {
         env$opt.path = optPathBackup
@@ -157,13 +165,13 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
         return(env$res)
       }
       env$res = res$result
-      load(tunerConfig$logFile)
+      load(scenario$recoveryFile)
       env$usedbudget["evals"] =
-          tunerResults$state$experimentsUsedSoFar - evals.zero
+          iraceResults$state$experimentsUsedSoFar - evals.zero
       env$usedbudget["walltime"] =
           as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
       
-      env$tunerResults = tunerResults
+      env$iraceResults = iraceResults
       
       if (stopcondition(env$stepbudget, env$usedbudget)) {
         # since we are guaranteed to have finished one iteration, this is never
@@ -199,11 +207,11 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   
   on.exit(quickSuspendInterrupts({
             myAssignInNamespace("irace", env$iraceOriginal, "irace")
-            myAssignInNamespace("tuneIrace", originalTuneIrace, "mlr")
+#            myAssignInNamespace("tuneIrace", originalTuneIrace, "mlr")
           }))
 
   myAssignInNamespace("irace", env$iraceWrapper, ns = "irace")
-  myAssignInNamespace("tuneIrace", workingTuneIrace, ns = "mlr")
+#  myAssignInNamespace("tuneIrace", workingTuneIrace, ns = "mlr")
 
   myTuneIrace = mlr:::tuneIrace
   environment(myTuneIrace) = new.env(parent = asNamespace("mlr"))
@@ -214,8 +222,6 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
         digits = .Machine$integer.max)
   }
   
-  env$learner = adjustLearnerVerbosity(env$learner, verbosity)
-
   tryCatch({
       env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
           list(env$measure), getSearchspace(env$learner), env$ctrl,
