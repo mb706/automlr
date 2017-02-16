@@ -98,6 +98,18 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
       }
     }
   }
+  
+  # set the mlr $config of the learner to the config of the .learner
+  # also we want errors to be thrown as usual 
+  learner = setLLConfig(learner, insert(getLLConfig(.learner),
+          list(on.learner.error = "stop", on.learner.warning = "warn")))
+  oldMlrOptions = getMlrOptions()
+  on.exit(do.call(configureMlr, oldMlrOptions))
+  do.call(configureMlr, insert(oldMlrOptions,
+          list(show.info = TRUE,
+              on.learner.error = "stop",
+              on.learner.warning = "warn",
+              show.learner.output = TRUE)))
 
   exec.time = system.time(result <- runWithTimeout(
           train(learner, task = .task, subset = .subset, weights = .weights),
@@ -125,6 +137,14 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
   if (runinfo$specialFirstIter) {
     .learner$env$firstResampleError = TRUE
   }
+
+  oldMlrOptions = getMlrOptions()
+  on.exit(do.call(configureMlr, oldMlrOptions))
+  do.call(configureMlr, insert(oldMlrOptions,
+          list(show.info = TRUE,
+              on.learner.error = "stop",
+              on.learner.warning = "warn",
+              show.learner.output = TRUE)))
 
   exec.time = system.time(result <- runWithTimeout(
           getPredictionResponse(predict(.model$learner.model,

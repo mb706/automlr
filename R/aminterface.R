@@ -73,6 +73,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
               verbosity)
           objectiveLearner = makeTimeconstraintWrapper(objectiveLearner,
               amstate$max.learner.time, amstate$max.learner.time * 1.25)
+          objectiveLearner = adjustLearnerVerbosity(objectiveLearner, verbosity)
           amsetup(amstate$backendprivatedata, amstate$backendoptions,
               amstate$prior.backlog[[1]], objectiveLearner, amstate$task,
               amstate$measure, verbosity)

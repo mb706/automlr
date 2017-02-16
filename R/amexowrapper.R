@@ -270,9 +270,21 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
       .learner$shadowparams, list(automlr.wrappersetup = automlr.wrappersetup,
           ...))
 
-  # set the mlr $config of the learner to the config of the .learner 
-  learner = setLLConfig(learner, getLLConfig(.learner))
-
+  # set the mlr $config of the learner to the config of the .learner
+  # also we want errors to be thrown as usual 
+  learner = setLLConfig(learner, insert(getLLConfig(.learner),
+          list(on.learner.error = "stop", on.learner.warning = "warn")))
+  
+  # we want errors to be thrown here, but ModelMultiplexer doesn't keep 
+  # options for further down. FIXME: report this
+  oldMlrOptions = getMlrOptions()
+  on.exit(do.call(configureMlr, oldMlrOptions))
+  do.call(configureMlr, insert(oldMlrOptions,
+          list(show.info = TRUE,
+              on.learner.error = "stop",
+              on.learner.warning = "warn",
+              show.learner.output = TRUE)))
+  
   train(learner, task = .task, subset = .subset, weights = .weights)
 }
 
@@ -283,7 +295,14 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   # setting the LearnerParam$when = train / test value.
   # The learner.model we are given is just an mlr WrappedModel that we can use
   # predict on.
-  on.exit(quickSuspendInterrupts(unpatchMlr()))
+  on.exit(quickSuspendInterrupts(unpatchMlr()), add = TRUE)
+  oldMlrOptions = getMlrOptions()
+  on.exit(do.call(configureMlr, oldMlrOptions), add = TRUE)
+  do.call(configureMlr, insert(oldMlrOptions,
+          list(show.info = TRUE,
+              on.learner.error = "stop",
+              on.learner.warning = "warn",
+              show.learner.output = TRUE)))
   patchMlrPredict()
   getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
 }

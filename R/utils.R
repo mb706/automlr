@@ -238,21 +238,27 @@ setLLConfig = function(learner, config) {
   }
 }
 
+getLearnerVerbosityOptions = function(verbosity) {
+  config = list()
+  # show.info is not used, but in case this changes at some point...
+  config$show.info = verbosity.learneroutput(verbosity)
+  config$on.learner.error = if (verbosity.stoplearnerror(verbosity))
+              "stop"
+          else if (verbosity.learnerwarnings(verbosity))
+              "warn"
+          else
+              "quiet"
+  config$on.learner.warning = if (verbosity.learnerwarnings(verbosity))
+              "warn"
+          else
+              "quiet"
+  config$show.learner.output = verbosity.learneroutput(verbosity)
+  config
+}
+
 adjustLearnerVerbosity = function(learner, verbosity) {
   config = getLLConfig(learner)
-  # show.info is not used, but in case this changes at some point...
-  config$show.show.info = verbosity.learneroutput(verbosity)
-  config$on.learner.error = if (verbosity.stoplearnerror(verbosity))
-      "stop"
-    else if (verbosity.learnerwarnings(verbosity))
-      "warn"
-    else
-      "quiet"
-  config$on.learner.warning = if (verbosity.learnerwarnings(verbosity))
-      "warn"
-    else
-      "quiet"
-  config$show.learner.output = verbosity.learneroutput(verbosity)
+  config = insert(config, getLearnerVerbosityOptions(verbosity))
   setLLConfig(learner, config)
 }
 
@@ -369,7 +375,7 @@ myAssignInNamespace = function(what, value, ns) {
   w = options("warn")
   on.exit(options(w))
   options(warn = -1)
-  where = as.environment(paste("package", ns, sep = ":"))
+  where = asNamespace(ns)
   if (bindingIsLocked(what, where)) {
     unlockBinding(what, where)
     assign(what, value, where)

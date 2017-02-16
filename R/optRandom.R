@@ -64,7 +64,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   # the budget. if that was exceeded, we change the mlr settings so that errors
   # exit the tuner. then we throw an error, which we catch here.
 
-  learner = adjustLearnerVerbosity(env$learner, verbosity)
+  learner = env$learner
 
   am.env = new.env(parent = emptyenv())
   am.env$cpus = parallelGetOptions()$settings$cpus

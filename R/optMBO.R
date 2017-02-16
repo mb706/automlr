@@ -55,8 +55,6 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   
   budget = 0
   
-  learner = adjustLearnerVerbosity(learner, verbosity)
-  
   isOutOfBudget = function(opt.state) {
     stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
   }
@@ -159,8 +157,6 @@ amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   zero$hardTimeout = proc.time()[3] + deadline
   
   zero$budget = stepbudget
-
-  zero$learner = adjustLearnerVerbosity(zero$learner, verbosity)
   
   result = runWithTimeout(mlrMBO:::mboTemplate.OptState(env$opt.state),
       deadline, backend = "native")

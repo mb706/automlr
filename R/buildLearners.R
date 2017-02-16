@@ -165,8 +165,9 @@ buildLearners = function(searchspace, task, verbosity = 0) {
       allParamNames)
   multiplexer$searchspace = tuneParamSet
   allLearners = unlist(tuneParamSet$pars$selected.learner$values)
-  makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, handlerList,
+  am = makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, handlerList,
       allLearners)
+  adjustLearnerVerbosity(am, verbosity)
 }
 
 checkParamIds = function(idRef, verbosity) {
