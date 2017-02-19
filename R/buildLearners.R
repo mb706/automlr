@@ -174,6 +174,7 @@ checkParamIds = function(idRef, verbosity) {
   # check that the IDs match.
   for (parid in names(idRef)) {
     if (length(idRef[[parid]]) == 1) {
+      next  # not implemented and therefore only annoying
       if (verbosity.sswarnings(verbosity)) {
         warningf(paste0("Parameter '%s' of learner '%s' is the only one with",
                 " parameter id '%s'."),
@@ -316,11 +317,11 @@ buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbosity) {
       if ((partype != "untyped") &&
           ((param$type == "int" &&
               partype %nin% c("integer", "integervector")) ||
-                       (param$type == "bool" &&
-                           partype %nin% c("logical", "logicalvector")) ||
-                       (param$type == "cat" &&
-                           partype %nin% c("discrete", "discretevector", "character",
-                                   "charactervector")))) {
+            (param$type == "bool" &&
+              partype %nin% c("logical", "logicalvector")) ||
+            (param$type == "cat" &&
+              partype %nin% c("discrete", "discretevector", "character",
+                  "charactervector")))) {
         if (verbosity.sswarnings(verbosity)) {
           warningf(paste0("Parameter '%s' for learner '%s' is of type '%s' and",
                   " has different (but feasible) type '%s' listed in search",
@@ -520,26 +521,26 @@ createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
     paramlist = list(id = param$name, requires = param$req)
   }
   paramlist = c(paramlist, switch(surrogatetype,
-                int = list(lower = pmin, upper = pmax, trafo = ptrafo),
-                real = list(lower = pmin, upper = pmax, trafo = ptrafo),
-                cat = list(values = {
-                            x = param$values
-                            if (!test_named(x)) {
-                                names(x) = param$values
-                            }
-                            x}),
-                bool = list(),
-                fix = list(values = {
-                            x = param$values
-                            if (!test_named(x)) {
-                                names(x) = param$values
-                            }
-                            x}),
-                def = stopf(paste0("Parameter '%s' for learner '%s' marked as 'inject'",
-                                " must not have type 'def'."),
-                        param$name, learnerid),
-                stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
-                        param$name, learnerid)))
+          int = list(lower = pmin, upper = pmax, trafo = ptrafo),
+          real = list(lower = pmin, upper = pmax, trafo = ptrafo),
+          cat = list(values = {
+                x = param$values
+                if (!test_named(x)) {
+                  names(x) = param$values
+                }
+                x}),
+          bool = list(),
+          fix = list(values = {
+                x = param$values
+                if (!test_named(x)) {
+                  names(x) = param$values
+                }
+                x}),
+          def = stopf(paste("Parameter '%s' for learner '%s' marked as",
+                  "'inject' must not have type 'def'."),
+              param$name, learnerid),
+          stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
+              param$name, learnerid)))
   if (!facingOutside) {
     paramlist$trafo = NULL
   }
