@@ -41,7 +41,6 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
   requirePackages("smoof", why = "optMBO", default.method = "load")
   # FIXME things that could be variable:
-  #  resampling: holdout, cv, or something adaptive?
   #  infill control: focussearch, something else? how many points?
   env$runtimeEnv = environment()
   
@@ -54,6 +53,8 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   numcpus[is.na(numcpus)] = 1
   
   budget = 0
+  
+  hardTimeout = Inf  # for the init evaluations
   
   isOutOfBudget = function(opt.state) {
     stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
@@ -68,6 +69,15 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
     l = setHyperPars(learner, par.vals = x)
 
     hardTimeoutRemaining = hardTimeout - proc.time()[3]
+    
+    if (verbosity.traceout(verbosity)) {
+      cat("Evaluating function:\n")
+      outlist = removeMissingValues(x)
+      for (n in names(outlist)) {
+        catf("%s: %s; ", n, outlist[[n]])
+      }
+      cat("\n")
+    }
 
     rwt = runWithTimeout(
         resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr,

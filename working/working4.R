@@ -29,14 +29,82 @@ options(warn=1)
 pid.task
 ##
 
+## TODO: try to just set currentBudget to a large number
+
+resRand <- automlr(pid.task, budget=c(evals=3), backend="random", verbosity=3, max.learner.time=30,
+                   searchspace=mlrLightweight)
+debugger()
+
+as.data.frame(amfinish(resRand)$opt.path)
 
 resRand <- automlr(pid.task, budget=c(evals=100), backend="random", verbosity=5, max.learner.time=3,
                    searchspace=list(mlrLearners$classif.logreg, mlrLearners$classif.nodeHarvest))
 
 configureMlr(on.error.dump=TRUE)
 
-resRand <- automlr(pid.task, budget=c(evals=100), backend="irace", verbosity=3,
-                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.sda))
+resRand <- automlr(pid.task, budget=c(evals=2000), backend="irace", verbosity=3,
+                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn))
+
+nontarget <- c("mmce.test.mean", "dob", "eol", "error.message", "exec.time")
+opp0 <- as.data.frame(amfinish(resRand)$opt.path)
+opp <- opp0
+opp[, nontarget] <- NULL
+xdesc <- apply(opp, 1, collapse)
+xlist <- list()
+for (x in seq_along(xdesc)) {
+  xlist[[xdesc[x]]] <- c(xlist[[xdesc[x]]], x)
+}
+xmeans <- sapply(xlist, function(ind) {
+  mean(opp0[ind, "mmce.test.mean"])
+})
+sort(xmeans)[1:5]
+collapse(colnames(opp))
+
+thel <- automlr:::buildLearners(searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn), pid.task, 3)
+
+opx0 <- amfinish(resRand)$opt.path
+
+truePerf <- sapply(xlist, function(idxs) {
+  replicate(200, {gc() ; resample(setHyperPars(thel, par.vals=removeMissingValues(getOptPathEl(opx0, idxs[1])$x)), pid.task, hout)$aggr})
+})
+
+
+Best configuration:         110    mean value:    0.2619707661
+Description of the best configuration:
+    .ID. selected.learner classif.ctree.teststat classif.ctree.testtype classif.ctree.maxsurrogate classif.ctree.limitmtry classif.ctree.minbucket
+110  110    classif.ctree                    max             Bonferroni                          3                    TRUE                       9
+    classif.ctree.minsplit classif.ctree.stump classif.rknn.k classif.rknn.r classif.rknn.mtry classif.ctree.mincriterion
+110                     16               FALSE             NA             NA                NA                  0.6899244
+    classif.ctree.mincriterion.AMLRFIX1 classif.ctree.mtry .PARENT.
+110                                  NA                 17       92
+
+
+# 2017-02-19 15:04:39 CET: Elite configurations:
+    selected.learner classif.ctree.teststat classif.ctree.testtype classif.ctree.maxsurrogate classif.ctree.limitmtry classif.ctree.minbucket
+110    classif.ctree                    max             Bonferroni                          3                    TRUE                       9
+114    classif.ctree                    max             Bonferroni                          3                    TRUE                       9
+120    classif.ctree                    max             Bonferroni                          3                    TRUE                       9
+137    classif.ctree                    max             Bonferroni                          3                    TRUE                       9
+143    classif.ctree                    max             Bonferroni                          4                    TRUE                       9
+    classif.ctree.minsplit classif.ctree.stump classif.rknn.k classif.rknn.r classif.rknn.mtry classif.ctree.mincriterion
+110                     16               FALSE             NA             NA                NA                  0.6899244
+114                     17               FALSE             NA             NA                NA                  0.6781195
+120                     16               FALSE             NA             NA                NA                  0.6783891
+137                     17               FALSE             NA             NA                NA                  0.6837511
+143                     17               FALSE             NA             NA                NA                  0.6842876
+    classif.ctree.mincriterion.AMLRFIX1 classif.ctree.mtry
+110                                  NA                 17
+114                                  NA                 18
+120                                  NA                 19
+137                                  NA                 19
+143                                  NA                 18
+
+
+getParamSet(makeLearner("classif.ctree"))
+
+resample(makeLearner("classif.ctree", teststat="max", testtype="MonteCarlo"), pid.task, cv10)
+
+
 
 debugonce(automlr:::amoptimize.amirace)
 
@@ -177,6 +245,16 @@ i = 3
 while(i>0) i <- i - 1
 i
 
+
+lrn = makeLearner("classif.rknn")
+ctrl = makeTuneControlRandom(maxit=3)
+# create long list of learner params
+psLength = 200
+longLearnerParams = do.call(c, lapply(seq_len(psLength), function(x) {
+  makeParamSet(makeIntegerLearnerParam(paste0('some.parameter', x), 1, 10))
+}))
+lrn$par.set = c(lrn$par.set, longLearnerParams)
+tuneParams(lrn, pid.task, cv5, par.set = longLearnerParams, control = ctrl, show.info=TRUE)
 
 
 ##############
