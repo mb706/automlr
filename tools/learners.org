@@ -232,7 +232,7 @@
 - random knn
 - TODO bug: additional parameters possible for rpart() part.
 **** Variable Parameters:
-   - k :: int 1..100 exp: number of NN to use. since this is a knn ensemble it does not have the knn.k-id.
+   - k :: int 1..98 exp: number of NN to use. since this is a knn ensemble it does not have the knn.k-id. k > 98 reliably crashes rknn
    - r :: int 100..4000 exp: number of KNNs
    - mtry :: int 3..40: number of features to draw
 **** Default Parameters:
