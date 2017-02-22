@@ -420,3 +420,90 @@ getSeed = function() {
   }
   get(".Random.seed", .GlobalEnv)
 }
+
+# Wrap a learner; mlr doesn't export this, but the following works better than
+# the mlr BaseWrapper cruft anyways.
+
+wrapLearner = function(cl, short.name, name, learner,
+    type = learner$type,
+    properties = getLearnerProperties(learner),
+    par.set = makeAllTrainPars(getParamSet(learner)),
+    par.vals = getHyperPars(learner),
+    config = getLLConfig(learner)) {
+  # finally, create the learner object that will be returned!
+  constructor = switch(type,
+      classif = makeRLearnerClassif,
+      regr = makeRLearnerRegr,
+      surv = makeRLearnerSurv,
+      multilabel = makeRLearnerMultilabel,
+      stopf("Task type '%s' not supported.", type))
+  wrapper = constructor(
+      cl = cl,
+      short.name = short.name,
+      name = name,
+      properties = properties,
+      par.set = par.set,
+      par.vals = par.vals,
+      package = "automlr")
+  wrapper$fix.factors.prediction = FALSE
+
+  wrapper$learner = removeHyperPars(learner, names(getHyperPars(learner)))
+  wrapper$config = learner
+  wclass = class(wrapper)
+  clpos = which(wclass == cl)
+  assert(length(clpos) == 1)
+  class(wrapper) = c(wclass[seq_len(clpos)], "automlrWrappedLearner",
+      wclass[-seq_len(clpos)])
+  wrapper
+}
+
+trainLearner.automlrWrappedLearner = function(.learner, .task, .subset,
+    .weights = NULL, ...) {
+
+  # would be nice to set hyperpars of learner here, but that squares with
+  # amexowrapper.
+
+  learner = .learner$learner
+  # set the mlr $config of the learner to the config of the .learner
+  # also we want errors to be thrown as usual 
+  learner = setLLConfig(learner, insert(getLLConfig(.learner),
+          list(on.learner.error = "stop", on.learner.warning = "warn")))
+
+  # we want errors to be thrown here, but ModelMultiplexer doesn't keep 
+  # options for further down. FIXME: report this
+  oldMlrOptions = getMlrOptions()
+  on.exit(do.call(configureMlr, oldMlrOptions), add = TRUE)
+  do.call(configureMlr, insert(oldMlrOptions,
+          list(show.info = TRUE,
+              on.learner.error = "stop",
+              on.learner.warning = "warn",
+              show.learner.output = TRUE)))
+
+  train(learner, task = .task, subset = .subset, weights = .weights)
+}
+
+predictLearner.automlrWrappedLearner = function(.learner, .model, .newdata,
+    ...) {
+  # we can't just call predictLearner() here, unless we also wrap the whole
+  # setHyperPars machinery, for which we would also need to be more diligent
+  # setting the LearnerParam$when = train / test value.
+  # The learner.model we are given is just an mlr WrappedModel that we can use
+  # predict on.
+  oldMlrOptions = getMlrOptions()
+  on.exit(do.call(configureMlr, oldMlrOptions), add = TRUE)
+  do.call(configureMlr, insert(oldMlrOptions,
+          list(show.info = TRUE,
+              on.learner.error = "stop",
+              on.learner.warning = "warn",
+              show.learner.output = TRUE)))
+  getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
+}
+
+getSearchspace.automlrWrappedLearner = function(learner) {
+  getSearchspace(learner$learner)
+}
+
+
+
+
+

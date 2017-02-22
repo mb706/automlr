@@ -204,38 +204,22 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
   
   visibleHyperIndex = names(getHyperPars(modelmultiplexer)) %in%
       getParamIds(learnerPars)
-  
-  # finally, create the learner object that will be returned!
-  constructor = switch(taskdesc$type,
-      classif = makeRLearnerClassif,
-      regr = makeRLearnerRegr,
-      surv = makeRLearnerSurv,
-      multilabel = makeRLearnerMultilabel,
-      stopf("Task type '%s' not supported.", taskdesc$type))
-  learner = constructor(
-      cl = "AMExoWrapper",
-      short.name = "amlr",
-      name = "automlrlearner",
+
+  learner = wrapLearner("AMExoWrapper", "amlr", "automlrlearner",
+      learner = modelmultiplexer,
+      type = taskdesc$type,
       properties = properties,
       par.set = learnerPars,
       par.vals = getHyperPars(modelmultiplexer)[visibleHyperIndex],
-      package = "automlr")
+      config = list(show.info = FALSE, on.learner.error = "quiet",
+          on.learner.warning = "quiet", on.par.without.desc = "stop",
+          on.par.out.of.bounds = "stop", show.learner.output = FALSE))
 
-  if (length(getHyperPars(modelmultiplexer)) > 0) {
-    modelmultiplexer = removeHyperPars(modelmultiplexer,
-        names(getHyperPars(modelmultiplexer)))
-  }
-  
-  
-  learner$learner = modelmultiplexer
   learner$staticParams = staticParams
   learner$searchspace = completeSearchSpace
   learner$fix.factors.prediction = TRUE
   learner$wrappers = extractSubList(wrappers, "constructor")
   learner$shadowparams = shadowparams
-  learner$config = list(show.info = FALSE, on.learner.error = "quiet",
-      on.learner.warning = "quiet", on.par.without.desc = "stop",
-      on.par.out.of.bounds = "stop", show.learner.output = FALSE)
   learner
 }
 
@@ -270,41 +254,16 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
       .learner$shadowparams, list(automlr.wrappersetup = automlr.wrappersetup,
           ...))
 
-  # set the mlr $config of the learner to the config of the .learner
-  # also we want errors to be thrown as usual 
-  learner = setLLConfig(learner, insert(getLLConfig(.learner),
-          list(on.learner.error = "stop", on.learner.warning = "warn")))
-  
-  # we want errors to be thrown here, but ModelMultiplexer doesn't keep 
-  # options for further down. FIXME: report this
-  oldMlrOptions = getMlrOptions()
-  on.exit(do.call(configureMlr, oldMlrOptions))
-  do.call(configureMlr, insert(oldMlrOptions,
-          list(show.info = TRUE,
-              on.learner.error = "stop",
-              on.learner.warning = "warn",
-              show.learner.output = TRUE)))
-  
-  train(learner, task = .task, subset = .subset, weights = .weights)
+  .learner$learner = learner
+
+  NextMethod(.learner)
 }
 
 #' @export
 predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
-  # we can't just call predictLearner() here, unless we also wrap the whole
-  # setHyperPars machinery, for which we would also need to be more diligent
-  # setting the LearnerParam$when = train / test value.
-  # The learner.model we are given is just an mlr WrappedModel that we can use
-  # predict on.
   on.exit(quickSuspendInterrupts(unpatchMlr()), add = TRUE)
-  oldMlrOptions = getMlrOptions()
-  on.exit(do.call(configureMlr, oldMlrOptions), add = TRUE)
-  do.call(configureMlr, insert(oldMlrOptions,
-          list(show.info = TRUE,
-              on.learner.error = "stop",
-              on.learner.warning = "warn",
-              show.learner.output = TRUE)))
   patchMlrPredict()
-  getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
+  NextMethod(.learner)
 }
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {

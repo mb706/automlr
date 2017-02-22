@@ -34,23 +34,9 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
     assertNumeric(timeFirstIter, lower = time, any.missing = FALSE, len = 1)
   }
   
-  constructor = switch(learner$type,
-      classif = makeRLearnerClassif,
-      regr = makeRLearnerRegr,
-      surv = makeRLearnerSurv,
-      multilabel = makeRLearnerMultilabel,
-      stopf("Learner type '%s' not supported.", taskdesc$type))
-  wrapper = constructor(
-      cl = "TimeconstraintWrapper",
-      short.name = "tcw",
-      name = "TimeconstraintWrapper",
-      properties = getLearnerProperties(learner),
-      par.set = makeAllTrainPars(getParamSet(learner)),
-      par.vals = getHyperPars(learner),
-      package = "automlr")
-  wrapper$fix.factors.prediction = learner$fix.factors.prediction
+  wrapper = wrapLearner("TimeconstraintWrapper", "tcw", "TimeconstraintWrapper",
+      learner = learner)
   
-  wrapper$learner = removeHyperPars(learner, names(getHyperPars(learner)))
   wrapper$env = new.env(parent = emptyenv())
 
   wrapper$time = time
@@ -64,7 +50,7 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
 trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
     .weights = NULL, ...) {
 
-  learner = setHyperPars(.learner$learner, par.vals = list(...))
+  .learner$learner = setHyperPars(.learner$learner, par.vals = list(...))
 
   # the "normal" behaviour, when not doing resampling, or when doing resampling
   # with only one iteration
@@ -82,9 +68,6 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
       runinfo$time = coalesce(.learner$timeFirstIter, .learner$time)
       runinfo$specialFirstIter = TRUE
       .learner$env$resampleUID = setResampleUID()
-      # set firstResampleError to TRUE and set it to FALSE after train() again.
-      # It will not be reached if an error occurs.
-      .learner$env$firstResampleError = TRUE
     } else {
       if (.learner$env$resampleUID != getResampleUID()) {
         # we are not parallelized and are in the >1st iteration. therefore,
@@ -99,31 +82,23 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
     }
   }
   
-  # set the mlr $config of the learner to the config of the .learner
-  # also we want errors to be thrown as usual 
-  learner = setLLConfig(learner, insert(getLLConfig(.learner),
-          list(on.learner.error = "stop", on.learner.warning = "warn")))
-  oldMlrOptions = getMlrOptions()
-  on.exit(do.call(configureMlr, oldMlrOptions))
-  do.call(configureMlr, insert(oldMlrOptions,
-          list(show.info = TRUE,
-              on.learner.error = "stop",
-              on.learner.warning = "warn",
-              show.learner.output = TRUE)))
+  .learner$env$firstResampleError = FALSE
 
-  exec.time = system.time(result <- runWithTimeout(
-          train(learner, task = .task, subset = .subset, weights = .weights),
-          runinfo$time, TRUE)$result , gcFirst = FALSE)
+  exec.time = system.time(result <- runWithTimeout(NextMethod(.learner),
+          runinfo$time, FALSE), gcFirst = FALSE)
 
   runinfo$traintime = exec.time[3]
   
-  if (runinfo$traintime > runinfo$time + 0.5) {
+  if (result$timeout || runinfo$traintime > runinfo$time + 0.5) {
     # we allow ourselves 0.5 seconds buffer or bad things might happen.
+    if (runinfo$specialFirstIter) {
+      .learner$env$firstResampleError = TRUE
+    }
     stop(timeoutMessage)
   }
 
-  .learner$env$firstResampleError = FALSE
-  
+  result = result$result
+
   result$runinfo = runinfo
   result
 }
@@ -134,40 +109,27 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
   # we go here if the training run finished without timeout
   remainingTime = max(runinfo$time - runinfo$traintime, 1)
   
-  if (runinfo$specialFirstIter) {
+
+  exec.time = system.time(result <- runWithTimeout(NextMethod(.learner),
+          remainingTime, FALSE), gcFirst = FALSE)
+  predicttime = exec.time[3]
+  totalTime = predicttime + runinfo$traintime
+  
+  if (result$timeout && runinfo$specialFirstIter) {
     .learner$env$firstResampleError = TRUE
   }
 
-  oldMlrOptions = getMlrOptions()
-  on.exit(do.call(configureMlr, oldMlrOptions))
-  do.call(configureMlr, insert(oldMlrOptions,
-          list(show.info = TRUE,
-              on.learner.error = "stop",
-              on.learner.warning = "warn",
-              show.learner.output = TRUE)))
-
-  exec.time = system.time(result <- runWithTimeout(
-          getPredictionResponse(predict(.model$learner.model,
-                  newdata = .newdata)), remainingTime, TRUE)$result,
-      gcFirst = FALSE)
-  predicttime = exec.time[3]
-  totalTime = predicttime + runinfo$traintime
-
-  .learner$env$firstResampleError = FALSE
-
-  if (runinfo$specialFirstIter && totalTime > .learner$time) {
+  if (result$timeout ||
+      (runinfo$specialFirstIter && totalTime > .learner$time)) {
     # on the first 'special' run, we might be below the timeFirstIter timeout
     # value, but still above the regular timeout value. In that case, we 
     # treat the run as if it did produce a timeout on a subsequent resampling
     # iteration and do the dummy prediction. 
     stop(timeoutMessage)
   }
-  result
+  result$result
 }
 
-getSearchspace.TimeconstraintWrapper = function(learner) {
-  getSearchspace(learner$learner)
-}
 
 
 

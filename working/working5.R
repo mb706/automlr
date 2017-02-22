@@ -39,3 +39,25 @@ resRand <- automlr(pid.task, budget=c(evals=300), backend="mbo", verbosity=3,
 
 debugger()
 q
+
+plot(as.data.frame(amfinish(resRand)$opt.path)$y)
+
+
+resRand <- automlr(pid.task, budget=c(evals=1), backend="random", verbosity=3,
+                   max.walltime.overrun=10, max.learner.time=10,
+                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn))
+
+
+configureMlr(on.error.dump = TRUE)
+
+resRand <- automlr(pid.task, budget=c(walltime=20), backend="random", verbosity=5,
+                   max.walltime.overrun=10, max.learner.time=10,
+                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn))
+
+as.data.frame(amfinish(resRand)$opt.path)
+
+debugger(getOptPathEl(amfinish(resRand)$opt.path, 1)$extra$.dump[[1]][[1]])
+
+automlr:::runWithTimeout
+
+as.data.frame(amfinish(resRand)$opt.path)
