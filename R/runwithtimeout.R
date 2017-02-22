@@ -105,7 +105,7 @@ runWithTimeoutNative = function(expr, time, throwError, myName) {
 
     # be extra careful we won't be interrupted in all of this.
     setTimeLimit()
-    on.exit(quickSuspendInterrupts(unpatchFunctions(patchObj)))
+    on.exit(quickSuspendInterrupts(unpatchFunctions(patchObj)), add = TRUE)
     patchFunctions(patchObj)
     nextTimeout = Inf
   } else {
@@ -135,6 +135,10 @@ runWithTimeoutNative = function(expr, time, throwError, myName) {
   timeoutNotNew = thisTimeout >= nextTimeout
 
   result = NULL
+  
+  # even if expr throws an error we need to reinstall the previous time limit
+  on.exit(trueSetTimeLimitMs(nextTimeout -
+              as.integer(round(proc.time()[3] * 1000))), add = TRUE)
 
   if (timeoutNotNew) {
     # this runWithTimeout is a no-op, since a higher nesting level
@@ -164,9 +168,8 @@ runWithTimeoutNative = function(expr, time, throwError, myName) {
     # Otherwise it is an error and we throw.
     runtime %+=% 10
   }
-  nextLevelRemainingRuntime = nextTimeout - finishTime
 
-  trueSetTimeLimitMs(nextLevelRemainingRuntime)
+
 
   isTimeout = runtime > time
 
