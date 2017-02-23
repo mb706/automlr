@@ -456,7 +456,7 @@ wrapLearner = function(cl, short.name, name, learner,
   assert(length(clpos) == 1)
   class(wrapper) = c(wclass[seq_len(clpos)], "automlrWrappedLearner",
       wclass[-seq_len(clpos)])
-  wrapper
+  setPredictType(wrapper, learner$predict.type)
 }
 
 trainLearner.automlrWrappedLearner = function(.learner, .task, .subset,
