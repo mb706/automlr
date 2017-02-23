@@ -450,7 +450,7 @@ wrapLearner = function(cl, short.name, name, learner,
   
   wrapper$learner = removeHyperPars(learner,
       coalesce(names(getHyperPars(learner)), character(0)))
-  wrapper$config = getLLConfig(learner)
+  wrapper$config = config
   wclass = class(wrapper)
   clpos = which(wclass == cl)
   assert(length(clpos) == 1)
