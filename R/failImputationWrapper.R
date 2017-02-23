@@ -16,23 +16,7 @@
 #' A \code{Learner} that catches errors and returns a dummy model if an error
 #' occurs.
 makeFailImputationWrapper = function(learner) {
-  constructor = switch(learner$type,
-      classif = makeRLearnerClassif,
-      regr = makeRLearnerRegr,
-      surv = makeRLearnerSurv,
-      multilabel = makeRLearnerMultilabel,
-      stopf("Learner type '%s' not supported.", taskdesc$type))
-  wrapper = constructor(
-      cl = "FailImputationWrapper",
-      short.name = "fiw",
-      name = "FailImputationWrapper",
-      properties = getLearnerProperties(learner),
-      par.set = makeAllTrainPars(getParamSet(learner)),
-      par.vals = getHyperPars(learner),
-      package = "automlr")
-  wrapper$fix.factors.prediction = learner$fix.factors.prediction
-  wrapper$learner = removeHyperPars(learner, names(getHyperPars(learner)))
-  wrapper
+  wrapLearner("FailImputationWrapper", "fiw", "FailImputationWrapper", learner)
 }
 
 trainLearner.FailImputationWrapper = function(.learner, .task, .subset,
@@ -66,8 +50,4 @@ predictLearner.FailImputationWrapper = function(.learner, .model, .newdata,
   } else {
     result
   }
-}
-
-getSearchspace.FailImputationWrapper = function(learner) {
-  getSearchspace(learner$learner)
 }
