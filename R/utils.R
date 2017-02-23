@@ -447,8 +447,10 @@ wrapLearner = function(cl, short.name, name, learner,
       package = "automlr")
   wrapper$fix.factors.prediction = FALSE
 
-  wrapper$learner = removeHyperPars(learner, names(getHyperPars(learner)))
-  wrapper$config = learner
+  
+  wrapper$learner = removeHyperPars(learner,
+      coalesce(names(getHyperPars(learner)), character(0)))
+  wrapper$config = getLLConfig(learner)
   wclass = class(wrapper)
   clpos = which(wclass == cl)
   assert(length(clpos) == 1)

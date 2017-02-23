@@ -50,9 +50,12 @@ resRand <- automlr(pid.task, budget=c(evals=1), backend="random", verbosity=3,
 
 configureMlr(on.error.dump = TRUE)
 
+configureMlr(show.info=TRUE, on.error.dump = TRUE)
 resRand <- automlr(pid.task, budget=c(walltime=20), backend="random", verbosity=3,
                    max.walltime.overrun=10, max.learner.time=10,
-                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn))
+                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn, mlrLearners$ampreproc))
+
+names(mlrLearners)
 
 as.data.frame(amfinish(resRand)$opt.path)
 
@@ -79,15 +82,31 @@ predictLearner.testlearner = function(.learner, .model, .newdata, ...) {
 
 configureMlr(show.info=TRUE, on.error.dump = TRUE)
 
-m <- train(setHyperPars(tl, testparam=2), pid.task)
-predict(m, newdata=getTaskData(pid.task))
+data = getTaskData(pid.task)
+data[1, 1] = NA
+pid.task2 = makeClassifTask(data=data, target=getTaskTargetNames(pid.task))
 
-tlw <- makePreprocWrapperAm(tl, ppa.nzv.cutoff.numeric=1)
-m <- train(setHyperPars(tlw, testparam=2), pid.task)
-predict(m, newdata=getTaskData(pid.task))
+
+m <- train(setHyperPars(tl, testparam=2), pid.task)
+predict(m, newdata=getTaskData(pid.task2))
+
+tlw <- makePreprocWrapperAm(tl, ppa.nzv.cutoff.numeric=10, ppa.impute.numeric="remove.na", ppa.multivariate.trafo="ica")
+mw <- train(setHyperPars(tlw, testparam=2), pid.task2)
+predict(mw, newdata=getTaskData(pid.task2))
+
+
+tlw2 <- makeFailImputationWrapper(tl)
+mw2 <- train(setHyperPars(tlw2), pid.task2)
+predict(mw2, newdata=getTaskData(pid.task2))
+
 
 debugger(m$dump)
 sapply(getTaskData(pid.task), var)
 
 
 automlr:::trainLearner.PreprocWrapperAm()
+debugonce(predictLearner.PreprocWrapperAm)
+
+debugonce(trainLearner.PreprocWrapperAm)
+
+install.packages("fastICA")
