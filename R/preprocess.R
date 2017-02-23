@@ -48,7 +48,6 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
     impute.factor = "off", multivariate.trafo = "off", feature.filter = "off",
     feature.filter.thresh = 0, keep.data = FALSE) {
   # FIXME: handle ordered factors
-  # FIXME: /maybe/ add a "ignore these columns" parameter
 
   # first: check arguments
   assertClass(data, classes = "data.frame")
@@ -209,7 +208,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
       pcr = prcomp(data[cols.numeric], center = FALSE)
       data[cols.numeric] = pcr$x
       ppobject$rotation = pcr$rotation
-    } else if (multivariate.trafo == "ica") {
+    } else if (multivariate.trafo == "ica") { 
       requirePackages("fastICA", why = "preProcess", default.method = "load")
       ica = fastICA::fastICA(data[cols.numeric],
           length(cols.numeric), method = "C")
@@ -273,7 +272,7 @@ predict.ampreproc = function(object, newdata, ...) {
   # all right lets go
   # drop low variance cols
   newdata = newdata[names(newdata) %nin% object$dropcols]
-  
+  badRows = NULL
   # univariate trafo
   if (length(object$cols.numeric) > 0) {
     if (object$univariate.trafo != "off") {
@@ -284,7 +283,14 @@ predict.ampreproc = function(object, newdata, ...) {
     }
     
     if (object$impute.numeric == "remove.na") {
-      newdata = newdata[!naRows(newdata, object$cols.numeric), ]
+      badRows = naRows(newdata, object$cols.numeric)
+      if (length(object$cols.factor) > 0 &&
+          object$impute.factor == "remove.na") {
+        # badRows should represent all the missing rows, so we throw out
+        # numerics and factors in one go
+        badRows = badRows | naRows(newdata, object$cols.factor)
+      }
+      newdata = newdata[!badRows, ]
     } else if (object$impute.numeric != "off") {
       newdata[object$cols.numeric] = mapply(imputeRandom,
           newdata[object$cols.numeric], object$pop.numeric, SIMPLIFY = FALSE)
@@ -298,7 +304,11 @@ predict.ampreproc = function(object, newdata, ...) {
   
   if (length(object$cols.factor) > 0) {
     if (object$impute.factor == "remove.na") {
-      newdata = newdata[!naRows(newdata, object$cols.factor), ]
+      if (is.null(badRows)) {
+        # only do this if we haven't done it further above.
+        badRows = naRows(newdata, object$cols.factor)
+        newdata = newdata[!badRows, ]
+      }
     } else if (object$impute.factor == "distinct") {
       newdata[object$cols.factor] = lapply(newdata[object$cols.factor],
           function(f) {
@@ -314,11 +324,13 @@ predict.ampreproc = function(object, newdata, ...) {
     }
   }
   
-  newdata[names(newdata) %nin% object$dropcols2]
+  newdata = newdata[names(newdata) %nin% object$dropcols2]
+  attr(newdata, "badRows") = badRows
+  newdata
 }
 
 naRows = function(data, cols) {
-  Reduce(`&`, lapply(data[cols], is.na))
+  Reduce(`|`, lapply(data[cols], is.na))
 }
 
 imputeRandom = function(x, pop) {
@@ -377,33 +389,120 @@ makePreprocWrapperAm = function (learner, ...) {
 
   par.vals = getDefaults(par.set)
   par.vals = insert(par.vals, list(...))
+
+  wrapper = wrapLearner("PreprocWrapperAm", "pwa", "PreprocWrapperAm",
+      learner = learner,
+      par.set = c(makeAllTrainPars(getParamSet(learner)), par.set),
+      par.vals = c(getHyperPars(learner), par.vals))
+}
+
+trainLearner.PreprocWrapperAm = function(.learner, .task, .subset,
+    .weights = NULL, ...) {
   
-  trainfun = function(data, target, args) {
-    names(args) = sub("ppa.", "", names(args), fixed = TRUE)
-    ppobject = do.call(preProcess,
-        c(list(data = data, target = target, keep.data = TRUE), args))
-    data = ppobject$data
-    ppobject$data = NULL
-    if (ncol(data) == 2) {
-      # if it is 1, we just create a NoFeaturesLearner, a less interesting case.
-      warning("preprocess returned only one column.")
-    }
-    list(data = data, control = ppobject)
+  
+  
+  tdesc = getTaskDescription(.task)
+  ttype = getTaskType(.task)
+  args = .learner$par.vals
+  inargs = grepl("^ppa\\.", names(args))
+
+  .learner$learner = setHyperPars(.learner$learner, par.vals = args[!inargs])
+
+  args = args[inargs]
+  names(args) = sub("ppa.", "", names(args), fixed = TRUE)
+  
+  
+  
+  
+  trivialTask = dropFeatures(.task, getTaskFeatureNames(.task))
+  trivialModel = train(.learner, task = trivialTask, subset = .subset,
+      weights = .weights)
+
+  data = getTaskData(.task, .subset)
+  target = getTaskTargetNames(.task)
+  if (ttype == "costsens") {
+    costs = getTaskCosts(.task)[.subset, , drop = FALSE]
+    colnames(costs) = paste0("AMLR.COST.", colnames(costs))
+    target = colnames(costs)
+    data = cbind(data, costs)
+  }
+
+  ppobject = do.call(preProcess,
+      c(list(data = data, target = target, keep.data = TRUE), args))
+  data = ppobject$data
+  ppobject$data = NULL
+  
+  constructor = switch(ttype,
+      classif = makeClassifTask,
+      cluster = makeClusterTask,
+      costsens = makeCostSensTask,
+      multilabel = makeMultilabelTask,
+      regr = makeRegrTask,
+      surv = makeSurvTask)
+  
+  if (ttype == 'costsens') {
+    cost = data[, target, drop = FALSE]
+    data = data[, !(colnames(data) %in% target), drop = FALSE]
   }
   
-  predictfun = function(data, target, args, control) {
-    predict(control, data)
+  constructorArgs = list(
+      id = getTaskId(.task),
+      data = data,
+#      weights = we drop weights and blocks, since preproc doesnt transform them
+#      blocking = 
+      fixup.data = "no")
+
+  if (!(ttype %in% c('cluster', 'costsens'))) {
+    constructorArgs$target = target
   }
-  
-  x = makePreprocWrapper(learner, trainfun, predictfun, par.set, par.vals)
-  addClasses(x, "PreprocWrapperAm")
+  if (ttype == 'classif' && length(tdesc$class.levels) == 2) {
+    constructorArgs$positive = tdesc$positive
+  }
+  if (ttype == 'costsens') {
+    constructorArgs$costs = cost
+  }
+  if (ttype == 'surv') {
+    constructorArgs$censoring = tdesc$censoring
+  }
+
+  .task = do.call(constructor, constructorArgs)
+  .subset = seq_len(getTaskSize(.task))
+  .weights = NULL  # not handling weights, so we have to reset these
+  result = NextMethod(.learner)
+  result$control = ppobject
+
+  result$trivialModel = trivialModel
+
+  result
+}
+
+predictLearner.PreprocWrapperAm = function(.learner, .model, .newdata,
+    ...) {
+
+  # first create a bogus result vector / table
+  result = getPredictionResponse(predict(.model$learner.model$trivialModel,
+          newdata = .newdata))
+
+
+  .newdata = predict(.model$learner.model$control, .newdata)
+  newResultIdx = !coalesce(attr(.newdata, "badRows"), FALSE)
+
+  newResult = NextMethod(.learner)
+
+  if (is.null(nrow(result))) {
+    result[newResultIdx] = newResult
+  } else {
+    result[newResultIdx, , drop=FALSE] = newResult
+  }
+  result
 }
 
 #' @export
 getLearnerProperties.PreprocWrapperAm = function(learner) {
-  props = getLearnerProperties(learner$next.learner)
-  par.vals = getHyperPars(learner)
-  # this is only half a lie:
+  
+  props = NextMethod(learner)
+  # this is only half a lie; unfortunately we cannot dynamically change this
+  # according to hyperparameters, since mlr doesn't expect this to change.
   props = union(props, c("missings", "factors", "ordered", "numerics"))
   props
 }
