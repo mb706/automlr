@@ -4,35 +4,61 @@
 #install.packages("Rmpi", configure.args = c("--with-Rmpi-include=/usr/include/openmpi-x86_64/", "--with-Rmpi-libpath=/usr/lib64/openmpi/lib/",
 #                   "--with-Rmpi-type=OPENMPI"))
 
-# how to trigger dll error:
-library("ParamHelpers")
-unloadNamespace("ParamHelpers")
-devtools::load_all("../../ParamHelpers")
-library("lhs")
-lhs::maximinLHS(n=56, k=14)
+# clean up after your mess
+rm(list=objects()[grep('^(train|predict)Learner.[0-9]*$',objects())])
+rm(list=objects()[objects() =="last.dump"])
+
+reloadPckgs <- function(toReload) {
+  lns <- loadedNamespaces()
+  lnsAsPkg <- sub('.', '', lns, fixed=TRUE)
+  pkgWithLibs = character(0)
+  for (p in sapply(.dynLibs(), get, x='name')) {
+    pkgWithLibs = c(pkgWithLibs, lns[lnsAsPkg == p])
+  }
+  delendum <- which(pkgWithLibs %in% names(toReload))
+  if (length(delendum) == 0) {
+    return()
+  }
+  firstPkgToUnload <- min(delendum)
+  delendum <- pkgWithLibs[firstPkgToUnload:length(pkgWithLibs)]
+  deleteQueue <- list()
+  for (d in rev(delendum)) deleteQueue[[d]] = 1
+
+  tried <- list()
+  while (length(deleteQueue)) {
+                                        #  print(names(deleteQueue))
+    removing <- names(deleteQueue)[1]
+    deps <- setdiff(getNamespaceUsers(removing), names(tried))
+    for (dependency in deps) {
+      deleteQueue[[dependency]] <- 1
+    }
+    deleteQueue[[removing]] <- NULL
+    if (length(deps) == 0) {
+      print(c("Removing", removing))
+      tried[[removing]] <- 1
+      pkgload::unload(find.package(removing))
+    } else {
+      deleteQueue[[removing]] <- 1
+    }
+  }
+  lapply(toReload, devtools::load_all)
+}
+
+upstart <- function() {
+  reloadPckgs(list(ParamHelpers="../../ParamHelpers", mlr="../../mlr",
+                   smoof="../../smoof", mlrMBO="../../mlrMBO"))
+  library('testthat')
+  library(roxygen2)
+  roxygenise('..')
+  options(error=dump.frames)
+  options(warn=1)
+}
 
 
-
-options(width=150)
-unloadNamespace("automlr")
-unloadNamespace("mlrMBO")
-unloadNamespace("smoof")
-unloadNamespace("mlr")
-unloadNamespace("ParamHelpers")
-devtools::load_all("../../ParamHelpers")
-devtools::load_all("../../mlr")
-devtools::load_all("../../smoof")
-devtools::load_all("../../mlrMBO")
-library('testthat')
-#
-library(roxygen2)
-roxygenise('..')
+upstart()
 
 devtools::load_all("..")
-options(error=dump.frames)
 
-
-options(warn=1)
 
 ##
 pid.task
@@ -150,22 +176,80 @@ resRand3 <- automlr(pid.task, budget=c(evals=3), backend="mbo", verbosity=3,
 debugonce(mlrMBO:::evalMBODesign.OptState)
 
 
-getNativeSymbolInfo("lhs")
+##
 
+getNativeSymbolInfo("lhs")
 getNativeSymbolInfo("maximinLHS_C")
 
 str(getCallingDLLe(getNamespace("lhs")))
-
 getCallingDLLe(getNamespace("lhs"))$info
-
 getCallingDLLe(getNamespace("lhs"))[[5]]
-
-
-install.packages("lazyeval")
-
-library("lhs")
-lhs::maximinLHS(n=56, k=14)
 
 
 
 debugonce(lhs::maximinLHS)
+.dynLibs(.dynLibs()[1:16!=8])
+
+dyn.unload
+devtools:::unload_dll
+devtools:::load_dll
+devtools:::loaded_dlls
+
+##
+
+recurseObj <- function(obj) {
+  visitedList = list()
+  visitedList[[capture.output(str(.GlobalEnv))]] = 1
+  recurse <- function(obj, lvl) {
+
+    indent = collapse(c("", rep("|", length(lvl))), sep="")
+#    if (length(obj) < 10) {
+#      out = capture.output(print(obj))
+#      out = c(paste0(indent, out[out != ""]), "")
+#      cat(collapse(out, sep="\n"))
+#    }
+    if (is.recursive(obj) && !is.atomic(obj)) {
+      if (typeof(obj) == "...") {
+        obj = evalq(list(...), list(`...`=obj))
+      } else if (typeof(obj) == "closure") {
+        obj = environment(obj)
+      }
+      if (typeof(obj) == "environment") {
+        objRem <- obj
+        attributes(objRem) <- NULL
+        enname = capture.output(str(objRem))
+        if (isNamespace(obj)) {
+          position = collapse(lvl, sep=" -> ")
+          catf("NAMESPACE %s%s", enname, position)
+          return(NULL)
+        }
+        if (!is.null(visitedList[[enname]])) {
+          return(NULL)
+        }
+        visitedList[enname] <<- 1
+      }
+      if (is.null(names(obj)) || any(names(obj) == "")) {
+        for (i in seq_along(obj)) {
+#          catf("%sentering: %i", indent, i)
+          Recall(obj[[i]], lvl = c(lvl, i))
+        }
+      } else {
+        for (i in names(obj)) {
+#          catf("%sentering: %s", indent, i)
+          Recall(obj[[i]], lvl = c(lvl, i))
+        }
+      }
+    }
+    for (an in names(attributes(obj))) {
+      a = attr(obj, an)
+      if (!is.atomic(a)) {
+        Recall(a, lvl = c(lvl,an) )
+      }
+    }
+  }
+  recurse(obj, character(0))
+}
+
+recurseObj(lapply(objects(), get))
+isNamespace(environment(lhs::maximinLHS))
+

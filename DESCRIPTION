@@ -69,7 +69,7 @@ Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
 Version: 0.1.0
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1
 Collate:
     'abortHandler.R'
     'amexowrapper.R'
