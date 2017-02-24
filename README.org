@@ -147,3 +147,4 @@ Currently the project is undergoing heavy development; while the spirit of the a
 - [ ] timeout tests
 - [ ] check automlr option handling
 - [ ] make rng consistent
+- [ ] mbo user.extras: add debug dump

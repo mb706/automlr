@@ -287,3 +287,66 @@ fx <- function() {
 }
 
 fx()
+
+# bad boy:
+## selected.learner: classif.plsdaCaret; 
+## classif.plsdaCaret.ncomp: 2; 
+## classif.plsdaCaret.probMethod: softmax; 
+## ppa.nzv.cutoff.numeric: 0.0713111583055064; 
+## ppa.univariate.trafo: center; 
+## ppa.multivariate.trafo: ica; 
+## ppa.feature.filter: off; 
+
+
+bl <- buildLearners(list(mlrLearners$classif.plsdaCaret, mlrLearners$ampreproc), pid.task, verbosity=6)
+
+resample(setHyperPars(bl, classif.plsdaCaret.ncomp=2, classif.plsdaCaret.probMethod="softmax", ppa.nzv.cutoff.numeric=0.0713111583055064,
+                      ppa.univariate.trafo="off", ppa.multivariate.trafo="ica", ppa.feature.filter="off"),
+                      pid.task, cv5, show.info=TRUE)
+
+
+
+mlr:::trainLearner.classif.plsdaCaret
+
+debugonce(pls:::oscorespls.fit)
+
+debugonce(caret:::plsda.default)
+
+train
+library(fastICA)
+dm <- prcomp(matrix(runif(6000), ncol=6))$x
+
+dm <- fastICA(matrix(runif(6000), ncol=6), 6, method="C")$S
+mkt <- makeClassifTask("orthotask", data.frame(t=sample(factor(c('a', 'b')), 1000, replace=TRUE), dm), target='t')
+train(makeLearner('classif.plsdaCaret'), mkt)
+
+resample(makeLearner('classif.plsdaCaret', ncomp=2, probMethod="softmax"), mkt, cv5)
+
+y <- sample(factor(c('a', 'b')), 1000, replace=TRUE)
+configureMlr(on.par.without.desc="warn")
+
+
+
+matplot(cov(getTaskData(mkt)[, 2:7]))
+
+getTaskData(mkt)
+
+pid.task
+
+library(pls)
+y <- cbind(sample(0:1, 1000, replace=TRUE), sample(0:1, 1000, replace=TRUE))
+
+
+library(fastICA)
+dm <- fastICA(matrix(runif(6000), ncol=6), 6, method="C")$S
+y <- matrix(rnorm(2000), ncol=2)
+mvr(y ~ dm, method="oscorespls")
+
+summary(mvr(y ~ dm, method="kernelpls"))
+
+pls.options()
+
+
+getParamSet(makeLearner('classif.plsdaCaret'))
+
+caret:::plsda.default

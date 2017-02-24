@@ -4,6 +4,14 @@
 #install.packages("Rmpi", configure.args = c("--with-Rmpi-include=/usr/include/openmpi-x86_64/", "--with-Rmpi-libpath=/usr/lib64/openmpi/lib/",
 #                   "--with-Rmpi-type=OPENMPI"))
 
+# how to trigger dll error:
+library("ParamHelpers")
+unloadNamespace("ParamHelpers")
+devtools::load_all("../../ParamHelpers")
+library("lhs")
+lhs::maximinLHS(n=56, k=14)
+
+
 
 options(width=150)
 unloadNamespace("automlr")
@@ -109,4 +117,55 @@ debugonce(predictLearner.PreprocWrapperAm)
 
 debugonce(trainLearner.PreprocWrapperAm)
 
-install.packages("fastICA")
+
+
+##
+configureMlr(show.info=TRUE, on.error.dump = TRUE)
+resRand <- automlr(pid.task, budget=c(evals=3), backend="mbo", verbosity=3,
+                   searchspace=mlrLightweight)
+
+debug(makePreprocWrapperAm)
+
+
+adf <- as.data.frame(amfinish(resRand)$opt.path)
+
+names(adf)
+adf[, c(1, 298:304)]
+
+resRand2 <- automlr(resRand, budget=c(evals=1190), verbosity=5)
+
+resRand$spent
+
+
+
+
+resRand3 <- automlr(pid.task, budget=c(evals=3), backend="mbo", verbosity=3,
+                   searchspace=mlrLightweight)
+
+
+
+resRand3 <- automlr(pid.task, budget=c(evals=3), backend="mbo", verbosity=3,
+                   searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn))
+
+debugonce(mlrMBO:::evalMBODesign.OptState)
+
+
+getNativeSymbolInfo("lhs")
+
+getNativeSymbolInfo("maximinLHS_C")
+
+str(getCallingDLLe(getNamespace("lhs")))
+
+getCallingDLLe(getNamespace("lhs"))$info
+
+getCallingDLLe(getNamespace("lhs"))[[5]]
+
+
+install.packages("lazyeval")
+
+library("lhs")
+lhs::maximinLHS(n=56, k=14)
+
+
+
+debugonce(lhs::maximinLHS)
