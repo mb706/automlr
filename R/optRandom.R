@@ -229,7 +229,7 @@ predictLearner.amrandomWrapped = function(.learner, .model, ...) {
 #' @export
 makeWrappedModel.amrandomWrapped = function(learner, learner.model, task.desc,
     subset, features, factor.levels, time) {
-  res = NextMethod()
+  res = NextMethod("makeWrappedModel")
   if ("FailureModel" %in% class(res)) {
     class(res) = c("FailureModel", "WrappedModel")
   }

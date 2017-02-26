@@ -468,7 +468,7 @@ trainLearner.PreprocWrapperAm = function(.learner, .task, .subset,
   .task = do.call(constructor, constructorArgs)
   .subset = seq_len(getTaskSize(.task))
   .weights = NULL  # not handling weights, so we have to reset these
-  result = NextMethod(.learner)
+  result = NextMethod("trainLearner")
   result$control = ppobject
 
   result$trivialModel = trivialModel
@@ -487,7 +487,7 @@ predictLearner.PreprocWrapperAm = function(.learner, .model, .newdata,
   .newdata = predict(.model$learner.model$control, .newdata)
   newResultIdx = !coalesce(attr(.newdata, "badRows"), FALSE)
 
-  newResult = NextMethod(.learner)
+  newResult = NextMethod("predictLearner")
 
   if (is.null(nrow(result))) {
     result[newResultIdx] = newResult
@@ -500,7 +500,7 @@ predictLearner.PreprocWrapperAm = function(.learner, .model, .newdata,
 #' @export
 getLearnerProperties.PreprocWrapperAm = function(learner) {
   
-  props = NextMethod(learner)
+  props = NextMethod("getLearnerProperties")
   # this is only half a lie; unfortunately we cannot dynamically change this
   # according to hyperparameters, since mlr doesn't expect this to change.
   props = union(props, c("missings", "factors", "ordered", "numerics"))

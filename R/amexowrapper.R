@@ -256,14 +256,14 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
 
   .learner$learner = learner
 
-  NextMethod(.learner)
+  NextMethod("trainLearner")
 }
 
 #' @export
 predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   on.exit(quickSuspendInterrupts(unpatchMlr()), add = TRUE)
   patchMlrPredict()
-  NextMethod(.learner)
+  NextMethod("predictLearner")
 }
 
 setupLearnerParams = function(learner, staticParams, shadowparams, params) {

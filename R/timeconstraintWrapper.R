@@ -84,7 +84,7 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
   
   .learner$env$firstResampleError = FALSE
 
-  exec.time = system.time(result <- runWithTimeout(NextMethod(.learner),
+  exec.time = system.time(result <- runWithTimeout(NextMethod("trainLearner"),
           runinfo$time, FALSE), gcFirst = FALSE)
 
   runinfo$traintime = exec.time[3]
@@ -110,7 +110,7 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
   remainingTime = max(runinfo$time - runinfo$traintime, 1)
   
 
-  exec.time = system.time(result <- runWithTimeout(NextMethod(.learner),
+  exec.time = system.time(result <- runWithTimeout(NextMethod("predictLearner"),
           remainingTime, FALSE), gcFirst = FALSE)
   predicttime = exec.time[3]
   totalTime = predicttime + runinfo$traintime
