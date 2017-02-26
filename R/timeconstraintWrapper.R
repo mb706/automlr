@@ -47,6 +47,7 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
   wrapper
 }
 
+#' @export
 trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
     .weights = NULL, ...) {
 
@@ -103,6 +104,7 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
   result
 }
 
+#' @export
 predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
     ...) {
   runinfo = .model$learner.model$runinfo

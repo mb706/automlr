@@ -396,6 +396,7 @@ makePreprocWrapperAm = function (learner, ...) {
       par.vals = c(getHyperPars(learner), par.vals))
 }
 
+#' @export
 trainLearner.PreprocWrapperAm = function(.learner, .task, .subset,
     .weights = NULL, ...) {
   
@@ -476,6 +477,7 @@ trainLearner.PreprocWrapperAm = function(.learner, .task, .subset,
   result
 }
 
+#' @export
 predictLearner.PreprocWrapperAm = function(.learner, .model, .newdata,
     ...) {
 

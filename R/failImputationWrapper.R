@@ -19,6 +19,7 @@ makeFailImputationWrapper = function(learner) {
   wrapLearner("FailImputationWrapper", "fiw", "FailImputationWrapper", learner)
 }
 
+#' @export
 trainLearner.FailImputationWrapper = function(.learner, .task, .subset,
     .weights = NULL, ...) {
   learner = setHyperPars(.learner$learner, par.vals = list(...))
@@ -33,6 +34,7 @@ trainLearner.FailImputationWrapper = function(.learner, .task, .subset,
   result = list(model = model, trivialModel = trivialModel)
 }
 
+#' @export
 predictLearner.FailImputationWrapper = function(.learner, .model, .newdata,
     ...) {
   result = NULL

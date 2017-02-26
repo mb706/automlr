@@ -459,6 +459,7 @@ wrapLearner = function(cl, short.name, name, learner,
   setPredictType(wrapper, learner$predict.type)
 }
 
+#' @export
 trainLearner.automlrWrappedLearner = function(.learner, .task, .subset,
     .weights = NULL, ...) {
 
@@ -484,6 +485,7 @@ trainLearner.automlrWrappedLearner = function(.learner, .task, .subset,
   train(learner, task = .task, subset = .subset, weights = .weights)
 }
 
+#' @export
 predictLearner.automlrWrappedLearner = function(.learner, .model, .newdata,
     ...) {
   # we can't just call predictLearner() here, unless we also wrap the whole
