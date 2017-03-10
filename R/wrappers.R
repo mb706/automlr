@@ -56,7 +56,7 @@ mlrWrappers.gen = function() makeNamedAlList(
                 req = quote(automlr.has.numerics == TRUE)),
             sp("ppa.feature.filter", "cat",
                 c("off", getSupportedFilterMethods(c("information.gain",
-                            "chi.squared", "rf.importance")))),
+                            "chi.squared", "randomForest.importance")))),
             sp("ppa.feature.filter.thresh", "real", c(.Machine$double.eps, 1),
                 trafo = function(x) -log(x),
                 req = quote(ppa.feature.filter != "off"))),

@@ -32,7 +32,7 @@
 #'   one of \code{"off"}, \code{"pca"}, \code{"ica"}.
 #' @param feature.filter [\code{character(1)}]\cr
 #'   How to do feature filtering. Must be one of \code{"off"},
-#'   \code{"information.gain"}, \code{"chi.squared"}, \code{"rf.importance"}.
+#'   \code{"information.gain"}, \code{"chi.squared"}, \code{"randomForest.importance"}.
 #' @param feature.filter.thresh [\code{numeric}]\cr
 #'   The threshold at which to exclude features when performing feature
 #'   filtering. Has no effect if \code{feature.filter} is set to \code{"off"}.
@@ -63,7 +63,7 @@ preProcess = function(data, target = NULL, nzv.cutoff.numeric = 0,
   assertChoice(multivariate.trafo,
       c("off", "pca", "ica"))
   assertChoice(feature.filter,
-      c("off", "information.gain", "chi.squared", "rf.importance"))
+      c("off", "information.gain", "chi.squared", "randomForest.importance"))
   if (feature.filter != "off") {
     assertNumber(feature.filter.thresh)
   }
@@ -381,7 +381,7 @@ makePreprocWrapperAm = function (learner, ...) {
       makeDiscreteLearnerParam("ppa.multivariate.trafo",
           c("off", "pca", "ica"), default = "off"),
       makeDiscreteLearnerParam("ppa.feature.filter",
-          c("off", "information.gain", "chi.squared", "rf.importance"),
+          c("off", "information.gain", "chi.squared", "randomForest.importance"),
           default = "off"),
       makeNumericLearnerParam("ppa.feature.filter.thresh",
           lower = 0, default = 0,
