@@ -50,7 +50,6 @@
 **** Default Parameters:
    - trace :: FALSE!: no output
    - maxiter :: NULL: do not limit max number of iterations
-   - epsilon :: 1e-10: convergence criterion
    - steps :: 1: don't do multiple steps 
    - startgamma :: NULL: initial value
    - startbeta :: NULL: initial value
@@ -65,7 +64,6 @@
 **** Default Parameters:
    - trace :: FALSE!: no output
    - maxiter :: NULL: do not limit max number of iterations
-   - epsilon :: 1e-10: convergence criterion
    - startgamma :: NULL: initial value
    - startbeta :: NULL: initial value
    - positive :: FALSE: no constraints on covariates to be +ve
