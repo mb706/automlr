@@ -35,7 +35,7 @@ setDefaultRWTBackend = function(backend) {
 #' @param time [\code{numeric(1)}]\cr
 #' The runtime, in seconds, after which to abort evaluation of expr. If this is
 #' smaller or equal zero, expr will not be run and a timeout will be reported.
-#' @param throwError [\logical(1)]\cr
+#' @param throwError [\code{logical(1)}]\cr
 #' If \code{TRUE}, throw an error on timeout instead of just returning
 #' \code{FALSE}.
 #' @return [\code{list}]\cr

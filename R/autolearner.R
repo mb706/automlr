@@ -117,7 +117,7 @@ print.Autolearner = function(x, ...) {
 #'   usually using \code{quote}. These expressions can involve the special
 #'   values \code{n} (number of observations), \code{p} (number of features),
 #'   the automlr pseudoparameters described in the docs of
-#'   \code{\link{AmExoWrapper}}, and \code{PARAM.x} to refer to the value of
+#'   \code{\link{makeAMExoWrapper}}, and \code{PARAM.x} to refer to the value of
 #'   parameter \code{x}. If at least one expression is given, \code{values}
 #'   needs to be a list containing the expressions and singleton vectors of
 #'   the appropriate type.\cr
