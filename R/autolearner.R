@@ -166,7 +166,9 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
     expression.idx = vlapply(values, is.language)
     expressions = values[expression.idx]
     lapply(expressions, function(e)
-          assert(checkClass(e, "call"), checkClass(e, "expression")))
+          assert(checkClass(e, "call"),
+              checkClass(e, "expression"),
+              checkClass(e, "name")))
     values = unlist(values[!expression.idx])
     numexp = length(true.values) - length(values)
     assert(numexp == sum(expression.idx))
