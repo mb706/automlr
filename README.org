@@ -94,15 +94,17 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [-] searchspace
     - [ ] automatically recognize absence of learner (in a hypothetical future mlr version) and don't throw an error
     - [X] searchspace definitions for certain mlr versions
+    - [ ] make sure TRUE/FALSE dummies are boolean
+    - [ ] expression bounds
+    - [ ] invexp trafo
+    - [ ] automlr.targettype: oneclass, twoclass, multiclass, rcens, lcens, icens
+    - [ ] nicer printing of searchspace
   - [-] tests
     - [ ] quick compatibility test with mlr
     - [ ] differentiate expensive tests from fast tests
     - [ ] tests for preprocessing
     - [ ] test for all possible wrong arguments
     - [X] test timeouting and timeout wrapper
-  - [ ] consistent randomness
-    - [ ] test that execution with same seed gets same result
-    - [ ] use seeds in learners that use external RNGs
   - [ ] more consistent S3-based searchspace definition
   - [ ] write a nicer readme **selfconscious**
   - [ ] preprocessing
@@ -110,6 +112,9 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [ ] external preprocessing library
   - [ ] learner error imputation wrapper
 - [ ] release 0.3
+  - [ ] consistent randomness
+    - [ ] test that execution with same seed gets same result
+    - [ ] use seeds in learners that use external RNGs
   - [ ] memory handling
   - [ ] searchspace
     - [ ] respect parameter equality IDs

@@ -106,59 +106,95 @@ print.Autolearner = function(x, ...) {
 #'   The type of the parameter. One of: \code{real} (numeric), \code{int}
 #'   (integer), \code{cat} (discrete), \code{bool} (logical), \code{fix} (fixed
 #'   value of whatever type), \code{def} (using default value / not setting the
-#'   value).
-#' @param values [\code{numeric}|\code{character}]\cr
+#'   value), \code{fixdef} (fixed value, but warn if this is not the default)
+#' @param values [\code{numeric}|\code{character}|\code{list}]\cr
 #'   If \code{type} is \code{real} or \code{int}, this gives the lower and upper
 #'   bound. If \code{type} is \code{cat}, it is a character vector of possible
 #'   values. If \code{type} is \code{fix}, only one value (the one to be fixed)
 #'   must be given. If \code{type} is code{bool} or \code{def}, it must be
-#'   \code{NULL}.
-#' @param trafo [\code{character}|\code{function}]\cr
-#'   May be "exp" for exponential transformation. Transforms integer parameters
-#'   in a smart way. Only applies for \code{real} and \code{int} values. May
-#'   also be an R function.
-#' @param id [\code{character(1)}]\cr
-#'   May be given to identify parameters of different learners having the same
-#'   function.\cr
-#'   This currently has no effect beyond warnings if the \code{id} is only given
-#'   once in a search space.
-#' @param special [\code{character(1)}]\cr
+#'   \code{NULL}.\cr
+#'   It is possible to give expression values instead of constant values,
+#'   usually using \code{quote}. These expressions can involve the special
+#'   values \code{n} (number of observations), \code{p} (number of features),
+#'   the automlr pseudoparameters described in the docs of
+#'   \code{\link{AmExoWrapper}}, and \code{PARAM.x} to refer to the value of
+#'   parameter \code{x}. If at least one expression is given, \code{values}
+#'   needs to be a list containing the expressions and singleton vectors of
+#'   the appropriate type.\cr
+#'   A special value for \dQuote{def} type parameters is \dQuote{##}, which
+#'   leads to using the current default of the function without specifying it.
+#' @param trafo [\code{character}|\code{function}|\code{NULL}]\cr
+#'   May be \dQuote{exp} for exponential transformation, or \dQuote{invexp} for
+#'   exponential transformation of the difference of the value and its upper
+#'   bound. Transforms integer parameters in a smart way. Only applies for
+#'   \code{real} and \code{int} values. May also be an R function.
+#' @param id [\code{character(1)}|\code{NULL}]\cr
+#'   May be given to identify parameters of different learners having similar
+#'   effects in similar learners.\cr
+#'   This currently has no effect beyond warnings if different parameters with
+#'   the same \code{id} have different value ranges.
+#' @param special [\code{character(1)}|\code{NULL}]\cr
 #'   May be \code{NULL}, \code{"dummy"} or \code{"inject"}. Set this to
 #'   \code{"dummy"} if this is a dummy variable that will be hidden from the
 #'   learner itself but visible to the outside. Set this to \code{"inject"} to
 #'   create the parameter in the learners \code{ParamSet} if it does not exist.
-#' @param req [\code{language}]\cr
+#' @param req [\code{language}|\code{NULL}]\cr
 #'   A requirement for the variable to have effect.
 #' @param dim [\code{integer(1)}]\cr
 #'   The number of dimensions of this variable.
+#' @param version[\code{character(1)}|\code{NULL}]\cr
+#'   Version of MLR to apply this parameter to. If not \code{NULL}, this must
+#'   be a \code{character} made up of a comparison operator (one of \dQuote{>},
+#'   \dQuote{<}, \dQuote{>=}, \dQuote{<=}, or \dQuote{==}) and an MLR version
+#'   number of the form \dQuote{MAJOR.MINOR}. If the mlr version that was found
+#'   does not satisfy the requirement, the parameter will be ignored.
 #'
 #' @export
 sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
-    special = NULL, req = NULL, dim = 1) {
-  assertChoice(type, c("real", "int", "cat", "bool", "fix", "def"))
+    special = NULL, req = NULL, dim = 1, version = NULL) {
+  assertChoice(type, c("real", "int", "cat", "bool", "fix", "def", "fixdef"))
 
   assertString(name)
   assert(nchar(name) > 0)
 
+  true.values = values
+  has.expression = FALSE
+  expression.idx = NULL
+  numexp = 0
+  if (is.list(values)) {
+    # filter out expressions
+    expression.idx = vlapply(values, is.language)
+    expressions = values[expression.idx]
+    lapply(expressions, function(e)
+          assert(checkClass(e, "call"), checkClass(e, "expression")))
+    values = unlist(values[!expression.idx])
+    numexp = length(true.values) - length(values)
+    assert(numexp == sum(expression.idx))
+    
+  }
+
   if (type %in% c("real", "int")) {
-    assertNumeric(values, any.missing = FALSE, len = 2)
-    assert(values[2] >= values[1])
+    assertNumeric(values, any.missing = FALSE, len = 2 - numexp)
+    if (numexp == 0) {
+      assert(values[2] >= values[1])
+    }
     if (type == "int") {
       assert(all(as.integer(values) == values))
       values = as.integer(values)
     }
-  } else if (type %in% c("fix", "def")) {
+  } else if (type %in% c("fix", "def", "fixdef")) {
     if (!is.null(values)) {
       assertVector(values, strict = TRUE, len = 1)
     }
+    assert(numexp == 0)
   } else if (type == "cat"){
-    assertVector(values, strict = TRUE, min.len = 1)
+    assertVector(values, strict = TRUE, min.len = ifelse(numexp > 0, 0, 1))
   } else {  # type == "bool"
     assertNull(values)
   }
 
   if (!is.null(trafo)) {
-    if (identical(trafo, "exp")) {
+    if (identical(trafo, "exp") || identical(trafo, "invexp")) {
       assert(type %in% c("real", "int"))
     } else {
       assertFunction(trafo, nargs = 1)
@@ -167,7 +203,7 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
 
   if (!is.null(id)) {
     assertString(id)
-    assert(type %nin% c("fix", "def"))
+    assert(type %nin% c("fix", "def", "fixdef"))
     assert(nchar(id) > 0)
   }
 
@@ -186,7 +222,9 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
 
   makeS3Obj("searchparam",
       name = name,
+      true.values = true.values,
       values = values,
+      expression.idx = expression.idx,
       type = type,
       trafo = trafo,
       id = id,
