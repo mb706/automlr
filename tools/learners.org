@@ -1097,7 +1097,7 @@
 *** classif.OneR
 - WEKA OneR
 **** Variable Parameters:
-   - B :: int 1..#n/2" exp: minimum bucket size
+   - B :: int 1..#n/2# exp: minimum bucket size
 **** Default Parameters:
    - output-debug-info :: FALSE
 *** classif.pamr
@@ -1107,7 +1107,7 @@
    - offset.percent :: 0..100: fudge factor percentile of gene stdevs
    - remove.zeros :: TRUE, FALSE: remove thresholds yielding zeros
    - sign.contrast :: both, negative, positive: directions of deviations of class wise average from overall average
-   - threshold.predict :: 0.. .1..300 exp
+   - threshold.predict :: 0.. (.1..300) exp
 **** Default Parameters:
    - threshold.scale :: NULL: no scaling of thresholds by class
    - se.scale :: NULL: no scaling of within class stderr
