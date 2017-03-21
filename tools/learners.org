@@ -20,8 +20,6 @@
 - [value]!: valid for 'default' parameters: if default changes, use this value (otherwise just warn)
 - ## for defaults: use whatever default is given
 - VERSION{< 2.10} only include for mlr versions before 2.10. possible comparators are <, >, <=, >=
-* TODO:
-- [ ] remove ONNA
 * removed:
 - classif.logreg, classif.probit are subsumed by classif.binomial
 - h2o.deeplearning, h2o.gbm, h2o.glm, h2o.randomForest: seem to be duplicates of others that already exist
@@ -337,7 +335,7 @@
    - teststat :: quad, max: type of test statistic
    - testtype :: Bonferroni, MonteCarlo, Univariate: 'Teststatistic' would also exist but is monotonic trafo of Univariate
    - mincriterion :: 0..1 (0.5..0.9999) invexp: value of 1-p value that must be exceeded to implement split.
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate. {tree.maxsurrogate}
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {tree.maxsurrogate} req: automlr.has.missings == TRUE
    - minsplit :: 1..#n# exp: min number of ob in a node to split {tree.minsplit} req: stump == FALSE
    - minbucket :: 1..#n/2# exp: min number of ob in leaf node {tree.m} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
@@ -398,9 +396,9 @@
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {tree.minsplit}
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {tree.m}
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split
-   - usesurrogate :: 0, 1, 2: ONNA how to use surrogate in splitting process
-   - surrogatestyle :: 0, 1: ONNA how to calculate surrogate req: usesurrogate != 0
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate. {tree.maxsurrogate} req: usesurrogate != 0
+   - usesurrogate :: 1, 2: how to use surrogate in splitting process req: automlr.has.missings == TRUE
+   - surrogatestyle :: 0, 1: how to calculate surrogate req: automlr.has.missings == TRUE
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {tree.maxsurrogate} req: automlr.has.missings == TRUE
    - maxdepth :: int 1..30: maximum depth of any node {tree.maxdepth}
 **** Default Parameters:
    - maxcompete :: 4: only affects output
@@ -462,7 +460,7 @@
    - minsplit :: int 1..#n# exp: min number of ob in a node to split req: stump == FALSE
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate.
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. req: automlr.has.missings == TRUE
    - maxdepth :: int 1.. (1..30): {rf.nodedepth} req: stump == FALSE
 **** Default Parameters:
    - nresample :: 9999: MonteCarlo resamples
@@ -613,9 +611,9 @@
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit}
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket}
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp}
-   - usesurrogate :: 1, 2: ONNA how to use surrogate in splitting process {boost.usesurrogate}
-   - surrogatestyle :: 0, 1: ONNA how to choose surrogates {boost.surrogatestyle}
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate. {boost.maxsurrogate} req: usesurrogate != 0
+   - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate} req: automlr.has.missings == TRUE
+   - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
    - maxdepth :: 1..30: maximum depth of any node {boost.maxdepth}
    - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
 **** Default Parameters:
@@ -642,7 +640,7 @@
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
    - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate. {boost.maxsurrogate}
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
    - mtry :: int 1..#p#: number of sampled variables for random forests. req: limitmtry == TRUE
    - mtry.AMLRFIX1 :: 0: no random selection of features req: limitmtry == FALSE
 **** Default Parameters:
@@ -661,11 +659,11 @@
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit}
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket}
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp}
-   - usesurrogate :: 1, 2: ONNA how to use surrogate in splitting process {boost.usesurrogate}
-   - surrogatestyle :: 0, 1: ONNA how to choose surrogates {boost.surrogatestyle}
+   - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate}  req: automlr.has.missings == TRUE
+   - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
    - maxdepth :: 1..30: maximum depth of any node {boost.maxdepth}
    - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate. {boost.maxsurrogate} req: usesurrogate != 0
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
 **** Default Parameters:
    - maxcompete :: 4: only affects output
 *** classif.bst
@@ -681,9 +679,9 @@
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit} req: Learner == 'tree'
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket} req: Learner == 'tree'
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp} req: Learner == 'tree'
-   - usesurrogate :: 1, 2: ONNA how to use surrogate in splitting process {boost.usesurrogate} req: Learner == 'tree'
-   - maxsurrogate :: int 0.. (1..5): ONNA number of surrogate splits to evaluate. {boost.maxsurrogate} req: usesurrogate != 0 && Learner == 'tree'
-   - surrogatestyle :: 0, 1: ONNA how to choose surrogates {boost.surrogatestyle} req: Learner == 'tree'
+   - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
+   - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
+   - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle} req: Learner == 'tree' && automlr.has.missings == TRUE
    - maxdepth :: 1..30: maximum depth of any node {boost.maxdepth} req: Learner == 'tree'
    - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval} req: Learner == 'tree'
 **** Default Parameters:
