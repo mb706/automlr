@@ -56,15 +56,19 @@ upstart <- function() {
 
 
 upstart()
+roxygenise('..')
 
 devtools::load_all("..")
 
-
+mlrLearners
 
 
 
 ##
 pid.task
+
+lrn <- buildLearners(list(mlrLearners$classif.linDA), pid.task, verbosity=6)
+
 ##
 
 ## TODO: try to just set currentBudget to a large number
@@ -93,6 +97,9 @@ resRand <- automlr(pid.task, budget=c(walltime=20), backend="random", verbosity=
                    searchspace=list(mlrLearners$classif.ctree, mlrLearners$classif.rknn, mlrLearners$ampreproc))
 
 names(mlrLearners)
+
+str(mlrLearners$classif.randomForest)
+
 
 as.data.frame(amfinish(resRand)$opt.path)
 
