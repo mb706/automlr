@@ -702,7 +702,7 @@
    - minCases :: int 1..#n# exp: smallest number of samples to be put in at least two of the splits
    - fuzzyThreshold :: TRUE, FALSE: advanced splits (Quinlan (1993))
    - earlyStopping :: TRUE, FALSE: should boosting be stopped early?
-**** Default Parameters
+**** Default Parameters:
    - rules :: FALSE: 'should the tree be decomposed into a rule-based model'?
    - bands :: NULL: only modifies output for rules == TRUE
    - sample :: 0: use all data

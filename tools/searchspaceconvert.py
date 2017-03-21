@@ -99,7 +99,7 @@ def parsevari(line):
 
     # filter out number-sign-delimited formulas
     splits = info.split("#")
-    info = splits[::2].join("#")  # replace all formulas by single '#'
+    info = "#".join(splits[::2])  # replace all formulas by single '#'
     info = info.split(":")[0]  # remove comment part after ':'
     formulae = splits[1::2][:info.count("#")]
 
@@ -232,10 +232,8 @@ def completeOutput(includeManual):
 c = list(x.strip('\n') for x in open(infile))
 for i, line in enumerate(c):
     if line.startswith("* classif"):
-        begin = i + 1
-    if line.startswith("* regr"):
-        end = i
-content = c[begin:end]
+        break
+content = c[i + 1:]
 clisted = [list(x[1]) for x in itertools.groupby(content, lambda x: x.startswith('*** ')) if not x[0]]
 del clisted[0]
 cheadings = [x.strip("* ") for x in content if x.startswith('*** ')]
