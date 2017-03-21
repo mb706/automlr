@@ -61,6 +61,12 @@ def reduceDescription(stringlist, info, debug=False):
 
 
 def parsevari(line):
+    idstring = ""
+    dummystring = ""
+    reqstring = ""
+    lenstring = ""
+    expstring = ""
+    versionstring = ""
     sides = line.strip(" -").split("::")
     assert(len(sides) == 2)
     name = sides[0].strip()
@@ -75,42 +81,57 @@ def parsevari(line):
     if versionmatch:
         info = "%s %s" % (versionmatch.group(1), versionmatch.group(3))
         versionstring = ', version = "%s"' % (versionmatch.group(2),)
-    else:
-        versionstring = ""
     idmatch = re.search(r"\{[^}]*\}", info)
     if idmatch:
         idstring = ', id = "%s"' % (idmatch.group().strip("{}"),)
-    else:
-        idstring = ""
     if info.find("DUMMY") >= 0:
         dummystring = ', special = "dummy"'
         assert(info.find("INJECT") == -1)
     elif info.find("INJECT") >= 0:
         dummystring = ', special = "inject"'
-    else:
-        dummystring = ""
     reqposition = info.find("req:")
     if reqposition >= 0:
         reqstring = info[reqposition + 4:]
         reqstring = ", req = quote(%s)" % reqstring.strip()
-    else:
-        reqstring = ""
     lenmatch = re.search(r"len\([0-9]+\)", info)
     if lenmatch:
         lenstring = ', dim = %s' % (lenmatch.group().strip("len()"),)
-    else:
-        lenstring = ""
-    if info.split(":")[0].find("..") >= 0:  # range
-        intness = info.split(":")[0].find("int") >= 0
+
+    # filter out number-sign-delimited formulas
+    splits = info.split("#")
+    info = splits[::2].join("#")  # replace all formulas by single '#'
+    info = info.split(":")[0]  # remove comment part after ':'
+    formulae = splits[1::2][:info.count("#")]
+
+    if info.find("..") >= 0:  # this is a numeric range
+        if info.find("(") >= 0:
+            # this is a secondary range. We just strip everything before the '('
+            # but we have to take care to remove the right amount of formulae
+            info = info[info.find("("):]
+            nfcount = info.count("#")
+            nremove = nfcount - len(formulae)
+            formulae = formulae[nremove:]
+            info = re.sub("[() ]+", " ", info).strip()
+        intness = info.find("int") >= 0
         info = info.strip("int ")
         rng = info.split(" ")[0].strip(" ,:").split("..")
-        isexp = len(info.split(" ")) > 1 and info.split(" ")[1].find("exp") >= 0
+        if rng[0] == "#":
+            rng[0] = "quote(%s)" % formulae.pop(0)
+        if rng[1] == "#":
+            rng[1] = "quote(%s)" % formulae.pop(0)
+        
+        if  len(info.split(" ")) > 1 and info.split(" ")[-1].find("exp") >= 0:
+            if info.split(" ")[-1].find("invexp") >= 0:
+                expstring = ', "invexp"'
+            else:
+                expstring = ', "invexp"'
+        
         return 'sp("%s", "%s", c(%s, %s)%s%s%s%s%s%s)' % (name,
                                                           "int" if intness else "real",
-                                                          rng[0], rng[1], ', "exp"' if isexp else '',
+                                                          rng[0], rng[1], expstring,
                                                           idstring, dummystring, reqstring, lenstring,
                                                           versionstring)
-    values = [x.strip() for x in info.split(":")[0].split(",")]
+    values = [x.strip() for x in info.split(",")]
     if len(values) == 2 and "TRUE" in values and "FALSE" in values:
         return 'sp("%s", "bool"%s%s%s%s)' % (name, idstring, dummystring, reqstring, lenstring)
     if not all(re.match(r"^[0-9.][-+e0-9.]*$", x) for x in values):
@@ -129,6 +150,8 @@ def parsedefi(line):
 
 
 def parseone(line, tp):
+    dummystring = ""
+    versionstring = ""
     sides = line.strip(" -").split("::")
     assert(len(sides) == 2)
     name = sides[0].strip()
@@ -143,19 +166,20 @@ def parseone(line, tp):
     if versionmatch:
         info = "%s %s" % (versionmatch.group(1), versionmatch.group(3))
         versionstring = ', version = "%s"' % (versionmatch.group(2),)
-    else:
-        versionstring = ""
     assert(info.find('req:') == -1)
     if info.find("DUMMY") >= 0:
         dummystring = ', special = "dummy"'
         assert(info.find("INJECT") == -1)
     elif info.find("INJECT") >= 0:
         dummystring = ', special = "inject"'
-    else:
-        dummystring = ""
-    assert(info.find('ONNA') == -1)
     assert(not re.search(r"\{[^}]*\}", info))
-    val = re.findall(r"[-+_a-zA-Z0-9.]+", info)[0]
+    val = re.findall(r"[-+_a-zA-Z0-9.!#]+", info)[0]
+    if val[-1] == "!":
+        val = val[:-1]
+        assert(tp == "def")
+        tp = "fixdef"
+    if val != "##":
+        assert("#" not in val)
     if not(val == "TRUE" or val == "FALSE" or val == "NULL"):
         if not re.match(r"^[0-9.][-+e0-9.]*", val):
             val = '"%s"' % val
