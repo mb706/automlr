@@ -47,4 +47,5 @@ upstart <- function() {
   roxygenise('..')
   options(error=dump.frames)
   options(warn=1)
+  options(width=150)
 }

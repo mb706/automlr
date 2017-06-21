@@ -1,5 +1,5 @@
 * special syntax
-- TODO: something to be be changed
+- TODO: something to be be changed / to be looked at. Usually a bug in mlr.
 - DUMMY: this is a dummy variable (i.e. only visible to the optimizer, not the learners)
 - INJECT: this is a variable that is added to the learner, even though it is not officially listed in its parameters
 - {common id}: in future versions, automlr might respect that two different parameters are semantically the same
