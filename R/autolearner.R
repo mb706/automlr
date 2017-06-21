@@ -29,6 +29,11 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
         ifelse(is.character(learner), learner,
             coalesce(learner$id, learner$name)))
   }
+  if (stacktype != "learner") {
+    assertClass(learner, "AutoWrapper")
+  } else if (!is.character(learner)) {
+    assertClass(learner, "Learner")
+  }
   makeS3Obj("Autolearner",
             learner = learner,
             searchspace = searchspace,
@@ -73,7 +78,10 @@ autoWrapper = function(name, constructor, conversion) {
     assert(all(conversion(inp) %in% output))
   }
   
-  list(name = name, constructor = constructor, conversion = conversion)
+  makeS3Obj("AutoWrapper",
+      name = name,
+      constructor = constructor,
+      conversion = conversion)
 }
 
 #' @export
@@ -86,6 +94,11 @@ print.Autolearner = function(x, ...) {
                         function(x) collapse(capture.output(print(x)), sep="")),
                         sep = ",\n  "))
           })
+}
+
+#' @export
+print.AutoWrapper = function(x, ...) {
+  catf("AutoWrapper %s", x$name)
 }
 
 #' @title Define the searchspace parameter in a short form

@@ -88,9 +88,13 @@ mlrLearners.gen = function() c(mlrLearnersNoWrap, mlrWrappers)
 
 # the following is a bit handwavy. I ran these learners in randomsearch and
 # looked which learners took, on average, "kinda long".
-slowLrn <- c('classif.xyf', 'classif.lda', 'classif.mda', 'classif.rrlda',
+slowLrn = c('classif.lda', 'classif.mda', 'classif.rrlda',
     'classif.dcSVM', 'classif.rda', 'classif.bartMachine', 'classif.boosting',
     'classif.nodeHarvest', 'classif.randomForestSRC')
+if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
+  stop("slowLrn references unknown learner(s) %s",
+      setdiff(slowLrn, names(mlrLearnersNoWrap)))
+}
 
 # classif.ctree takes a long time also when testtype == MonteCarlo
 # classif.multinom also (?)
