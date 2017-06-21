@@ -71,7 +71,7 @@
 #'   The taskDesc object of the task for which to build the learner.
 #' @param idRef [\code{list}]\cr
 #'   Object that indexes different parameter's IDs.\cr
-#'   FIXME: This is to be implemented.
+#'   TODO: This is to be implemented.
 #' @param canHandleX [\code{list}]\cr
 #'   A named list that maps "missings", "factors", and "ordered" to a vector of
 #'   learner names that can handle the respective data.

@@ -204,6 +204,43 @@ deExpression = function(language) {
   substitute(eval(x), list(x = language))
 }
 
+replaceRequires = function(cprequires, substitution) {
+  # what we are going to do is substitute the variable names with their new
+  # prefixed versions.
+  # HOWEVER: R uses different scoping for function calls than for variables.
+  # therefore e.g.
+  # > c <- 1
+  # > c(c, c)
+  # doesn't give an error. This is a pain when trying to do what I'm doing here.
+  # So we will manually substitute all function calls with different names.
+  #
+  # the width.cutoff may be a problem? I wouldn't assume so if deparse keeps
+  # function name and opening parenthesis on the same line.
+  parsed = deparse(as.expression(cprequires),
+      control = c("keepInteger", "keepNA"), width.cutoff = 500)
+  funcallmatch = paste0("(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|",
+      "(`)((?:[^`\\\\]|\\\\.)+`))(\\()")
+  
+  parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", parsed)
+  #the following would be dumb:
+  #parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1],
+  # fixed = TRUE) # NO!
+  cprequires = asQuoted(paste(parsed, collapse = "\n"))
+  # the following line is a bit of R magic. Use do.call, so that cprequires,
+  # which is a 'quote' object, is expanded to its actual content. The
+  # 'substitute' call will change all names of the old parameters to the new
+  # parameters.
+  cprequires = do.call(substitute, list(cprequires, substitution))
+  
+  funcallmatchReverse = paste0("(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|",
+      "[.][._[:alpha:]])[._[:alnum:]]*)|",
+      "(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))(\\()")
+  parsed = deparse(cprequires,
+      control = c("keepInteger", "keepNA"), width.cutoff = 500)
+  parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", parsed)
+  eval(asQuoted(paste(parsed, collapse = "\n")))
+}
+
 #################################
 # OptPath Imputation            #
 #################################

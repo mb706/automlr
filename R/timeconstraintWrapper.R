@@ -1,6 +1,4 @@
 
-
-
 #' @title Create an mlr learner that limits the runtime of a train/predict
 #'   cycle.
 #' 
