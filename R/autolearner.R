@@ -11,8 +11,8 @@
 #'   If a \code{Learner} is required, it may also be the ID of the
 #'   \code{Learner} which postpones allocation of memory and loading of
 #'   packages and may therefore be preferred.
-#' @param searchspace [list of \code{searchparam}]\cr
-#'   List of \code{searchparam}s reqpresenting the relevant parameter search
+#' @param searchspace [list of \code{Searchparam}]\cr
+#'   List of \code{Searchparam}s reqpresenting the relevant parameter search
 #'   space.
 #' @param stacktype [\code{character(1)}]\cr
 #'   Describing how this object can be connected with other learners. Must be
@@ -21,7 +21,6 @@
 #'
 #' @export
 autolearner = function(learner, searchspace = list(), stacktype = "learner") {
-  
   assertChoice(stacktype, c("learner", "wrapper", "requiredwrapper"))
   names = extractSubList(searchspace, "name")
   if (any(duplicated(names))) {
@@ -79,9 +78,14 @@ autoWrapper = function(name, constructor, conversion) {
 
 #' @export
 print.Autolearner = function(x, ...) {
-  cat(sprintf("<automlr learner '%s'>\n",
-          ifelse(is.character(x$learner), x$learner,
-              coalesce(x$learner$id, x$learner$name))))
+  catf("<automlr learner '%s' [%s]>",
+      ifelse(is.character(x$learner), x$learner,
+          coalesce(x$learner$id, x$learner$name)),
+      if (length(x$searchspace) == 0) "" else {
+            sprintf("\n  %s\n", collapse(sapply(x$searchspace,
+                        function(x) collapse(capture.output(print(x)), sep="")),
+                        sep = ",\n  "))
+          })
 }
 
 #' @title Define the searchspace parameter in a short form
@@ -89,10 +93,10 @@ print.Autolearner = function(x, ...) {
 #' @description
 #' This function is used to define the search space related to a given learner.
 #' The priority here is that the function should be saving space: Much of the
-#' information about a parameter is inferred from the learner itself; Only the
-#' name, the type, and a range of a parameter are needed.
+#' information about a parameter is inferred from the learner itself; In
+#' principle only the name, the type, and a range of a parameter are needed.
 #' 
-#' However, to get notice about changes in the mlr package, also all the
+#' However, to get notifications about changes in the mlr package, also all the
 #' parameters that are not given should be referenced with an \code{sp()} of
 #' type \code{"def"}; otherwise, a warning will be given upon instantiation of
 #' the learner.  
@@ -139,7 +143,10 @@ print.Autolearner = function(x, ...) {
 #'   learner itself but visible to the outside. Set this to \code{"inject"} to
 #'   create the parameter in the learners \code{ParamSet} if it does not exist.
 #' @param req [\code{language}|\code{NULL}]\cr
-#'   A requirement for the variable to have effect.
+#'   A requirement for the variable to have effect. May reference other
+#'   parameters of the learner, as well as the automlr pseudoparameters
+#'   described in \code{\link{makeAMExoWrapper}}. Must not call any parameter
+#'   values as functions!
 #' @param dim [\code{integer(1)}]\cr
 #'   The number of dimensions of this variable.
 #' @param version[\code{character(1)}|\code{NULL}]\cr
@@ -157,40 +164,39 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
   assertString(name)
   assert(nchar(name) > 0)
 
-  true.values = values
-  has.expression = FALSE
-  expression.idx = NULL
   numexp = 0
-  if (is.list(values)) {
-    # filter out expressions
-    expression.idx = vlapply(values, is.language)
-    expressions = values[expression.idx]
-    lapply(expressions, function(e)
-          assert(checkClass(e, "call"),
-              checkClass(e, "expression"),
-              checkClass(e, "name")))
-    values = unlist(values[!expression.idx])
-    numexp = length(true.values) - length(values)
-    assert(numexp == sum(expression.idx))
-    
-  }
-
   if (type %in% c("real", "int")) {
-    assertNumeric(values, any.missing = FALSE, len = 2 - numexp)
+
+    if (is.list(values)) {
+        # filter out expressions
+        expression.idx = vlapply(values, is.language)
+        expressions = values[expression.idx]
+        lapply(expressions, function(e)
+                    assert(checkClass(e, "call"),
+                            checkClass(e, "expression"),
+                            checkClass(e, "name")))
+        nonexp.values = unlist(values[!expression.idx], recursive = FALSE)
+        numexp = length(values) - length(nonexp.values)
+        assert(numexp == sum(expression.idx))
+    } else {
+      nonexp.values = values
+      values = as.list(values)
+    }
+    assertNumeric(nonexp.values, any.missing = FALSE, len = 2 - numexp)
     if (numexp == 0) {
-      assert(values[2] >= values[1])
+      assert(values[[2]] >= values[[1]])
     }
     if (type == "int") {
-      assert(all(as.integer(values) == values))
-      values = as.integer(values)
+      assert(all(as.integer(nonexp.values) == nonexp.values))
+      values = lapply(values, function(x)
+            if (is.language(x)) x else as.integer(x))
     }
   } else if (type %in% c("fix", "def", "fixdef")) {
     if (!is.null(values)) {
       assertVector(values, strict = TRUE, len = 1)
     }
-    assert(numexp == 0)
   } else if (type == "cat"){
-    assertVector(values, strict = TRUE, min.len = ifelse(numexp > 0, 0, 1))
+    assertVector(values, strict = TRUE, min.len = 1)
   } else {  # type == "bool"
     assertNull(values)
   }
@@ -222,17 +228,46 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
 
   assertInteger(dim, lower = 1, len = 1)
 
-  makeS3Obj("searchparam",
+  makeS3Obj("Searchparam",
       name = name,
-      true.values = true.values,
       values = values,
-      expression.idx = expression.idx,
       type = type,
       trafo = trafo,
+      numexp = numexp,
       id = id,
       special = special,
       req = req,
       dim = dim)
+}
+
+#' @export
+print.Searchparam = function(x, ...) {
+  toString = function(val) {
+    if (is.character(val)) {
+      val
+    } else if (is.list(val)) {
+      sapply(val, function(x)
+            collapse(deparse(x, width.cutoff=500), sep = "\n"))
+    } else {
+      collapse(deparse(val, width.cutoff=500), sep = "\n")
+    }
+  }
+  
+  catf("%s%s %s%s%s%s%s%s%s", x$type,
+      if (x$dim > 1) sprintf("^%s", x$dim) else "", x$name,
+      if (!is.null(x$trafo))
+            sprintf(" %s(", toString(x$trafo))
+      else if (x$type == "bool") "" else " ",
+      if (x$type %in% c("int", "real")) {
+        sprintf("[%s]", collapse(toString(x$values), sep = ".."))
+      } else if (x$type != "bool") {
+        sprintf("{%s}", collapse(toString(x$values)))
+      } else {
+        ""
+      }, if (!is.null(x$trafo)) ")" else "",
+      if (!is.null(x$id)) sprintf(" {%s}", x$id) else "",
+      if (!is.null(x$special)) sprintf(" (%s)", x$special) else "",
+      ifelse(is.null(x$req), "", " *"))
 }
 
 # make a named list, more convenient to use
