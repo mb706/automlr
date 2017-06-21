@@ -1,9 +1,15 @@
 # Small functions that have no place elsewhere
 
-# syntactic sugar
+#################################
+# syntactic sugar               #
+#################################
 
 `%+=%` = function(t, s) eval.parent(substitute(t <- t + s))
 `%-=%` = function(t, m) eval.parent(substitute(t <- t - m))
+
+#################################
+# Budgeting                     #
+#################################
 
 # return 'budget' - 'spent', respecting the budget==0 special case
 remainingbudget = function(budget, spent) {
@@ -21,9 +27,27 @@ stopcondition = function(budget, spent) {
   any(remainingbudget(budget, spent) <= 0)
 }
 
+checkBudgetParam = function(budget) {
+  if (!identical(budget, 0) && !identical(budget, 0L)) {
+    assertNamed(budget)
+    assertNumeric(budget, lower = 0, min.len = 1, max.len = 2)
+    legalnames = c("walltime", "evals")
+    budgetNamesOk = names(budget) %in% legalnames
+    assert(all(budgetNamesOk))
+  }
+}
+
+#################################
+# List / Environment handling   #
+#################################
+
 deepcopy = function(obj) {
   unserialize(serialize(obj, NULL))
 }
+
+#################################
+# File Handling                 #
+#################################
 
 checkfile = function(filename, basename) {
   assert(nchar(filename) > 0)
@@ -65,6 +89,10 @@ writefile = function(filename, object, basename) {
   invisible()
 }
 
+#################################
+# Opt Path                      #
+#################################
+
 # append opt path op2 to opt path op1. This happens in-place.
 appendOptPath = function(op1, op2) {
   # FIXME: check equality of par.set etc.
@@ -84,6 +112,10 @@ subsetOptPath = function(op1, subset) {
   op1$env$path = op1$env$path[subset, , drop = FALSE]
   NULL
 }
+
+#################################
+# Log Functions                 #
+#################################
 
 # copied this from mlr logFunOpt.R
 # we give info about everything except memory, since reporting that takes lots
@@ -133,6 +165,10 @@ perfsToString = function(y) {
   collapse(paste(names(y), " = ", formatC(y, digits = 3L), sep = ""), sep= ",")
 }
 
+#################################
+# Fixes                         #
+#################################
+
 # make extractSubList commute with c():
 # extractSubList(c(a, b), e) == c(extractSubList(a, e), extractSubList(b, e))
 extractSubList = function(xs, element, element.value, simplify = TRUE,
@@ -146,25 +182,12 @@ extractSubList = function(xs, element, element.value, simplify = TRUE,
   }
 }
 
-checkBudgetParam = function(budget) {
-  if (!identical(budget, 0) && !identical(budget, 0L)) {
-    assertNamed(budget)
-    assertNumeric(budget, lower = 0, min.len = 1, max.len = 2)
-    legalnames = c("walltime", "evals")
-    budgetNamesOk = names(budget) %in% legalnames
-    assert(all(budgetNamesOk))
-  }
-}
+#################################
+# Parameters                    #
+#################################
 
 amlrTransformName = function(name) {
   sub("\\.AMLRFIX[0-9]+$", "", name)
-}
-
-generateRealisticImputeVal = function(measure, learner, task) {
-  naked = dropFeatures(task, getTaskFeatureNames(task))
-  retval = bootstrapB632(learner, naked, iters = 100, show.info = FALSE)$aggr
-  # and because convertYForTuner is retarded:
-  retval * ifelse(measure$minimize, 1 , -1)
 }
 
 # take a language object (call or expression), turn it into a call
@@ -180,6 +203,21 @@ deExpression = function(language) {
   }
   substitute(eval(x), list(x = language))
 }
+
+#################################
+# OptPath Imputation            #
+#################################
+
+generateRealisticImputeVal = function(measure, learner, task) {
+  naked = dropFeatures(task, getTaskFeatureNames(task))
+  retval = bootstrapB632(learner, naked, iters = 100, show.info = FALSE)$aggr
+  # and because convertYForTuner is retarded:
+  retval * ifelse(measure$minimize, 1 , -1)
+}
+
+#################################
+# Verbosity                     #
+#################################
 
 # whether to output optimization trace info
 verbosity.traceout = function(verbosity) {
@@ -211,6 +249,33 @@ verbosity.stoplearnerror = function(verbosity) {
   verbosity >= 6
 }
 
+getLearnerVerbosityOptions = function(verbosity) {
+  config = list()
+  # show.info is not used, but in case this changes at some point...
+  config$show.info = verbosity.learneroutput(verbosity)
+  config$on.learner.error = if (verbosity.stoplearnerror(verbosity))
+        "stop"
+      else if (verbosity.learnerwarnings(verbosity))
+        "warn"
+      else
+        "quiet"
+  config$on.learner.warning = if (verbosity.learnerwarnings(verbosity))
+        "warn"
+      else
+        "quiet"
+  config$show.learner.output = verbosity.learneroutput(verbosity)
+  config
+}
+
+adjustLearnerVerbosity = function(learner, verbosity) {
+  config = getLLConfig(learner)
+  config = insert(config, getLearnerVerbosityOptions(verbosity))
+  setLLConfig(learner, config)
+}
+
+#################################
+# Learner Config                #
+#################################
 
 # getLearnerOptions without polluting the result with getMlrOptions()
 getLLConfig = function(learner) {
@@ -238,29 +303,9 @@ setLLConfig = function(learner, config) {
   }
 }
 
-getLearnerVerbosityOptions = function(verbosity) {
-  config = list()
-  # show.info is not used, but in case this changes at some point...
-  config$show.info = verbosity.learneroutput(verbosity)
-  config$on.learner.error = if (verbosity.stoplearnerror(verbosity))
-              "stop"
-          else if (verbosity.learnerwarnings(verbosity))
-              "warn"
-          else
-              "quiet"
-  config$on.learner.warning = if (verbosity.learnerwarnings(verbosity))
-              "warn"
-          else
-              "quiet"
-  config$show.learner.output = verbosity.learneroutput(verbosity)
-  config
-}
-
-adjustLearnerVerbosity = function(learner, verbosity) {
-  config = getLLConfig(learner)
-  config = insert(config, getLearnerVerbosityOptions(verbosity))
-  setLLConfig(learner, config)
-}
+#################################
+# Resampling Info               #
+#################################
 
 # return the value of `varname` within the function named `fname`. Use the most
 # recent invocation of `fname` if names collide.
@@ -369,6 +414,10 @@ isFirstResampleIter = function() {
   rin == 1
 }
 
+#################################
+# AssignInNamespace             #
+#################################
+
 # assign functions in locked namespaces. This is the same mechanism that R
 # trace() uses.
 myAssignInNamespace = function(what, value, ns) {
@@ -385,6 +434,10 @@ myAssignInNamespace = function(what, value, ns) {
   }
 }
 
+#################################
+# Generics                      #
+#################################
+
 #' @title Retrieve a suggested search space of the given learner
 #' 
 #' @param learner [\code{Learner}]\cr
@@ -394,18 +447,19 @@ getSearchspace = function(learner) {
   UseMethod("getSearchspace")
 }
 
+#' @export
 getSearchspace.BaseWrapper = function(learner) {
   getSearchspace(learner$next.learner)
 }
 
-# make a copy of paramSet that has all 'when' attributes set to 'train'. 
-makeAllTrainPars = function(paramSet) {
-  paramSet$pars = lapply(paramSet$pars, function(x) {
-        x$when = "train"
-        x
-      })
-  paramSet
+#' @export
+getSearchspace.automlrWrappedLearner = function(learner) {
+  getSearchspace(learner$learner)
 }
+
+#################################
+# RNG                           #
+#################################
 
 setSeed = function(seed) {
   if (!exists(".Random.seed", .GlobalEnv)) {
@@ -419,6 +473,19 @@ getSeed = function() {
     set.seed(NULL)
   }
   get(".Random.seed", .GlobalEnv)
+}
+
+#################################
+# Learner Wrapping              #
+#################################
+
+# make a copy of paramSet that has all 'when' attributes set to 'train'. 
+makeAllTrainPars = function(paramSet) {
+  paramSet$pars = lapply(paramSet$pars, function(x) {
+        x$when = "train"
+        x
+      })
+  paramSet
 }
 
 # Wrap a learner; mlr doesn't export this, but the following works better than
@@ -501,10 +568,6 @@ predictLearner.automlrWrappedLearner = function(.learner, .model, .newdata,
               on.learner.warning = "warn",
               show.learner.output = TRUE)))
   getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
-}
-
-getSearchspace.automlrWrappedLearner = function(learner) {
-  getSearchspace(learner$learner)
 }
 
 
