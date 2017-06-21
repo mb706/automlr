@@ -1,12 +1,4 @@
-* syntax for highlighting
-- OUTDATED, reconsider if adapting
-- grep syntax:
-:  :: \([-0-9e+.]\+\(\.\.[-0-9e+.]\+\(\s\+exp\(onential\)\?\)\?\)\?\|\(\([a-zA-Z][-.+_[:alnum:]]*\|[-0-9e+.]\+\),\s\+\)*\([a-zA-Z][-+._[:alnum:]]*\|[-0-9e+.]\+\)\)\(:\|$\)
-- emacs syntax
-:  :: \([-0-9e+.]+\(\.\.[-0-9e+.]+\(\s-+exp\(onential\)?\)?\)?\|\(\([a-zA-Z][-+.[:alnum:]_]*\|[-0-9e+.]+\),\s-+\)*\([a-zA-Z][-+.[:alnum:]_]*\|[-0-9e+.]+\)\)\(:\|$\)
 * special syntax
-- MANUAL: must be manually adjusted
-- MANUAL{text}: use `text` instead of parsed info
 - TODO: something to be be changed
 - DUMMY: this is a dummy variable (i.e. only visible to the optimizer, not the learners)
 - INJECT: this is a variable that is added to the learner, even though it is not officially listed in its parameters
@@ -24,23 +16,7 @@
 - classif.logreg, classif.probit are subsumed by classif.binomial
 - h2o.deeplearning, h2o.gbm, h2o.glm, h2o.randomForest: seem to be duplicates of others that already exist
 - classif.featureless
-*** classif.penalized.fusedlasso
-- fusedlasso uses spatial info
-**** Variable Parameters:
-   - lambda1 :: 0.. (1e-4..10) exp: L1 penalty param {penal.l1}
-   - lambda2 :: 0.. (1e-4..10) exp: L2 penalty param {penal.l2}
-   - standardize :: TRUE, FALSE: standardize to unit central L2 norm before penalization
-**** Default Parameters:
-   - trace :: FALSE!: no output
-   - maxiter :: NULL: do not limit max number of iterations
-   - steps :: 1: don't do multiple steps 
-   - startgamma :: NULL: initial value
-   - startbeta :: NULL: initial value
-   - positive :: FALSE: no constraints on covariates to be +ve
-   - unpenalized :: NULL: no unpenalized covariates
-   - model :: NULL: bug
-**** Changed (fixed) Parameters:
-   - epsilon :: 1e-4: saner convergence criterion
+- classif.penalized.fusedlasso: 'fused' is only for spatial relationship of covariates
 * classif
 ** glm
 *** classif.penalized.lasso
@@ -263,7 +239,7 @@
 - "HDRDA classifier from Ramey, Stein, and Young (2014)"
 **** Variable Parameters:
    - lambda :: 0..1: pooling parameter
-   - gamma :: 0.. (0.001..0.3) exponential: shrinkage parameter
+   - gamma :: 0.. (0.001..0.3) exp: shrinkage parameter
    - shrinkage_type :: ridge, convex: cov matrix shrinkage type
 **** Default Parameters:
    - prior :: NULL
@@ -525,7 +501,6 @@
    - numRandomTaskCuts :: NULL
 **** Changed (fixed) Parameters:
    - na.action :: fuse: the only one that differs from preprocessing
-
 *** classif.randomForestSRC
 - Random forest for survival, regression, classification
 **** Variable Parameters:
@@ -602,8 +577,8 @@
 **** Variable Parameters:
    - loss :: exponential, logistic: loss function that is optimized
    - type :: discrete, real, gentle: slight differences in algorithm used
-   - iter :: int 1.. (25..400) exponential: {boost.iter} number of boosting iterations. Range seems sensible in paper
-   - nu :: 0.. (0.001..1) exponential: {boost.nu} shrinkage parameter
+   - iter :: int 1.. (25..400) exp: {boost.iter} number of boosting iterations. Range seems sensible in paper
+   - nu :: 0.. (0.001..1) exp: {boost.nu} shrinkage parameter
    - model.coef :: TRUE, FALSE: use stageweights in boosting
    - bag.frac :: 0..1: bagging samples taken out of bag
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit}
@@ -627,7 +602,7 @@
    - family :: AdaExp, Binomial, AUC: {mboost.family}
    - Binomial.link :: logit, probit: link function {mboost.link} req: family == Binomial
    - mstop :: int 1.. (25..400) exp: {boost.iter} number of boosting iterations
-   - nu :: 0..1 (.001..1) exponential: {boost.nu} shrinkage parameter
+   - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - risk :: inbag, oobag: calculate risk for early stopping req: stopintern == TRUE
    - risk.AMLRFIX1 :: none: req: stopintern == FALSE
    - stopintern :: TRUE, FALSE: early stopping if risk increases
@@ -670,7 +645,7 @@
    - cost :: 0..1: false positive cost
    - family :: gaussian, hinge: loss function
    - mstop :: int 1.. (25..400) exp: {boost.iter} number of boosting iterations
-   - nu :: 0..1 (.001..1) exponential: {boost.nu} shrinkage parameter
+   - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - twinboost :: TRUE, FALSE: twinboosting
    - Learner :: ls, sm, tree: learner to boost: lin model, smoothing spline, regr tree
    - df :: 1.. (1..100) exp: smoothing splines deg of freedom req: Learner == 'sm'
@@ -714,7 +689,7 @@
    - n.trees :: int 1.. (25..400) exp: {boost.iter} number of boosting iterations
    - interaction.depth :: int 1.. (1..3): max order of interactions
    - n.minobsinnode :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket}
-   - shrinkage :: 0..1 (.001..1) exponential: {boost.nu} shrinkage parameter
+   - shrinkage :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - bag.fraction :: 0..1: {boost.subsample}
 **** Default Parameters:
    - cv.folds :: 0!: no cross validation
@@ -727,7 +702,7 @@
    - family :: AdaExp, Binomial, AUC: {mboost.family}
    - Binomial.link :: logit, probit: link function {mboost.link} req: family == Binomial
    - mstop :: int 1.. (25..400) exp: {boost.iter} number of boosting iterations
-   - nu :: 0..1 (.001..1) exponential: {boost.nu} shrinkage parameter
+   - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - risk :: inbag, oobag: calculate risk for early stopping req: stopintern == TRUE
    - risk.AMLRFIX1 :: none: req: stopintern == FALSE
    - stopintern :: TRUE, FALSE: early stopping if risk increases
@@ -739,7 +714,7 @@
 *** classif.gamboost
 **** Variable Parameters:
    - mstop :: int 1.. (25..400) exp: {boost.iter} number of boosting iterations
-   - nu :: 0..1 (.001..1) exponential: {boost.nu} shrinkage parameter
+   - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - risk :: inbag, oobag: calculate risk for early stopping req: stopintern == TRUE
    - risk.AMLRFIX1 :: none: req: stopintern == FALSE
    - family :: AdaExp, Binomial, AUC: {mboost.family}
@@ -1040,7 +1015,7 @@
 **** Variable Parameters:
    - size :: int 1.. (3..200) exp: number of units in hidden layer
    - skip :: FALSE, TRUE: skip layers
-   - decay :: 0.. (0.0001..0.3) exponential: {nn.shallowdecay} weight decay
+   - decay :: 0.. (0.0001..0.3) exp: {nn.shallowdecay} weight decay
 **** Default Parameters:
    - rang :: 0.7: initial random weights. This is too data dependent, so we rely on preprocessing if necessary
    - Hess :: FALSE!: return hessian
@@ -1053,7 +1028,7 @@
 *** classif.multinom
 - multinomial log-linear models via neural nets
 **** Variable Parameters:
-   - decay :: 0.. (0.0001..0.3) exponential: {nn.shallowdecay} weight decay
+   - decay :: 0.. (0.0001..0.3) exp: {nn.shallowdecay} weight decay
 **** Default Parameters:
    - rang :: 0.7: initial random weights. This is too data dependent, so we rely on preprocessing if necessary
    - Hess :: FALSE!: return hessian
@@ -1137,7 +1112,7 @@
    - newvar.penalty.AMLRFIX1 :: 0: req: penalize.newvar == FALSE
    - fast.k :: int 1.. (1..100) exp: number of variables to consider in one step
    - fast.beta :: int .. (0..1): idk
-   - pmethod :: backward, none, exhaustive, forward, segrep cv
+   - pmethod :: backward, none, exhaustive, forward, segrep, cv
    - nfold :: int 1.. (1..30) exp: number of cv folds when using cv pruning req: pmethod == "cv"
    - ncross :: int 1..1000 (1..10) exp: number of cross validations req: pmethod == "cv" && nfold > 1
    - stratify :: TRUE, FALSE: stratify cv req: pmethod == "cv" && nfold > 1
