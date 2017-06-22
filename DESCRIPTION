@@ -70,7 +70,7 @@ LazyData: yes
 ByteCompile: yes
 Version: 0.1.0
 RoxygenNote: 6.0.1
-Collate:
+Collate: 
     'abortHandler.R'
     'amexowrapper.R'
     'aminterface.R'
@@ -80,6 +80,7 @@ Collate:
     'mlrLearners.R'
     'automlr.R'
     'buildLearners.R'
+    'buildSearchspace.R'
     'failImputationWrapper.R'
     'optDummy.R'
     'optGeneric.R'

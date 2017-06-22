@@ -51,31 +51,31 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
 #' @param constructor [\code{function}]\cr
 #'   The function that will be called with the learner as a single argument and
 #'   construct another \code{Learner}.
-#' @param conversion [\code{function}]\cr
-#'   A function giving information about the data conversion this wrapper
-#'   performs. Takes one of \code{"factors"}, \code{"ordered"},
-#'   \code{"numerics"}, \code{"missing"} as an argument and returns a character
-#'   vector containing a subset of these and optionally the empty string
-#'   \code{""}. A function returning a set B when giving the argument A
-#'   indicates that the wrapper is able to convert data from format A to any of
-#'   the format B. The wrappers parameter set must then adhere to
-#'   automlr.remove.XXX (for XXX being each element of B) pseudo parameters in
-#'   their parameter requirements (see \code{\link{makeAMExoWrapper}}).\cr
-#'   \emph{Currently, only removal of features is supported; therefore, this
-#'   should only return its argument and possibly \code{""}. Otherwise, the
-#'   behaviour is buggy.}
-#' 
+#' @param conversion [\code{list} of \code{character}]\cr
+#'   Listing the data conversion this wrapper performs. A named list with
+#'   slots a subset of \code{"numerics"}, \code{"missings"}, \code{"factors"},
+#'   and \code{"ordered"}, with each slot containing a character vector, being
+#'   a subset of \code{"numerics"}, \code{"ordered"}, \code{"factors"}.
+#'   If the neutral conversion is not present, it is assumed that the wrapper
+#'   does nothing with the data (when it is not converting).
+#'   The wrappers parameter set must then adhere to automlr.convert.XXX
+#'   (for XXX being an element of \code{names(conversion)}, and the value
+#'   being an element of \code{conversion[XXX]}) in their parameter
+#'   requirements. (see also \code{\link{makeAMExoWrapper}}).
+#'
 #' @export
 autoWrapper = function(name, constructor, conversion) {
   assertString(name)
   assert(identical(grep("$", name, fixed = TRUE), integer(0)))
   assertFunction(constructor)
-  assertFunction(conversion, nargs = 1)
   
-  input = c("factors", "ordered", "numerics", "missings")
-  output = c(input, "")
-  for (inp in c("factors", "ordered", "numerics", "missings")) {
-    assert(all(conversion(inp) %in% output))
+  assertList(conversion, any.missing = FALSE, names = "unique",
+      types = "character")
+  assertSubset(names(conversion), c("factors", "ordered", "numerics",
+          "missings"))
+
+  for (inp in conversion) {
+    assertSubset(inp, c("factors", "ordered", "numerics"))
   }
   
   makeS3Obj("AutoWrapper",

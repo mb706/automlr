@@ -161,7 +161,8 @@ rcAL = autolearner(randfailClassif, list(
 preprocAL = autolearner(learner = autoWrapper(
         name = "ampreproc",
         constructor = makePreprocWrapperAm,
-        conversion = identity),
+        conversion = list(numerics = "numerics", factors = "factors",
+          ordered = "ordered")),
     stacktype = "requiredwrapper",
     searchspace = list(
         sp("ppa.univariate.trafo", "cat", c("off", "center", "scale",
@@ -361,7 +362,7 @@ checkLegitAMResult = function(amobject, budget, budgettest) {
   if (budgettest == 'evals') {
     expect_lte(budget, getOptPathLength(amresult$opt.path))
   }
-  
+
 }
 
 # check that the AM object spent time satisfy certain propperties
@@ -385,9 +386,9 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
   } else {
     typicalBudget = list(walltime = 30, evals = 300)
   }
-  
+
   oc = if (verbose) identity else utils::capture.output
-  
+
   methodsToTest = c("file", "object")
   budgetsToTest = c("walltime", "evals")
 
@@ -415,7 +416,7 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
   assignInNamespace("mbo.focussearch.maxit", 2L, ns = "automlr")
   assignInNamespace("irace.newpopulation", 1, ns = "automlr")
 
-  
+
   configureMlr(show.learner.output = FALSE,
     on.learner.error = ifelse(learnersMayFail, "quiet", "stop"),
     on.learner.warning = ifelse(learnersMayFail, "quiet", "warn"))
@@ -457,7 +458,7 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
 
       expect_equal(amobject$backend, backendToTest)
 
-      checkLegitAMResult(amobject, budget, budgettest)    
+      checkLegitAMResult(amobject, budget, budgettest)
       checkSpentVsBudget(amobject, budget, budgettest, runtime)
 
       for (property in c('walltime', 'evals')) {

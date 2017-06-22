@@ -50,8 +50,7 @@
 #' \code{$requires}-parameter; they will be replaced here:
 #' \itemize{
 #'   \item automlr.remove.XXX: Only used by wrappers, may only be used if the
-#'     respective \code{$conversion()} call with "XXX" as parameter returns a
-#'     vector containing at least "numerics" or "". It indicates that this
+#'     respective \code{$conversion} is present. It indicates that this
 #'     wrapper is responsible for removing the XXX type. If XXX does not occurr
 #'     in the data, autmlr.remove.XXX is always FALSE.
 #'   \item automlr.has.XXX: May be used by all wrappers and all learners:
@@ -60,6 +59,10 @@
 #'     wrapperB removes missings, that inside wrapperA (and wrapperB) the value
 #'     of automlr.has.missings is TRUE, but for wrapperC (and all the learners)
 #'     automlr.has.missings evaluates to FALSE.
+#'   \item automlr.may.have.XXX: May be used by all wrappers: Indicates that the
+#'     XXX type may be generated from the data present at this stage. This is
+#'     because the attached learner can handle the data, or because a later
+#'     wrapper converts the data into something the learner can handle.
 #' }
 #' @param modelmultiplexer [\code{ModelMultiplexer}]\cr
 #'   A modelmultiplexer object that should have a \code{$searchspace} slot.
@@ -69,9 +72,6 @@
 #'   \code{$searchspace}, \code{$constructor}.
 #' @param taskdesc [\code{TaskDesc}]\cr
 #'   The taskDesc object of the task for which to build the learner.
-#' @param idRef [\code{list}]\cr
-#'   Object that indexes different parameter's IDs.\cr
-#'   TODO: This is to be implemented.
 #' @param canHandleX [\code{list}]\cr
 #'   A named list that maps "missings", "factors", and "ordered" to a vector of
 #'   learner names that can handle the respective data.
@@ -84,17 +84,17 @@
 #' 
 #' The slot \code{$searchspace} should be used as \code{ParamSet} to tune
 #' parameters over.
-makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, idRef,
-    canHandleX, allLearners) {
-  
-  
-  covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
-      if (taskdesc$has.missings) "missings")
-  
-  whichprops = min(3, length(taskdesc$class.levels))
-  properties = c(c("oneclass", "twoclass", "multiclass")[whichprops], covtypes)
+makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, canHandleX,
+    allLearners) {
 
-  aux = buildSearchSpace(wrappers, covtypes, canHandleX, allLearners)
+  presentprops = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
+      if (taskdesc$has.missings) "missings")
+
+  classlvlcount = min(3, length(taskdesc$class.levels))
+  properties = c(c("oneclass", "twoclass", "multiclass")[classlvlcount],
+      presentprops)
+
+  aux = buildSearchSpace(wrappers, presentprops, canHandleX, allLearners)
   completeSearchSpace = c(modelmultiplexer$searchspace,
       aux$completeSearchSpace)
 

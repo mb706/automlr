@@ -137,6 +137,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] everything is really, really stable
 
 ** COMMENT immediate TODO
+The [X] blocks still need testing.
 - [X] write some easy timeout tests
 - [X] implement fork timeout wrapper
 - [X] write searchspace to table
@@ -151,11 +152,10 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] get some way to communicate nature of error
 - [ ] timeout tests
 - [ ] check automlr option handling
-- [ ] make rng consistent
 - [ ] mbo user.extras: add debug dump
 
 - [ ] expression bounds
-  - [ ] implementation
-  - [ ] tests
-- [ ] invexp
+- [X] invexp
+- [ ] automlr.may.have.XXX
+- [ ] conversion  
   

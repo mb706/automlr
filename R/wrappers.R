@@ -63,11 +63,10 @@ mlrWrappers.gen = function() makeNamedAlList(
         learner = autoWrapper(
             name = "ampreproc",
             constructor = makePreprocWrapperAm,
-            conversion = function(x) switch(x,
-                  missings = c("missings", ""),
-                  factors = c("factors", ""),
-                  ordered = c("ordered", ""),
-                  x))))
+            conversion = list(missings="factors",
+                factors=c("factors", "numerics"),
+                ordered=c("ordered", "numerics"),
+                numerics = "numerics"))))
 
 
 #' @title

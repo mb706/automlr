@@ -61,14 +61,15 @@ buildLearners = function(searchspace, task, verbosity = 0) {
     stop("Tasks with weights are currently not supported.")
   }
   
-  allcovtypes = c("factors", "ordered", "numerics")
-  allcovproperties = c(allcovtypes, "missings")
+  allcovproperties = c("factors", "ordered", "numerics", "missings")
+
   presentprops = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
       if (taskdesc$has.missings) "missings")
-  maxcovtypes = setdiff(presentprops, "missings")
   classlvlcount = min(3, length(taskdesc$class.levels))
-  requiredClassProperty = c("oneclass", "twoclass", "multiclass")[classlvlcount]
-  requiredprops = presentprops
+  presentprops %c=% c("oneclass", "twoclass", "multiclass")[classlvlcount]
+
+
+
   wrapperList = list()
   for (w in wrappers) {
     wl = w$learner
@@ -76,21 +77,10 @@ buildLearners = function(searchspace, task, verbosity = 0) {
             createParameter, learnerid = wl$name, forWrapper = TRUE))
     wl$required = w$stacktype == "requiredwrapper"
     wrapperList[[wl$name]] = wl
-    if (identical(maxcovtypes, allcovtypes) && length(requiredprops) == 0) {
-      next
-    }
-    if (w$stacktype != "requiredwrapper") {
-      next
-    }
-    for (t in presentprops) {
-      conv = wl$conversion(t)
-      if ("" %in% conv) {
-        requiredprops = setdiff(requiredprops, t)
-      }
-      maxcovtypes = union(maxcovtypes, setdiff(conv, c("", "missings")))
-    }
   }
   
+  conversion.limit = calculateConversionLimit(wrappers)
+
   handlerList = list()
   for (i in seq_along(learners)) {
     li = learners[[i]]
@@ -118,33 +108,25 @@ buildLearners = function(searchspace, task, verbosity = 0) {
       next
     }
     learnercovtypes = intersect(allcovproperties, getLearnerProperties(lil))
-    if (length(setdiff(requiredprops, learnercovtypes)) != 0) {
-      # there are feature types that no wrapper can remove that the learner
-      # can't handle
-      if (verbosity.sswarnings(verbosity)) {
-        messagef("Skipping learner '%s': Learner can not handle feature types.",
-            lil$id)
+    for (pp in presentprops) {
+      if (!length(intersect(conversion.limit[[pp]], learnercovtypes))) {
+        # there are feature types that no wrapper can remove that the learner
+        # can't handle
+        if (verbosity.sswarnings(verbosity)) {
+            messagef("Skipping learner '%s': %s",
+                    lil$id, "Learner can not handle feature types.")
+        }
+        next
       }
-      next
-    }
-    if (length(intersect(maxcovtypes, learnercovtypes)) == 0) {
-      # we can't convert the features to any kind of feature that the learner
-      # can handle
-      if (verbosity.sswarnings(verbosity)) {
-        messagef(paste("Skipping learner '%s':",
-            "Task has no features the learner can handle."),
-            lil$id)
-      }
-      next
     }
     for (canHandle in intersect(allcovproperties, getLearnerProperties(lil))) {
       handlerList[[canHandle]] %c=% lil$id
     }
-    aux = buildTuneSearchSpace(li$searchspace, lil, info.env, verbosity)
+    aux = buildTuneSearchSpace(li$searchspace, lil, verbosity)
     modelTuneParsets[[lil$id]] = aux$tss
     allParamNames[[lil$id]] = aux$nondefParamNames
     # updated learner object with fixed hyperparameters
-    learnerObjects %c=% list(aux$l)
+    learnerObjects %c=% list(aux$lrn)
   }
   checkParamIds(modelTuneParsets, verbosity)
 
@@ -160,7 +142,7 @@ buildLearners = function(searchspace, task, verbosity = 0) {
       allParamNames)
   multiplexer$searchspace = tuneParamSet
   allLearners = unlist(tuneParamSet$pars$selected.learner$values)
-  am = makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, handlerList,
+  am = makeAMExoWrapper(multiplexer, wrapperList, taskdesc, handlerList,
       allLearners)
   adjustLearnerVerbosity(am, verbosity)
 }
@@ -203,6 +185,67 @@ checkParamIds = function(parsets, verbosity) {
     }
   }
 }
+
+# calculate the possible conversion all 'requiredwrapper's can perform 
+# when applied in any possible order
+calculateConversionLimit = function(wrappers) {
+  allcovproperties = c("factors", "ordered", "numerics", "missings")
+  conversionFixpoint = list(factors = "factors", ordered = "ordered", 
+      numerics = "numerics", missings = "missings")
+
+  conversions = list()
+  for (w in wrappers) {
+    if (w$stacktype != "requiredwrapper") {
+      next
+    }
+    wlc = w$learner$conversion
+    for (cn in setdiff(names(wlc), "missings")) {
+      wlc[[cn]] %c=% cn  # identity is implied
+    }
+    if (all(sapply(wlc, length) == 1) && identical(names(wlc), unlist(wlc))) {
+      # only the identity conversion
+      next
+    }
+    conversions %c=% list(wlc)
+  }
+
+  if (length(conversions) > 6) {
+    stopf("No more than 6 conversion wrappers allowed.")
+  }
+  # create permdf, a data.frame with rows consisting of the possible
+  # permutations of `length(conversions)` wrappers.
+  convids = seq_along(conversions)
+  permdf = Filter(function(x) !is.null(x), apply(
+              expand.grid(rep(list(convids), length(convids))), 1,
+              function(x) if (!any(duplicated(x))) x))
+  if (length(permdf) > 1) {
+    permdf = do.call(rbind, permdf)
+  } else if (permdf == 1) {
+    permdf = data.frame(X = 1)
+  }
+  
+  combinedConvs = list()
+  for (permno in nrow(permdf)) {  # for each permutation...
+    conv = conversionFixpoint     # take the identity.
+    for (cidx in permdf[permno, ]) {  # go along the wrappers in the perm. order
+      for (cp in allcovproperties) {  # for each property "cp"
+        for (cpx in conv[[cp]]) {
+          # for each property "cpx" that can so far be generated from "cp":
+          # add the things that can be generated by the currently considered
+          # wrapper from the property "cpx"
+          # ... to the things that can be generated from property "cp". 
+          conv[[cp]] = union(conv[[cp]], conversions[[cidx]][[cpx]])
+        }
+      }
+    }
+    for (cp in allcovproperties) {
+      # accumulate all possible conversions
+      combinedConvs[[cp]] = union(combinedConvs[[cp]], conv[[cp]])
+    }
+  }
+  combinedConvs
+}
+
 
 #' @title Turn learner id string into learner object, if necessary
 #' 

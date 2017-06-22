@@ -9,6 +9,13 @@ roxygenise('..')
 
 devtools::load_all("..")
 
+
+sp("type.multinomial", "cat", c("grouped", "ungrouped"), req = quote(automlr.targettype == "multiclass"))
+
+mlrLearnersNoWrap
+
+mlrWrappers$ampreproc$learner
+
 mlrLearners
 str(mlrLearners$ampreproc$searchspace[1])
 
@@ -25,8 +32,9 @@ capture.output(cat('x'))
 capture.output
 deparse(quote(a + b))
 x <- "a"
+x <- 'b'
 deparse(x)
-[p
+
 ##
 pid.task
 
