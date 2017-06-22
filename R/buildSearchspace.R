@@ -77,7 +77,6 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
       if (param$type != "def") {  # variable parameter
         newparam = createParameter(param, learnerid = lrnid)
         newparam$amlr.id = param$id
-        newparam$amlr.lrnid = lrnid
         if (param$type == "cat" && param$dim > 1 &&
             !is.null(lptypes[[param$name]]) && 
             lptypes[[param$name]] != "discretevector") {
@@ -206,6 +205,9 @@ checkParametersFeasible = function(sslist, lrn, verbosity) {
               "available for learner '%s'."),
           param$name, lrnid)
     }
+    if (param$type == "def" && identical(param$values, "##")) {
+      next
+    }
     if (!allfeasible(lp, param$values, origParamName, param$dim)) {
       # there is one 'special case': param$values might be names that index
       # into lp$pars[[param$name]]$values.
@@ -262,8 +264,8 @@ injectParams = function(sslist, lrn) {
         collapse(badinject), lrnid)
   }
   for (param in injectParams) {
-    lrn$par.set = c(l$par.set, makeParamSet(createParameter(param,
-                learnerid = lrnid, do.trafo = FALSE, facingOutside = FALSE)))
+    lrn$par.set = c(l$par.set, makeParamSet(createParameter(param, lrnid,
+                makeLearnerParam = TRUE)))
   }
   lrn
 }
@@ -272,6 +274,9 @@ adjustSSDefaults = function(sslist, lrn, verbosity) {
   defaults = getDefaults(getParamSet(l))
   parvals = getHyperPars(l)
   sslist = lapply(sslist, function(param) {
+        if (param$type == "def" && identical(param$values, "##")) {
+          next
+        }
         if (param$type %in% c("def", "fixdef")) {
           # check whether this is /actually/ the default
           truedefault = defaults[[param$name]]
@@ -311,6 +316,12 @@ allfeasible = function(ps, totest, name, dimension) {
   testlist = list(0)
   names(testlist) = name
   for (t in totest) {
+    if (is.language(t)) {
+      # bound is an expression
+      # TODO in theory we could check this, with reasonable / extreme values
+      # inserted for all unknowns
+      next
+    }
     if (getParamTypes(ps, use.names = TRUE)[[name]] == "discretevector") {
       t = list(t)
     }

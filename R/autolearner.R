@@ -235,6 +235,10 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
   if (!is.null(req)) {
     assert(checkClass(req, "call"), checkClass(req, "expression"))
   }
+  
+  if (identical(values, "##") && type != "def") {
+    stop("Only type 'def' parameters can have value '##'.")
+  }
 
   assert(all(as.integer(dim) == dim))
   dim = as.integer(dim)
@@ -299,22 +303,21 @@ makeNamedAlList = function(...) {
 #       Z may be "Learner" 
 # param: a "Searchparam" created with sp()
 # learnerid: for debug messages
-# do.trafo
-# facingOutside
+# makeLearnerParam
 # forWrapper
-createParameter = function(param, learnerid, do.trafo = TRUE,
-    facingOutside = TRUE, forWrapper = FALSE) {
-  # facingOutside == FALSE means
+createParameter = function(param, learnerid, makeLearnerParam = FALSE,
+    forWrapper = FALSE) {
+  # makeLearnerParam == TRUE means
   # 1) create LearnerParam instead of Param
   # 2) remove .AMLRFIX# suffix
+  # 3) no Trafo
   if (param$type %in% c("int", "real")) {
-    pmin = param$values[1]
-    pmax = param$values[2]
+    pmin = param$values[[1]]
+    pmax = param$values[[2]]
   }
-  if (!facingOutside) {
+  expression.trafo = NULL
+  if (makeLearnerParam) {
     param$name = removeAmlrfix(param$name)
-  }
-  if (!do.trafo) {
     if (!is.null(param$trafo)) {
       if (param$type %in% c("int", "real") && !is.character(param$trafo)) {
         # if the transformation is not our own trafo, then we can't say
@@ -325,14 +328,22 @@ createParameter = function(param, learnerid, do.trafo = TRUE,
       }
       param$trafo = NULL
     }
-  }
-  if (!is.null(param$trafo) && identical(param$trafo, "exp")) {
-    if (param$type == "real") {
-      aux = createTrafo(pmin, pmax, FALSE)
-    } else {
-      # param$type == "int"
-      aux = createTrafo(pmin, pmax, TRUE)
+  } else if (param$numexp) {
+    assertChoice(param$type, c("int", "real"))
+    if (!is.null(param$trafo) && !identical(param$trafo, "exp")) {
+      stop("Expression bounds with trafo that is not 'exp' not yet supported.")
     }
+    expression.trafo = createExpressionTrafo(pmin, pmax,
+        param$type == "int", identical(param$trafo, "exp"))
+    pmin = 0
+    pmax = 1
+    param$type = "real"
+    param$trafo = NULL
+  }
+  if (is.character(param$trafo)) {
+    assertChoice(param$trafo, c("exp", "invexp"))
+    aux = createTrafo(pmin, pmax,
+        invert = param$trafo == "invexp", is.int = param$type == "int")
     ptrafo = aux$trafo
     pmin = aux$newmin
     pmax = aux$newmax
@@ -341,9 +352,12 @@ createParameter = function(param, learnerid, do.trafo = TRUE,
   }
   surrogatetype = param$type
   if (param$type == "fix" && !forWrapper) {
+    # we should realistically only get here because we are creating the
+    # LearnerParam.
+    assert(makeLearnerParam)
     # don't warn for wrappers, for them fixed injects are the norm
     warningf(paste("Parameter '%s' for learner '%s' is marked",
-            "'dummy/inject' and has type 'fix'; This usually does not make",
+            "'inject' and has type 'fix'; This usually does not make",
             "sense."),
         param$name, learnerid)
     if (!is.null(param$values)) {
@@ -357,7 +371,7 @@ createParameter = function(param, learnerid, do.trafo = TRUE,
     }
   }
   if (param$dim > 1) {
-    if (!facingOutside) {
+    if (makeLearnerParam) {
       constructor = switch(surrogatetype,
           real = makeNumericVectorLearnerParam,
           int = makeIntegerVectorLearnerParam,
@@ -376,7 +390,7 @@ createParameter = function(param, learnerid, do.trafo = TRUE,
     }
     paramlist = list(id = param$name, len = param$dim, requires = param$req)
   } else {
-    if (!facingOutside) {
+    if (makeLearnerParam) {
       constructor = switch(surrogatetype,
           real = makeNumericLearnerParam,
           int = makeIntegerLearnerParam,
@@ -395,40 +409,38 @@ createParameter = function(param, learnerid, do.trafo = TRUE,
     }
     paramlist = list(id = param$name, requires = param$req)
   }
-  paramlist = c(paramlist, switch(surrogatetype,
-          int = list(lower = pmin, upper = pmax, trafo = ptrafo),
-          real = list(lower = pmin, upper = pmax, trafo = ptrafo),
-          cat = list(values = {
-                x = param$values
-                if (!test_named(x)) {
-                  names(x) = param$values
-                }
-                x}),
-          bool = list(),
-          fix = list(values = {
-                x = param$values
-                if (!test_named(x)) {
-                  names(x) = param$values
-                }
-                x}),
-          def = stopf(paste("Parameter '%s' for learner '%s' marked as",
-                  "'inject' must not have type 'def'."),
-              param$name, learnerid),
-          stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
-              param$name, learnerid)))
-  if (!facingOutside) {
+  paramlist %c=% switch(surrogatetype,
+      int = list(lower = pmin, upper = pmax, trafo = ptrafo),
+      real = list(lower = pmin, upper = pmax, trafo = ptrafo),
+      cat = list(values = {
+            x = param$values
+            if (!test_named(x)) {
+              names(x) = param$values
+            }
+            x}),
+      bool = list(),
+      fix = list(values = {
+            x = param$values
+            if (!test_named(x)) {
+              names(x) = param$values
+            }
+            x}),
+      def = stopf(paste("Parameter '%s' for learner '%s' marked as",
+              "'inject' must not have type 'def'."),
+          param$name, learnerid),
+      stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
+          param$name, learnerid))
+  if (makeLearnerParam) {
     paramlist$trafo = NULL
   }
   pobject = do.call(constructor, paramlist, quote = TRUE)
   if (!is.null(pobject$trafo)) {
-    environment(pobject$trafo) = list2env(as.list(info.env, all.names = TRUE),
-        parent = environment(pobject$trafo))
-    if (identical(param$trafo, "exp")) {
-      pobject$amlr.origValues = param$values
-    }
     pobject$trafo = guardTrafoNa(pobject$trafo)
   }
   pobject$amlr.isDummy = identical(param$special, "dummy")
+  pobject$amlr.lrnid = lrnid
+  pobject$amlr.origValues = param$values
+  pobject$amlr.expressionTrafo = expression.trafo
   pobject
 }
 
@@ -437,8 +449,11 @@ guardTrafoNa = function(origTrafo) {
   function(x) if (length(x) == 1 && is.na(x)) x else origTrafo(x)
 }
 
-createTrafo = function(min, max, isint) {
-  if (isint) {
+createTrafo = function(min, max, invert, is.int) {
+  if (is.int) {
+    if (invert) {
+      stop("invexp int not supported yet.")
+    }
     assert(min >= 0)
     addzero = if (min == 0) 0
     if (min == 0) {
@@ -452,13 +467,53 @@ createTrafo = function(min, max, isint) {
     return(list(trafo = function(x) ifelse(is.na(x), NA, sequence[x]),
             newmin = 1, newmax = length(sequence)))
   } else {
+    if (invert) {
+      max = 1 - max
+      min = 1 - min
+    }
     force(min)
     force(max)
     assert(min > 0)
     assert(max > 0)
-    
-    return(list(trafo = function(x) min * (max / min)^x,
-            newmin = 0, newmax = 1))
+
+    return(list(trafo = function(x) {
+              res = min * (max / min)^x
+              if (invert) 1 - res else res
+            }, newmin = 0, newmax = 1))
+  }
+}
+
+createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
+  # env must contain:
+  # PARAM.x, p (number of features), n (number of rows)
+  function(x, env) {
+    if (is.language(pmin)) {
+      pmin = eval(pmin, envir = env)
+    }
+    if (is.language(pmax)) {
+      pmax = eval(pmax, envir = env)
+    }
+    assert(pmax >= pmin)
+    if (is.exp) {
+      trafo = createTrafo(pmin, pmax, FALSE, is.int)
+      trafofn = trafo$trafo
+      pmin = trafo$newmin
+      pmax = trafo$newmax
+    }
+    if (is.int) {
+      assertIntegerish(pmin, any.missing = FALSE, len = 1)
+      assertIntegerish(pmax, any.missing = FALSE, len = 1)
+      pmax = pmax + 1
+      ret = min(floor(x * (pmax - pmin) + pmin), pmax)
+    } else {
+      assertNumeric(pmin, any.missing = FALSE, len = 1)
+      assertNumeric(pmax, any.missing = FALSE, len = 1)
+      ret = x * (pmax - pmin) + pmin
+    }
+    if (is.exp) {
+      ret = trafofn(ret)
+    }
+    return(ret)
   }
 }
 
