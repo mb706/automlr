@@ -280,7 +280,7 @@ setupLearnerParams = function(learner, staticParams, shadowparams, params) {
     }
   }
   for (p in pnames) {
-    tp = amlrTransformName(p)
+    tp = removeAmlrfix(p)
     if (tp != p) {
       if (tp %in% names(params)) {
         stopf(paste0("Parameter '%s' and '%s' both given although they should",
@@ -585,7 +585,7 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
   finalSubstitutions = presetStatics
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
-    parid = amlrTransformName(curpar$id)
+    parid = removeAmlrfix(curpar$id)
     leaf = paste0(parid, ".AMLRFINAL")
     if ((curpar$type %in% c("discrete", "discretevector") &&
           length(curpar$values) == 1) ||  # this is a 'fixed' value

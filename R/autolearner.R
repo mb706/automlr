@@ -291,3 +291,175 @@ makeNamedAlList = function(...) {
   names(l) = n
   l
 }
+
+
+# This is an interface for makeXYZParam
+# where X is the type (Numeric, Integer, ...)
+#       Y may be "Vector"
+#       Z may be "Learner" 
+# param: a "Searchparam" created with sp()
+# learnerid: for debug messages
+# do.trafo
+# facingOutside
+# forWrapper
+createParameter = function(param, learnerid, do.trafo = TRUE,
+    facingOutside = TRUE, forWrapper = FALSE) {
+  # facingOutside == FALSE means
+  # 1) create LearnerParam instead of Param
+  # 2) remove .AMLRFIX# suffix
+  if (param$type %in% c("int", "real")) {
+    pmin = param$values[1]
+    pmax = param$values[2]
+  }
+  if (!facingOutside) {
+    param$name = removeAmlrfix(param$name)
+  }
+  if (!do.trafo) {
+    if (!is.null(param$trafo)) {
+      if (param$type %in% c("int", "real") && !is.character(param$trafo)) {
+        # if the transformation is not our own trafo, then we can't say
+        # for sure what the real bounds are, or even what the param type is.
+        pmin = -Inf
+        pmax = Inf
+        param$type = "real"
+      }
+      param$trafo = NULL
+    }
+  }
+  if (!is.null(param$trafo) && identical(param$trafo, "exp")) {
+    if (param$type == "real") {
+      aux = createTrafo(pmin, pmax, FALSE)
+    } else {
+      # param$type == "int"
+      aux = createTrafo(pmin, pmax, TRUE)
+    }
+    ptrafo = aux$trafo
+    pmin = aux$newmin
+    pmax = aux$newmax
+  } else {
+    ptrafo = param$trafo  # will either be a function or NULL
+  }
+  surrogatetype = param$type
+  if (param$type == "fix" && !forWrapper) {
+    # don't warn for wrappers, for them fixed injects are the norm
+    warningf(paste("Parameter '%s' for learner '%s' is marked",
+            "'dummy/inject' and has type 'fix'; This usually does not make",
+            "sense."),
+        param$name, learnerid)
+    if (!is.null(param$values)) {
+      if (is.numeric(param$values[1])) {
+        surrogatetype = "real"
+        pmin = param$values[1]
+        pmax = param$values[1]
+      } else if (is.logical(param$values[1])) {
+        surrogatetype = "bool"
+      }
+    }
+  }
+  if (param$dim > 1) {
+    if (!facingOutside) {
+      constructor = switch(surrogatetype,
+          real = makeNumericVectorLearnerParam,
+          int = makeIntegerVectorLearnerParam,
+          cat = makeDiscreteVectorLearnerParam,
+          bool = makeLogicalVectorLearnerParam,
+          fix = makeDiscreteVectorLearnerParam,
+          NULL)
+    } else {
+      constructor = switch(surrogatetype,
+          real = makeNumericVectorParam,
+          int = makeIntegerVectorParam,
+          cat = makeDiscreteVectorParam,
+          bool = makeLogicalVectorParam,
+          fix = makeDiscreteVectorParam,
+          NULL)
+    }
+    paramlist = list(id = param$name, len = param$dim, requires = param$req)
+  } else {
+    if (!facingOutside) {
+      constructor = switch(surrogatetype,
+          real = makeNumericLearnerParam,
+          int = makeIntegerLearnerParam,
+          cat = makeDiscreteLearnerParam,
+          bool = makeLogicalLearnerParam,
+          fix = makeDiscreteLearnerParam,
+          NULL)
+    } else {
+      constructor = switch(surrogatetype,
+          real = makeNumericParam,
+          int = makeIntegerParam,
+          cat = makeDiscreteParam,
+          bool = makeLogicalParam,
+          fix = makeDiscreteParam,
+          NULL)
+    }
+    paramlist = list(id = param$name, requires = param$req)
+  }
+  paramlist = c(paramlist, switch(surrogatetype,
+          int = list(lower = pmin, upper = pmax, trafo = ptrafo),
+          real = list(lower = pmin, upper = pmax, trafo = ptrafo),
+          cat = list(values = {
+                x = param$values
+                if (!test_named(x)) {
+                  names(x) = param$values
+                }
+                x}),
+          bool = list(),
+          fix = list(values = {
+                x = param$values
+                if (!test_named(x)) {
+                  names(x) = param$values
+                }
+                x}),
+          def = stopf(paste("Parameter '%s' for learner '%s' marked as",
+                  "'inject' must not have type 'def'."),
+              param$name, learnerid),
+          stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
+              param$name, learnerid)))
+  if (!facingOutside) {
+    paramlist$trafo = NULL
+  }
+  pobject = do.call(constructor, paramlist, quote = TRUE)
+  if (!is.null(pobject$trafo)) {
+    environment(pobject$trafo) = list2env(as.list(info.env, all.names = TRUE),
+        parent = environment(pobject$trafo))
+    if (identical(param$trafo, "exp")) {
+      pobject$amlr.origValues = param$values
+    }
+    pobject$trafo = guardTrafoNa(pobject$trafo)
+  }
+  pobject$amlr.isDummy = identical(param$special, "dummy")
+  pobject
+}
+
+guardTrafoNa = function(origTrafo) {
+  force(origTrafo)
+  function(x) if (length(x) == 1 && is.na(x)) x else origTrafo(x)
+}
+
+createTrafo = function(min, max, isint) {
+  if (isint) {
+    assert(min >= 0)
+    addzero = if (min == 0) 0
+    if (min == 0) {
+      min = 1
+    }
+    ratio = sqrt((min + 1) / min)
+    sequence = unique(c(addzero,
+            round(min * ratio ^ (seq(from = 0,
+                          to = floor(log(max / min, base = ratio))))),
+            max))
+    return(list(trafo = function(x) ifelse(is.na(x), NA, sequence[x]),
+            newmin = 1, newmax = length(sequence)))
+  } else {
+    force(min)
+    force(max)
+    assert(min > 0)
+    assert(max > 0)
+    
+    return(list(trafo = function(x) min * (max / min)^x,
+            newmin = 0, newmax = 1))
+  }
+}
+
+

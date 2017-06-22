@@ -6,6 +6,7 @@
 
 `%+=%` = function(t, s) eval.parent(substitute(t <- t + s))
 `%-=%` = function(t, m) eval.parent(substitute(t <- t - m))
+`%c=%` = function(t, a) eval.parent(substitute(t <- c(t, a)))
 
 #################################
 # Budgeting                     #
@@ -186,7 +187,7 @@ extractSubList = function(xs, element, element.value, simplify = TRUE,
 # Parameters                    #
 #################################
 
-amlrTransformName = function(name) {
+removeAmlrfix = function(name) {
   sub("\\.AMLRFIX[0-9]+$", "", name)
 }
 
