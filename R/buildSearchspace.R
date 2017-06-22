@@ -31,7 +31,7 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
 
   lrn = injectParams(sslist, lrn)
 
-  checkParametersFeasible(sslist, lrn, verbosity)
+  sslist = makeParametersFeasible(sslist, lrn, verbosity)
   
   sslist = adjustSSDefaults(sslist, lrn, verbosity)
   
@@ -40,13 +40,6 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
   
   lrn = removeHyperPars(lrn, intersect(names(getHyperPars(lrn)), defParams))
 
-  #-----------------
-  vals = getValues(lp)[[origParamName]]
-  if (isSubset(param$values, names(vals)) &&
-      param$dim == getParamLengths(lp)[[origParamName]]) {
-    param$values = vals[param$values]
-  }
-#-----------------
 
   lptypes = getParamTypes(getParamSet(lrn), use.names = TRUE)
 
@@ -178,7 +171,9 @@ checkDummies = function(sslist, lrn) {
   }
 }
 
-checkParametersFeasible = function(sslist, lrn, verbosity) {
+# the only change this introduces is when a 'cat' has character values but
+# the underlying parameter has not.
+makeParametersFeasible = function(sslist, lrn, verbosity) {
   lrnid = lrn$id
   if (verbosity.sswarnings(verbosity)) {
     lwarn = function(...) warningf(...)
@@ -189,66 +184,72 @@ checkParametersFeasible = function(sslist, lrn, verbosity) {
   lpids = getParamIds(lp)
   lptypes = getParamTypes(lp, use.names = TRUE)
   
-  for (param in sslist) {
-    if (identical(param$special, "dummy") ||
-        identical(param$special, "inject")) {
-      next
-    }
-    if (param$type == "bool") {
-      # useful since now we can automatically check for feasibility by checking
-      # whether everything in param$values is feasible.
-      param$values = c(TRUE, FALSE)
-    }
-    origParamName = removeAmlrfix(param$name)
-    if (origParamName %nin% lpids) {
-      stopf(paste("Parameter '%s' as listed in search space is not",
-              "available for learner '%s'."),
-          param$name, lrnid)
-    }
-    if (param$type == "def" && identical(param$values, "##")) {
-      next
-    }
-    if (!allfeasible(lp, param$values, origParamName, param$dim)) {
-      # there is one 'special case': param$values might be names that index
-      # into lp$pars[[param$name]]$values.
-      vals = getValues(lp)[[origParamName]]
-      if (isSubset(param$values, names(vals)) &&
-          param$dim == getParamLengths(lp)[[origParamName]]) {
-        assert(allfeasible(lp, vals[param$values], origParamName, param$dim))
-      } else {
-        stopf(paste("Parameter '%s' as listed in search space has",
-                "infeasible bounds '%s' for learner '%s'."),
-            param$name, paste(param$values, collapse = "', '"), lrnid)
-      }
-    }
-    partype = lptypes[[origParamName]]
-    if ((partype %nin% c("numeric", "numericvector", "untyped")) &&
-        (param$type == "real" || (param$type == "int" &&
-            partype %nin% c("integer", "integervector")))) {
-      stopf(paste("Parameter '%s' as listed in search space has wrong type",
-              "'%s' for learner '%s'"),
-          param$name, param$type, lrnid)
-    }
-    if ((partype != "untyped") &&
-        ((param$type == "int" &&
-            partype %nin% c("integer", "integervector")) ||
-          (param$type == "bool" &&
-            partype %nin% c("logical", "logicalvector")) ||
-          (param$type == "cat" &&
-            partype %nin% c("discrete", "discretevector", "character",
-                "charactervector")))) {
-      lwarn(paste("Parameter '%s' for learner '%s' is of type '%s' and",
-              "has different (but feasible) type '%s' listed in search",
-              "space."),
-          param$name, lrnid, partype, param$type)
-    }
-    if (param$type %nin% c("fix", "def", "fixdef") && is.null(param$special) &&
-        hasRequires(lp$pars[[param$name]]) && is.null(param$req)) {
-      lwarn(paste("Parameter '%s' for learner '%s' has a 'requires'",
-              "argument but the one given in the search space has not."),
-          param$name, lrnid)
-    }
-  }
+  lapply(sslist, function(param) {
+        if (identical(param$special, "dummy") ||
+            identical(param$special, "inject")) {
+          return(param)
+        }
+        if (param$type == "bool") {
+          # useful since now we can automatically check for feasibility 
+          # by checking whether everything in param$values is feasible.
+          param$values = c(TRUE, FALSE)
+        }
+        origParamName = removeAmlrfix(param$name)
+        if (origParamName %nin% lpids) {
+          stopf(paste("Parameter '%s' as listed in search space is not",
+                  "available for learner '%s'."),
+              param$name, lrnid)
+        }
+        if (param$type == "def" && identical(param$values, "##")) {
+          next
+        }
+        if (!allfeasible(lp, param$values, origParamName, param$dim)) {
+          # there is one 'special case': param$values might be names that
+          # index into lp$pars[[param$name]]$values.
+          vals = getValues(lp)[[origParamName]]
+          if (isSubset(param$values, names(vals)) &&
+              param$dim == getParamLengths(lp)[[origParamName]]) {
+            param$values = vals[param$values]
+            assert(allfeasible(lp, vals[param$values], origParamName,
+                    param$dim))
+          } else {
+            stopf(paste("Parameter '%s' as listed in search space has",
+                    "infeasible bounds '%s' for learner '%s'."),
+                param$name,
+                paste(param$values, collapse = "', '"),
+                lrnid)
+          }
+        }
+        partype = lptypes[[origParamName]]
+        if ((partype %nin% c("numeric", "numericvector", "untyped")) &&
+            (param$type == "real" || (param$type == "int" &&
+                partype %nin% c("integer", "integervector")))) {
+          stopf(paste("Parameter '%s' as listed in search space has",
+                  "wrong type '%s' for learner '%s'"),
+              param$name, param$type, lrnid)
+        }
+        if ((partype != "untyped") &&
+            ((param$type == "int" &&
+                partype %nin% c("integer", "integervector")) ||
+              (param$type == "bool" &&
+                partype %nin% c("logical", "logicalvector")) ||
+              (param$type == "cat" &&
+                partype %nin% c("discrete", "discretevector",
+                    "character", "charactervector")))) {
+          lwarn(paste("Parameter '%s' for learner '%s' is of type '%s'",
+                  "and has different (but feasible) type '%s'",
+                  "listed in search space."),
+              param$name, lrnid, partype, param$type)
+        }
+        if (param$type %nin% c("fix", "def", "fixdef") &&
+            is.null(param$special) && hasRequires(lp$pars[[param$name]]) &&
+            is.null(param$req)) {
+          lwarn(paste("Parameter '%s' for learner '%s' has a 'requires'",
+                  "argument but the one given in the search space has not."),
+              param$name, lrnid)
+        }
+        param
+      })
 }
 
 injectParams = function(sslist, lrn) {
