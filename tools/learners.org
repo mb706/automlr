@@ -6,7 +6,7 @@
 - [int] [x]..[y] [(x0..y0)] [[inv]exp]: for numeric ranges with possible suggested range
   - x, y, x0, y0 can also be expressions involving: p (number of features), n (number of rows), PARAM.x (parameter x). They must then be
     wrapped in ## and will automatically involve a transformation to 0..1, even if no trafo is given.
-  - exp: exponential trafo; invexp: (upper_bound - x) is exponential
+  - exp: exponential trafo; invexp: (1 - x) is exponential
 - a, b, c: choices
 - x..y: len(3) # more than 1 dimension
 - [value]!: valid for 'default' parameters: if default changes, use this value (otherwise just warn)
@@ -938,7 +938,7 @@
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
-   - learningrate_scale :: 0.. (0..1) invexp: {nn.lrs}
+   - learningrate_scale :: 0.. (0..0.99) invexp: {nn.lrs}
    - numepochs :: int 1.. (1..100) exp: {nn.epochs}
    - batchsize :: int 2..#n# exp: {nn.bs}
    - hidden_dropout :: 0..1: {nn.dropout}
@@ -956,7 +956,7 @@
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
-   - learningrate_scale :: 0.. (0..1) invexp: {nn.lrs}
+   - learningrate_scale :: 0.. (0..0.99) invexp: {nn.lrs}
    - numepochs :: int 1.. (1..100) exp: {nn.epochs}
    - batchsize :: int 2..#n# exp: {nn.bs}
    - hidden_dropout :: 0..1: {nn.dropout}
@@ -977,7 +977,7 @@
    - activationfun :: sigm, linear, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
-   - learningrate_scale :: 0.. (0..1) invexp: {nn.lrs}
+   - learningrate_scale :: 0.. (0..0.99) invexp: {nn.lrs}
    - numepochs :: int 1.. (1..100) exp: {nn.epochs}
    - batchsize :: int 2..#n# exp: {nn.bs}
    - hidden_dropout :: 0..1: {nn.dropout}
