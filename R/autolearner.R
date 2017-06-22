@@ -438,7 +438,7 @@ createParameter = function(param, learnerid, makeLearnerParam = FALSE,
     pobject$trafo = guardTrafoNa(pobject$trafo)
   }
   pobject$amlr.isDummy = identical(param$special, "dummy")
-  pobject$amlr.lrnid = lrnid
+  pobject$amlr.lrnid = learnerid
   pobject$amlr.origValues = param$values
   pobject$amlr.expressionTrafo = expression.trafo
   pobject

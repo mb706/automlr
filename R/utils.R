@@ -397,7 +397,7 @@ getResampleFrameNo = function() {
   }
   tpFrame = c(getFrameNo("train", TRUE), getFrameNo("predict", TRUE))
   if (length(tpFrame) < 1) {
-    return(NULLk)
+    return(NULL)
   }
   # smallest 'train' or 'predict' frame greater than the 'resample' frame:
   tpFrame = sort(tpFrame)

@@ -71,7 +71,7 @@ untypeParams = function(parset) {
 # convert vector parameters to multiple nonvector parameters
 unvectorParams = function(parset) {
   parset$pars = unlist(recursive = FALSE, lapply(parset$pars, function(par) {
-            if (!ParamHelpers:::isVector(par)) {
+            if (!ParamHelpers::isVector(par)) {
               return(list(par))
             }
             lapply(seq_len(par$len), function(i) {
@@ -107,7 +107,7 @@ mboRequirements = function(searchspace) {
       next
     }
     replaceStr = "c(%s)"
-    if (ParamHelpers:::isVector(param)) {
+    if (ParamHelpers::isVector(param)) {
       if (!test_integer(param$len, len = 1, lower = 1, any.missing = FALSE)) {
         stopf("Parameter '%s' is a vector param with undefined length'",
             param$id)
@@ -179,7 +179,7 @@ iraceRequirements = function(searchspace) {
         discrete = "%s",
         discretevector = "c(%s)",
         stopf("Unsupported type '%s' of parameter '%s'.", type, param$id))
-    if (ParamHelpers:::isVector(param)) {
+    if (ParamHelpers::isVector(param)) {
       if (!test_numeric(param$len, len = 1, lower = 1, any.missing = FALSE)) {
         stopf("Parameter '%s' is a vector param with undefined length'",
             param$id)

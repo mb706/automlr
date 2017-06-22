@@ -43,6 +43,8 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
 
   lptypes = getParamTypes(getParamSet(lrn), use.names = TRUE)
 
+  nondefParamNames = character(0)
+
   for (param in sslist) {
     origParamName = removeAmlrfix(param$name)
     if (param$type != "def") {
@@ -153,6 +155,7 @@ checkAmlrFix = function(sslist, lrn, verbosity) {
 
 checkDummies = function(sslist, lrn) {
   lpids = getParamIds(getParamSet(lrn))
+  lrnid = lrn$id
 
   dummyParams = Filter(function(param)
         identical(param$special, "dummy"), sslist)
@@ -160,7 +163,7 @@ checkDummies = function(sslist, lrn) {
   if (length(baddummy)) {
     stopf(paste("Parameter(s) '%s' present in learner '%s' but also marked",
             "as 'dummy' in search space."),
-        collapse(badinject), lrnid)
+        collapse(baddummy), lrnid)
   }
   dummytype = extractSubList(dummyParams, "type") 
   badDummyType = dummyParams[dummytype %in% c("def", "fix", "fixdef")]
@@ -265,15 +268,21 @@ injectParams = function(sslist, lrn) {
         collapse(badinject), lrnid)
   }
   for (param in injectParams) {
-    lrn$par.set = c(l$par.set, makeParamSet(createParameter(param, lrnid,
+    lrn$par.set = c(lrn$par.set, makeParamSet(createParameter(param, lrnid,
                 makeLearnerParam = TRUE)))
   }
   lrn
 }
 
 adjustSSDefaults = function(sslist, lrn, verbosity) {
-  defaults = getDefaults(getParamSet(l))
-  parvals = getHyperPars(l)
+  lrnid = lrn$id
+  if (verbosity.sswarnings(verbosity)) {
+    lwarn = function(...) warningf(...)
+  } else {
+    lwarn = function(...) {}
+  }
+  defaults = getDefaults(getParamSet(lrn))
+  parvals = getHyperPars(lrn)
   sslist = lapply(sslist, function(param) {
         if (param$type == "def" && identical(param$values, "##")) {
           next
