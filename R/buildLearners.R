@@ -35,7 +35,7 @@
 #' 
 #' @param searchspace [list of \code{Autolearner}]\cr
 #'   List of autolearners.
-#' @param task [\code{Task} | \code{TaskDesc}]\cr
+#' @param task [\code{Task}]\cr
 #'   The task that the searchspace is being created. \code{buildLearners}
 #'   respects the task type, presence of NAs and type of covariates. Currently
 #'   not supported: weights, request of probability assignment instead of class.
@@ -46,8 +46,7 @@ buildLearners = function(searchspace, task, verbosity = 0) {
   
   # searchspace contains learners, wrappers and requiredwrappers.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
-  wrappers = searchspace[extractSubList(searchspace, "stacktype") %in%
-          c("wrapper", "requiredwrapper")]
+  wrappers = searchspace[extractSubList(searchspace, "stacktype") == "wrapper"]
   
   learnerObjects = list()
   modelTuneParsets = list()
@@ -56,28 +55,36 @@ buildLearners = function(searchspace, task, verbosity = 0) {
   allParamNames = list()
 
   taskdesc = getTaskDesc(task)
-  
+
   if (taskdesc$has.weights) {
     stop("Tasks with weights are currently not supported.")
   }
-  
+
   allcovproperties = c("factors", "ordered", "numerics", "missings")
 
-  presentprops = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
-      if (taskdesc$has.missings) "missings")
+  presentprops = names(taskdesc$n.feat)[taskdesc$n.feat > 0]
   classlvlcount = min(3, length(taskdesc$class.levels))
+  
+  data = getTaskData(task, target.extra = TRUE)$data
+  types = vcapply(data, function(x) class(x)[1])
+  hasmissings = lapply(split(as.list(data), types),
+      function(x) any(sapply(x, is.na)))
+  
+  assert(Reduce(`||`, hasmissings) == taskdesc$has.missings)
+  
+  assertSetEqual(names(types), presentprops)
+  
   presentprops %c=% c("oneclass", "twoclass", "multiclass")[classlvlcount]
-
-
-
+  
+  
   wrapperList = list()
   for (w in wrappers) {
     wl = w$learner
     wl$searchspace = makeParamSet(params = lapply(w$searchspace,
             createParameter, learnerid = wl$name, forWrapper = TRUE))
-    wl$required = w$stacktype == "requiredwrapper"
     wrapperList[[wl$name]] = wl
   }
+  
   
   conversion.limit = calculateConversionLimit(wrappers)
 
@@ -195,9 +202,6 @@ calculateConversionLimit = function(wrappers) {
 
   conversions = list()
   for (w in wrappers) {
-    if (w$stacktype != "requiredwrapper") {
-      next
-    }
     wlc = w$learner$conversion
     for (cn in setdiff(names(wlc), "missings")) {
       wlc[[cn]] %c=% cn  # identity is implied
@@ -220,12 +224,12 @@ calculateConversionLimit = function(wrappers) {
               function(x) if (!any(duplicated(x))) x))
   if (length(permdf) > 1) {
     permdf = do.call(rbind, permdf)
-  } else if (permdf == 1) {
+  } else if (identical(permdf, 1)) {
     permdf = data.frame(X = 1)
   }
   
-  combinedConvs = list()
-  for (permno in nrow(permdf)) {  # for each permutation...
+  combinedConvs = conversionFixpoint
+  for (permno in seq_len(nrow(permdf))) {  # for each permutation...
     conv = conversionFixpoint     # take the identity.
     for (cidx in permdf[permno, ]) {  # go along the wrappers in the perm. order
       for (cp in allcovproperties) {  # for each property "cp"
@@ -312,7 +316,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
       }
       cprequires = replaceRequires(cprequires, substitution)
       newrequires = substitute(a && b,
-          list(a = newrequires, b = deExpression(cprequires)))
+          list(a = newrequires, b = cprequires))
       # at this position, newrequires has the form
       # (new requires) && (old requires)
       # where the use of short-cirquiting && should solve any problems that we
