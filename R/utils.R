@@ -7,6 +7,7 @@
 `%+=%` = function(t, s) eval.parent(substitute(t <- t + s))
 `%-=%` = function(t, m) eval.parent(substitute(t <- t - m))
 `%c=%` = function(t, a) eval.parent(substitute(t <- c(t, a)))
+`%union=%` = function(t, a) eval.parent(substitute(t <- union(t, a)))
 
 #################################
 # Budgeting                     #
@@ -239,7 +240,7 @@ replaceRequires = function(cprequires, substitution) {
   parsed = deparse(cprequires,
       control = c("keepInteger", "keepNA"), width.cutoff = 500)
   parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", parsed)
-  eval(asQuoted(paste(parsed, collapse = "\n")))
+  deExpression(eval(asQuoted(paste(parsed, collapse = "\n"))))
 }
 
 #################################

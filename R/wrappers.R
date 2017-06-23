@@ -31,42 +31,43 @@ getSupportedFilterMethods = function(suggestions) {
 #' @export
 mlrWrappers = list()
 
-mlrWrappers.gen = function() makeNamedAlList(
-    autolearner(
-        stacktype = "requiredwrapper",
-        searchspace = list(
-            sp("ppa.nzv.cutoff.numeric", "real", c(.Machine$double.eps, 1),
-                trafo = function(x) -log(x),
-                req = quote(automlr.has.numerics == TRUE)),
-            sp("ppa.nzv.cutoff.factor.AMLRFIX1", "real", c(1, 1),
-                req = quote(automlr.remove.factors == TRUE)),
-            sp("ppa.nzv.cutoff.factor", "real", c(0, 1),
-                req = quote(automlr.has.factors && !automlr.remove.factors)),
-            sp("ppa.univariate.trafo", "cat",
-                c("off", "center", "scale", "centerscale", "range"),
-                req = quote(automlr.has.numerics == TRUE)),
-            sp("ppa.impute.numeric", "cat",
-                c("remove.na", "mean", "median", "hist"),
-                req = quote(automlr.has.numerics && automlr.remove.missings)),
-            sp("ppa.impute.factor", "cat",
-                c("remove.na", "distinct", "mode", "hist"),
-                req = quote(automlr.has.factors && (!automlr.remove.factors) &&
-                        automlr.remove.missings)),
-            sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"),
-                req = quote(automlr.has.numerics == TRUE)),
-            sp("ppa.feature.filter", "cat",
-                c("off", getSupportedFilterMethods(c("information.gain",
-                            "chi.squared", "randomForest.importance")))),
-            sp("ppa.feature.filter.thresh", "real", c(.Machine$double.eps, 1),
-                trafo = function(x) -log(x),
-                req = quote(ppa.feature.filter != "off"))),
-        learner = autoWrapper(
-            name = "ampreproc",
-            constructor = makePreprocWrapperAm,
-            conversion = list(missings="factors",
-                factors=c("factors", "numerics"),
-                ordered=c("ordered", "numerics"),
-                numerics = "numerics"))))
+mlrWrappers.gen = function() makeNamedAlList()
+#
+#    autolearner(
+#        stacktype = "requiredwrapper",
+#        searchspace = list(
+#            sp("ppa.nzv.cutoff.numeric", "real", c(.Machine$double.eps, 1),
+#                trafo = function(x) -log(x),
+#                req = quote(automlr.has.numerics == TRUE)),
+#            sp("ppa.nzv.cutoff.factor.AMLRFIX1", "real", c(1, 1),
+#                req = quote(automlr.remove.factors == TRUE)),
+#            sp("ppa.nzv.cutoff.factor", "real", c(0, 1),
+#                req = quote(automlr.has.factors && !automlr.remove.factors)),
+#            sp("ppa.univariate.trafo", "cat",
+#                c("off", "center", "scale", "centerscale", "range"),
+#                req = quote(automlr.has.numerics == TRUE)),
+#            sp("ppa.impute.numeric", "cat",
+#                c("remove.na", "mean", "median", "hist"),
+#                req = quote(automlr.has.numerics && automlr.remove.missings)),
+#            sp("ppa.impute.factor", "cat",
+#                c("remove.na", "distinct", "mode", "hist"),
+#                req = quote(automlr.has.factors && (!automlr.remove.factors) &&
+#                        automlr.remove.missings)),
+#            sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"),
+#                req = quote(automlr.has.numerics == TRUE)),
+#            sp("ppa.feature.filter", "cat",
+#                c("off", getSupportedFilterMethods(c("information.gain",
+#                            "chi.squared", "randomForest.importance")))),
+#            sp("ppa.feature.filter.thresh", "real", c(.Machine$double.eps, 1),
+#                trafo = function(x) -log(x),
+#                req = quote(ppa.feature.filter != "off"))),
+#        learner = autoWrapper(
+#            name = "ampreproc",
+#            constructor = makePreprocWrapperAm,
+#            conversion = list(missings="factors",
+#                factors=c("factors", "numerics"),
+#                ordered=c("ordered", "numerics"),
+#                numerics = "numerics"))))
 
 
 #' @title

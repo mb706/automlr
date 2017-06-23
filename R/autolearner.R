@@ -16,12 +16,11 @@
 #'   space.
 #' @param stacktype [\code{character(1)}]\cr
 #'   Describing how this object can be connected with other learners. Must be
-#'   one of \code{"wrapper"}, \code{"requiredwrapper"} (e.g. feature selection)
-#'   or \code{"learner"}.
+#'   one of \code{"wrapper"} or \code{"learner"}.
 #'
 #' @export
 autolearner = function(learner, searchspace = list(), stacktype = "learner") {
-  assertChoice(stacktype, c("learner", "wrapper", "requiredwrapper"))
+  assertChoice(stacktype, c("learner", "wrapper"))
   names = extractSubList(searchspace, "name")
   if (any(duplicated(names))) {
     stopf("Duplicated names %s for learner '%s'",
@@ -51,37 +50,36 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
 #' @param constructor [\code{function}]\cr
 #'   The function that will be called with the learner as a single argument and
 #'   construct another \code{Learner}.
-#' @param conversion [\code{list} of \code{character}]\cr
-#'   Listing the data conversion this wrapper performs. A named list with
-#'   slots a subset of \code{"numerics"}, \code{"missings"}, \code{"factors"},
-#'   and \code{"ordered"}, with each slot containing a character vector, being
-#'   a subset of \code{"numerics"}, \code{"ordered"}, \code{"factors"}.
-#'   If the neutral conversion is not present, it is assumed that the wrapper
-#'   does nothing with the data (when it is not converting).
-#'   The wrappers parameter set must then adhere to automlr.convert.XXX
-#'   (for XXX being an element of \code{names(conversion)}, and the value
-#'   being an element of \code{conversion[XXX]}) in their parameter
-#'   requirements. (see also \code{\link{makeAMExoWrapper}}).
+#' @param datatype [\code{character(1)}]\cr
+#'   The data this wrapper operates on. Even though the wrapper "sees" all the
+#'   data, it is expected that it only changes the data referenced.
+#' @param convertfrom [\code{character(1)} | \code{NULL}]\cr
+#'   If this wrapper converts data from one type to another, \dQuote{datatype}
+#'   must be the target type, and \dQuote{convertfrom} must be the source type.
+#'   If the wrapper is an imputing wrapper, \dQuote{convertfrom} must be
+#'   \dQuote{missings}, and \dQuote{datatype} must be the type of columns that
+#'   have their missings imputed. A given wrapper may only impute missings of
+#'   one column type.
 #'
 #' @export
-autoWrapper = function(name, constructor, conversion) {
+autoWrapper = function(name, constructor, datatype, convertfrom = NULL) {
   assertString(name)
   assert(identical(grep("$", name, fixed = TRUE), integer(0)))
   assertFunction(constructor)
   
-  assertList(conversion, any.missing = FALSE, names = "unique",
-      types = "character")
-  assertSubset(names(conversion), c("factors", "ordered", "numerics",
-          "missings"))
-
-  for (inp in conversion) {
-    assertSubset(inp, c("factors", "ordered", "numerics"))
+  if (!is.null(convertfrom)) {
+    assertChoice(convertfrom, c("factors", "ordered", "numerics", "missings"))
   }
+  assertChoice(datatype, c("factors", "ordered", "numerics"))
+  
   
   makeS3Obj("AutoWrapper",
       name = name,
       constructor = constructor,
-      conversion = conversion)
+      is.imputer = identical(convertfrom, "missings"),
+      is.converter = !is.null(convertfrom) && convertfrom != "missings",
+      convertfrom = convertfrom,
+      datatype = datatype)
 }
 
 #' @export
@@ -92,7 +90,7 @@ print.Autolearner = function(x, ...) {
       if (length(x$searchspace) == 0) "" else {
             sprintf("\n  %s\n", collapse(sapply(x$searchspace,
                         function(x) collapse(capture.output(print(x)), sep="")),
-                        sep = ",\n  "))
+                    sep = ",\n  "))
           })
 }
 
@@ -184,10 +182,6 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
         # filter out expressions
         expression.idx = vlapply(values, is.language)
         expressions = values[expression.idx]
-        lapply(expressions, function(e)
-                    assert(checkClass(e, "call"),
-                            checkClass(e, "expression"),
-                            checkClass(e, "name")))
         nonexp.values = unlist(values[!expression.idx], recursive = FALSE)
         numexp = length(values) - length(nonexp.values)
         assert(numexp == sum(expression.idx))

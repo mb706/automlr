@@ -144,8 +144,7 @@ mboRequirements = function(searchspace) {
     if (is.null(req)) {
       next
     }
-    newreq = replaceRequires(req, replacements)
-    searchspace$pars[[param]]$requires = deExpression(newreq)
+    searchspace$pars[[param]]$requires = replaceRequires(req, replacements)
   }
   searchspace
 }
@@ -223,8 +222,7 @@ iraceRequirements = function(searchspace) {
     if (is.null(req)) {
       next
     }
-    newreq = replaceRequires(req, replacements)
-    searchspace$pars[[param]]$requires = deExpression(newreq)
+    searchspace$pars[[param]]$requires = replaceRequires(req, replacements)
   }
   searchspace
 }
