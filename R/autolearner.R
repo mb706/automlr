@@ -511,3 +511,46 @@ createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
 }
 
 
+makeLearnerPars = function(learnerPars) {
+  for (p in getParamIds(learnerPars)) {
+    if (!is.null(learnerPars$pars[[p]]$trafo) &&
+        learnerPars$pars[[p]]$type %in%
+        c("numeric", "numericvector", "integer", "integervector")) {
+      # there is a trafo --> need to change limits
+      if (is.null(learnerPars$pars[[p]]$amlr.origValues)) {
+        learnerPars$pars[[p]]$lower = -Inf
+        learnerPars$pars[[p]]$upper = Inf
+      } else {
+        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$amlr.origValues[1]
+        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$amlr.origValues[2]
+      }
+      # convert type to "numeric(vector)", since after trafo we are not sure
+      # it is still an int
+      learnerPars$pars[[p]]$type = switch(learnerPars$pars[[p]]$type,
+          integer = "numeric",
+          integervector = "numericvector",
+          learnerPars$pars[[p]]$type)
+    }
+    learnerPars$pars[[p]]$trafo = NULL
+    # as the things stand now we don't wrap setHyperPars and therefore all
+    # hyperpars need to be given to the train function. If this ever changes
+    # (and we e.g. call predictLearner() instead of predict(), and we wrap
+    # setHyperPars() also) we need to copy the $when property of the
+    # corresponding LearnerParam inside the modelmultiplexer object.
+    learnerPars$pars[[p]]$when = "train"
+    learnerPars$pars[[p]] = addClasses(learnerPars$pars[[p]], "LearnerParam")
+    # satisfying a weird constraint of mlr:
+    req = learnerPars$pars[[p]]$requires
+    if (!is.null(req) && is.expression(req)) {
+      if (length(req) == 1) {
+        learnerPars$pars[[p]]$requires = req[[1]]
+      } else {
+        learnerPars$pars[[p]]$requires = substitute(eval(x), list(x = req))
+      }
+    }
+  }
+  learnerPars
+}
+
+
+

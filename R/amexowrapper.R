@@ -9,64 +9,61 @@
 #' So what are we doing here?
 #' The AMExoWrapper mostly handles parameter space magic. Specifically, this is:
 #' \itemize{
-#'   \item introduce a parameter that chooses which wrappers are used, and in
+#'   \item introduce parameters that chooses which wrappers are used, and in
 #'     which sequence
 #'   \item introduce parameters that control whether the wrapper(s) are used to
 #'     facilitate compatibility of learners with the data, i.e. remove missing
 #'     values, convert data types that are not supportet
-#'   \item set some special variable values that the `requires`-expressions of
-#'     other parameters can use to specify that some parameters are only
-#'     relevant in the presence of certain data types.
+#'   \item set \dQuote{pseudoparameters}, which are some special variable
+#'     values that the `requires`-expressions of other parameters can use to
+#'     specify that some parameters are only relevant in the presence of
+#'     certain data types.
 #'   \item remove parameters that always take on a single value (maybe dependent
 #'     on a `requires` from the search space) and set them internally before
 #'     calling the wrapped model.
 #'   \itemize{
-#'     \item bonus: if the fixed parameter name contains a suffix of .AMLRFIX#,
+#'     \item bonus: if a parameter name contains a suffix of .AMLRFIX#,
 #'       where # is a number, it will be stripped from the parameter name. This
-#'       way it is possible to define alternative "defaults" for a parameter in
-#'       case of certain requirements being given.
+#'       way it is possible to define alternative ranges for a parameter,
+#'       depending on requirements.
 #'   }
 #' }
-#'
+#' 
+#' In the following, \dQuote{XXX} and \dQuote{YYY} will always be one of
+#' \dQuote{numerics}, \dQuote{ordereds}, \dQuote{factors}.
 #' The parameters that are introduced and exposed to the outside are:
 #' \itemize{
-#'   \item automlr.wrapper.XXX: which non-converting, non-imputing wrappers are
-#'     used, where XXX is one of \dQuote{numerics}, \dQuote{ordereds},
-#'     \dQuote{factors}. It has the format
+#'   \item automlr.convert: Whether to do any conversion of input data.
+#'   \item automlr.convert.XXX: Whether to convert input data of type
+#'     \dQuote{XXX}.
+#'   \item automlr.convert.XXX.to: What type to convert \dQuote{XXX}-typed
+#'     data into, if there is any choice.
+#'   \item automlr.wrapafterconvert.XXX: Whether to apply preprocessing wrapper
+#'     after conversion of data originally of type \dQuote{XXX}.
+#'   \item automlr.wconverting.XXX.to.YYY: Which conversion wrapper to use for
+#'     conversion of data from type \dQuote{XXX} to type \dQuote{YYY}.
+#'   \item automlr.impute: Whether to do imputation of missing values.
+#'   \item automlr.missing.indicators: Whether imputation is supposed to
+#'     introduce \dQuote{factor} typed missing indicator variables.
+#'   \item automlr.wimputing.XXX: Which imputation wrapper to use for
+#'     imputation of \dQuote{XXX}-typed data, if there is any choice.
+#'   \item automlr.preproc.XXX: Which  non-converting, non-imputing wrappers are
+#'     used for preprocessing, with values of the format
 #'     \code{outermostWrapper$wrapper...$wrapper$innermostwrapper}.
-#'   \item automlr.convert.XXX where XXX is one of
-#'     \dQuote{numerics}, \dQuote{ordereds}, \dQuote{factors}.
-#'     It controls whether one of the wrapper will be set up to convert the
-#'     property in question even if the underlying learner is able to use the
-#'     data type.
-#'    \itemize{
-#'      \item NOTE: this may or may not be sensible for the data type in
-#'        question and it is possible to set the respective value to FALSE via
-#'        setHyperPars() & exclude it from the search space. Who is AMExoWrapper
-#'        to decide?
-#'    }
-#'   \item automlr.convert.XXX.to is one of the two out of \dQuote{numerics},
-#'     \dQuote{ordereds}, \dQuote{factors} that is not XXX.
-#'   \item automlr.impute controls whether one wrapper will be imputing
-#'     data even if the underlying learner can handle missing data.
-#'   \item automlr.wconverting.XXX.to.YYY decides which converting wrapper
-#'     does the respective conversion, if more than one wrapper is in question.
-#'   \item automlr.wimputing.XXX where XXX is one of numerics, factors, ordered.
-#'     If more than one wrapper is present with the capability of imputing XXX
-#'     data, this parameter chooses which one wrapper is responsible
-#'     for it.
 #' }
 #'
 #' The following parameters can be used by wrappers and learners in their
 #' \code{$requires}-parameter; they will be replaced here:
 #' \itemize{
-#'   \item automlr.dummy: Only used by the imputing wrapper. This is
-#'     a \code{character(1)} with value \dQuote{no}, \dQuote{numerics}, or
-#'     \dQuote{factors}, indicating whether, and what kind of, dummy column
-#'     should be created.
-#'   \item automlr.has.XXX: May be used by all wrappers and all learners:
-#'     Indicates that the XXX type is present in the data, where XXX is one of
-#'     numerics, factors, ordered, missings.
+#'   \item automlr.missing.indicators: Should be used by the imputing wrapper.
+#'     Indicates whether imputation is supposed to introduce \dQuote{factor}
+#'     typed missing indicator variables.
+#'   \item automlr.has.XXX: May be used by learners:
+#'     Indicates that the \dQuote{XXX} type is present in the data.
+#'     Besides the types, mentioned above, \dQuote{XXX} may also be
+#'     \dQuote{missings}.
+#'   \item automlr.targettype: One of \dQuote{oneclass}, \dQuote{twoclass},
+#'     \dQuote{multiclass}.
 #' }
 #' @param modelmultiplexer [\code{ModelMultiplexer}]\cr
 #'   A modelmultiplexer object that should have a \code{$searchspace} slot.
@@ -100,8 +97,12 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
               simplify = FALSE)),
       makeParamSet(params = aux$wraperparams))
 
-  # automlr.hasXXX replaces the parameters that are external-only.
+  # automlr.has.XXX replaces the parameters that are external-only.
   propertiesReplace = aux$replaces
+  classlvlcount = min(3, length(taskdesc$class.levels))
+  targettype = c("oneclass", "twoclass", "multiclass")[classlvlcount]
+  propertiesReplace$automlr.targettype = targettype
+
   shadowparams = c(
       extractSubList(aux$wrapperparams, "id"),
       extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy),
@@ -402,47 +403,6 @@ substituteParamList = function(paramList, substitutions, maxCycles = 32) {
     }
   }
   stop("Too much recursion when replacing requirements")
-}
-
-makeLearnerPars = function(learnerPars) {
-  for (p in getParamIds(learnerPars)) {
-    if (!is.null(learnerPars$pars[[p]]$trafo) &&
-        learnerPars$pars[[p]]$type %in%
-        c("numeric", "numericvector", "integer", "integervector")) {
-      # there is a trafo --> need to change limits
-      if (is.null(learnerPars$pars[[p]]$amlr.origValues)) {
-        learnerPars$pars[[p]]$lower = -Inf
-        learnerPars$pars[[p]]$upper = Inf
-      } else {
-        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$amlr.origValues[1]
-        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$amlr.origValues[2]
-      }
-      # convert type to "numeric(vector)", since after trafo we are not sure
-      # it is still an int
-      learnerPars$pars[[p]]$type = switch(learnerPars$pars[[p]]$type,
-          integer = "numeric",
-          integervector = "numericvector",
-          learnerPars$pars[[p]]$type)
-    }
-    learnerPars$pars[[p]]$trafo = NULL
-    # as the things stand now we don't wrap setHyperPars and therefore all
-    # hyperpars need to be given to the train function. If this ever changes
-    # (and we e.g. call predictLearner() instead of predict(), and we wrap
-    # setHyperPars() also) we need to copy the $when property of the
-    # corresponding LearnerParam inside the modelmultiplexer object.
-    learnerPars$pars[[p]]$when = "train"
-    learnerPars$pars[[p]] = addClasses(learnerPars$pars[[p]], "LearnerParam")
-    # satisfying a weird constraint of mlr:
-    req = learnerPars$pars[[p]]$requires
-    if (!is.null(req) && is.expression(req)) {
-      if (length(req) == 1) {
-        learnerPars$pars[[p]]$requires = req[[1]]
-      } else {
-        learnerPars$pars[[p]]$requires = substitute(eval(x), list(x = req))
-      }
-    }
-  }
-  learnerPars
 }
 
 # check if any requirements do not actually depend on parameters any more, e.g.
