@@ -343,3 +343,21 @@ bwssPreprocs = function(wrappers) {
   }
 }
 
+# get the possible values of preprocessor-wrapper parameters
+# these are $-separated lists of names in the order the preprocessors are
+# applied.
+listWrapperCombinations = function(ids) {
+  combineNames = function(x) {
+    if (all(!duplicated(x))) {
+      paste(x, collapse = "$")
+    }
+  }
+  result = sapply(seq_along(ids), function(l) {
+        apply(expand.grid(rep(list(ids), l)), 1, combineNames)
+      })
+  # add "no wrappers" option. The empty string
+  # causes errors, however.
+  result = c("$", result)
+  unlist(result)
+}
+

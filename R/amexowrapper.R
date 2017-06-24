@@ -93,14 +93,17 @@
 makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
     canHandleX, allLearners) {
 
-  aux = buildSearchSpace(wrappers, missings, canHandleX, allLearners)
+  aux = buildWrapperSearchSpace(wrappers, missings, canHandleX, allLearners)
+
   completeSearchSpace = c(modelmultiplexer$searchspace,
-      aux$completeSearchSpace)
+      do.call(base::c, extractSubList(wrappers, "searchspace",
+              simplify = FALSE)),
+      makeParamSet(params = aux$wraperparams))
 
   # automlr.hasXXX replaces the parameters that are external-only.
   propertiesReplace = aux$replaces
   shadowparams = c(
-      aux$shadowparams,
+      extractSubList(aux$wrapperparams, "id"),
       extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy),
               completeSearchSpace$pars), "id"))
   # what's missing is removing the singleton parameters from the search space
@@ -239,185 +242,6 @@ setupLearnerParams = function(learner, staticParams, shadowparams, params) {
 #################################
 # Searchspace                   #
 #################################
-
-buildSearchSpace = function(wrappers, missings, canHandleX, allLearners) {
-  # Introduce `automlr.wrappersetup` (in case there are any wrappers present at
-  # all).
-  newparams = list()
-  
-  # Introduce other external parameters: automlr.remove.XXX and
-  # automlr.wremoving.XXX
-  allTypes = c("missings", "factors", "ordered", "numerics")
-  # removers maps type -> all wrappers that are able to remove the type
-  removers = list()
-  for (type in allTypes) {
-    if (type %nin% properties) {
-      next
-    }
-    for (w in names(wrappers)[extractSubList(wrappers, "required")]) {
-      if (type != "numerics" &&
-          any(c("numerics", "") %in% wrappers[[w]]$conversion(type))) {
-        # the wrapper can delete the covariate in question
-        removers[[type]] = c(removers[[type]], w)
-      }
-    }
-    if (length(removers[[type]]) == 0) {
-      next  # we can't remove the type at all
-    }
-    
-    # if there is at least one remover, we introduce the external parameter
-    # telling whether to remove. The requirement is that the active learner
-    # actually leaves a choice -- if it cannot handle the type to begin with,
-    # then the wrapper is obligated to remove the type anyways.
-    amlrRemoveName = paste0("automlr.remove.", type)
-    if (length(canHandleX[[type]]) > 0) {
-      if (setequal(allLearners, canHandleX[[type]])) {
-        # if all learners can handle the type, the variable is always valid.
-        requires = NULL
-      } else {
-        requires = substitute(selected.learner %in% x,
-            list(x = canHandleX[[type]]))
-      }
-      newparams %c=% list(makeLogicalParam(amlrRemoveName, requires = requires))
-    }
-      
-    # if there are at least two removers, we need to introduce another external
-    # parameter telling which wrapper should do the removing.
-    if (setequal(allLearners, canHandleX[[type]])) {
-      # need to do the silly ==TRUE thing bc the result isn't "call" class
-      # otherwise
-      requires = asQuoted(paste(amlrRemoveName, "== TRUE"))
-    } else if (length(canHandleX[[type]]) == 0) {
-      requires = NULL
-    } else {
-      requires = substitute(selected.learner %nin% x || amlrRemove,
-          list(x = canHandleX[[type]],
-              amlrRemove = asQuoted(amlrRemoveName)))
-    }
-    removingWrapperName = paste0("automlr.wremoving.", type)
-    newparams %c=% list(makeDiscreteParam(removingWrapperName,
-            removers[[type]], requires = requires))
-  }
-
-  # Manipulate the wrapper's search space
-  #  - substitute the pseudo variables (automlr.has.xxx, automlr.remove.xxx)
-  #    with expressions
-  #  - add the requirement that the wrapper is actually present
-
-# the empty string for building replaceList for nonwrappers
-  for (w in c(names(wrappers), "")) {
-    replaceList = list()
-    for (type in allTypes) {
-      if (type %nin% properties) {
-        replaceList[[paste0("automlr.has.", type)]] = FALSE
-        replaceList[[paste0("automlr.remove.", type)]] = FALSE
-        next
-      }
-      if (length(removers[[type]]) == 0)  {
-        # can not be deleted, therefore always present
-        replaceList[[paste0("automlr.has.", type)]] = TRUE
-        # by given constraint, no automlr.remove.XXX is present and therefore
-        # doesn't need to be replaced.
-        next
-      }
-      amlrRemoveQuote = asQuoted(paste0("automlr.remove.", type))
-      amlrWRemovingQuote = asQuoted(paste0("automlr.wremoving.", type))
-      
-      # ** substituting automlr.has.xxx here
-      # when is 'autmlr.has.XXX' true for a given wrapper?
-      #  - either the given learner can handle xxx AND xxx is not requested
-      #    removed by external variable
-      typeStaysPresentQuote = substitute(
-          selected.learner %in% canHandleDelendum && !amlrRemove,
-          list(canHandleDelendum = canHandleX[[type]],
-              amlrRemove = amlrRemoveQuote))
-      if (w != "") {
-        #  - OR this wrapper comes before the wrapper (or is the wrapper) that
-        #    removes xxx.
-        typeRemovedAfterwardQuote = substitute(
-            which(unlist(strsplit(automlr.wrappersetup, "$", TRUE)) ==
-                    thisWrapper) <=
-            which(unlist(strsplit(automlr.wrappersetup, "$", TRUE)) ==
-                    removingWrapper),
-            list(thisWrapper = w, removingWrapper = amlrWRemovingQuote))
-        replaceQuote = substitute(a || b, list(a = typeStaysPresentQuote,
-                b = typeRemovedAfterwardQuote))
-        replaceList[[paste0("automlr.has.", type)]] = replaceQuote
-        # ** substituting automlr.remove.xxx here
-        if (w %in% removers[[type]]) {
-          # only then this wrapper is allowed to use 'automlr.remove.xxx'
-            replaceQuote = substitute(!typeStaysPresent && wremoving == ownName,
-                    list(typeStaysPresent = typeStaysPresentQuote,
-                        wremoving = amlrWRemovingQuote, ownName = w))
-            replaceList[[paste0("automlr.remove.", type)]] = replaceQuote
-        }
-      } else {
-        replaceList[[paste0("automlr.has.", type)]] = typeStaysPresentQuote
-      }
-    }
-    if (w == "") {
-      next
-    }
-    for (parname in getParamIds(wrappers[[w]]$searchspace)) {
-      req = wrappers[[w]]$searchspace$pars[[parname]]$requires
-      if (is.null(req)) {
-        if (!wrappers[[w]]$required) {
-          wrappers[[w]]$searchspace$pars[[parname]]$requires = substitute(
-              thisWrapper %in%
-                  unlist(strsplit(automlr.wrappersetup, "$", TRUE)),
-              list(thisWrapper = w))
-        }
-      } else {
-        req = replaceRequires(req, replaceList)
-        if (!wrappers[[w]]$required) {
-          # For the wrappers that are not always present: need to add "wrapper
-          # is actually used" as a requirement.
-          req = substitute(
-              (thisWrapper %in%
-                    unlist(strsplit(automlr.wrappersetup, "$", TRUE))) &&
-                  restReq,
-              list(thisWrapper = w, restReq = deExpression(req)))
-        }
-        wrappers[[w]]$searchspace$pars[[parname]]$requires = req
-      }
-    }
-  }
-  
-  shadowparams = extractSubList(newparams, "id")
-  
-  if (length(wrappers)) {
-    wrapperSelectParam = makeDiscreteParam("automlr.wrappersetup",
-        listWrapperCombinations(
-            names(wrappers), unlist(extractSubList(wrappers, "required"))))
-    newparams %c=% list(wrapperSelectParam)
-  }
-  
-  # combine all the ParamSets we have seen now
-
-  completeSearchSpace = c(
-      do.call(base::c, extractSubList(wrappers, "searchspace",
-              simplify = FALSE)),
-      makeParamSet(params = newparams))
-
-  list(shadowparams = shadowparams,
-      completeSearchSpace = completeSearchSpace,
-      replaces = replaceList)
-}
-
-listWrapperCombinations = function(ids) {
-  combineNames = function(x) {
-    if (all(!duplicated(x))) {
-      paste(x, collapse = "$")
-    }
-  }
-  result = sapply(seq_along(ids), function(l) {
-        apply(expand.grid(rep(list(ids), l)), 1, combineNames)
-      })
-  # add "no wrappers" option. The empty string
-  # causes errors, however.
-  result = c("$", result)
-  unlist(result)
-}
 
 extractStaticParams = function(completeSearchSpace, presetStatics) {
   # How the substitution mechanism works:
