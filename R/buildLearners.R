@@ -67,7 +67,7 @@ buildLearners = function(searchspace, task, verbosity = 0) {
     wrapperList[[wl$name]] = wl
   }
 
-  reqs = getLearnerRequirements(wrapperList)
+  reqs = getLearnerRequirements(task, wrapperList)
 
   handlerList = list()
   for (i in seq_along(learners)) {
@@ -190,10 +190,11 @@ getLearnerRequirements = function(task, wrappers) {
   types = vcapply(data, function(x) class(x)[1])
   hasmissings = sapply(split(as.list(data), types),
       function(x) any(sapply(x, is.na)))
+  datamissings = hasmissings
   # hasmissings: logical with names "factors", "ordered", "numerics"
   assertLogical(hasmissings, any.missing = FALSE)
   assert(any(hasmissings) == taskdesc$has.missings)
-  assertSetEqual(names(types), featprops)
+  assertSetEqual(names(hasmissings), featprops)
   
   conv = list(factors = "factors", ordered = "ordered", numerics = "numerics")
   wrapperList = list()
@@ -225,7 +226,8 @@ getLearnerRequirements = function(task, wrappers) {
   list(
       featprops = featprops,
       conversion = conv,
-      presentprops = presentprops)
+      presentprops = presentprops,
+      datamissings = datamissings)
 }
 
 #' @title Turn learner id string into learner object, if necessary

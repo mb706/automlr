@@ -47,35 +47,34 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
 #' 
 #' @param name [\code{character(1)}]\cr
 #'   the name of the wrapper. Must not contain a \code{$} character.
-#' @param constructor [\code{function}]\cr
-#'   The function that will be called with the learner as a single argument and
-#'   construct another \code{Learner}.
+#' @param cpo [\code{CPO}]\cr
+#'   The cpo that will be attached to the learner and construct another
+#'   \code{Learner}.
 #' @param datatype [\code{character(1)}]\cr
-#'   The data this wrapper operates on. Even though the wrapper "sees" all the
-#'   data, it is expected that it only changes the data referenced.
+#'   The data this wrapper operates on.
 #' @param convertfrom [\code{character(1)} | \code{NULL}]\cr
 #'   If this wrapper converts data from one type to another, \dQuote{datatype}
 #'   must be the target type, and \dQuote{convertfrom} must be the source type.
 #'   If the wrapper is an imputing wrapper, \dQuote{convertfrom} must be
 #'   \dQuote{missings}, and \dQuote{datatype} must be the type of columns that
 #'   have their missings imputed. A given wrapper may only impute missings of
-#'   one column type.
+#'   one column type, even though it sees all columns.
 #'
 #' @export
-autoWrapper = function(name, constructor, datatype, convertfrom = NULL) {
+autoWrapper = function(name, cpo, datatype, convertfrom = NULL) {
   assertString(name)
   assert(identical(grep("$", name, fixed = TRUE), integer(0)))
-  assertFunction(constructor)
+  assertClass(cpo, "CPO")
   
   if (!is.null(convertfrom)) {
     assertChoice(convertfrom, c("factors", "ordered", "numerics", "missings"))
   }
   assertChoice(datatype, c("factors", "ordered", "numerics"))
-  
+  assert(!identical(convertfrom, datatype))
   
   makeS3Obj("AutoWrapper",
       name = name,
-      constructor = constructor,
+      cpo = cpo,
       is.imputer = identical(convertfrom, "missings"),
       is.converter = !is.null(convertfrom) && convertfrom != "missings",
       convertfrom = convertfrom,

@@ -9,7 +9,7 @@
 #' So what are we doing here?
 #' The AMExoWrapper mostly handles parameter space magic. Specifically, this is:
 #' \itemize{
-#'   \item introduce a parameter that chooses which wrapper is used, and in
+#'   \item introduce a parameter that chooses which wrappers are used, and in
 #'     which sequence
 #'   \item introduce parameters that control whether the wrapper(s) are used to
 #'     facilitate compatibility of learners with the data, i.e. remove missing
@@ -30,11 +30,13 @@
 #'
 #' The parameters that are introduced and exposed to the outside are:
 #' \itemize{
-#'   \item automlr.wrappersetup: which wrapper is used. It has the format
+#'   \item automlr.wrapper.XXX: which non-converting, non-imputing wrappers are
+#'     used, where XXX is one of \dQuote{numerics}, \dQuote{ordereds},
+#'     \dQuote{factors}. It has the format
 #'     \code{outermostWrapper$wrapper...$wrapper$innermostwrapper}.
-#'     TODO rewrite the following
-#'   \item automlr.convert.XXX where XXX is one of missings, factors, ordered.
-#'     It controls whether one of the wrapper will be set up to remove the
+#'   \item automlr.convert.XXX where XXX is one of
+#'     \dQuote{numerics}, \dQuote{ordereds}, \dQuote{factors}.
+#'     It controls whether one of the wrapper will be set up to convert the
 #'     property in question even if the underlying learner is able to use the
 #'     data type.
 #'    \itemize{
@@ -42,44 +44,43 @@
 #'        question and it is possible to set the respective value to FALSE via
 #'        setHyperPars() & exclude it from the search space. Who is AMExoWrapper
 #'        to decide?
-#'      \item NOTE2: Only wrappers marked as "requiredwrapper" can respond to
-#'        this; This is because otherwise the search space gets too confusing.
 #'    }
-#'   \item automlr.wremoving.XXX where XXX is one of missings, factors, ordered.
-#'     If more than one wrapper is present with the capability of removing XXX
-#'     from the data, this parameter chooses which one wrapper is responsible
-#'     for removing it.
+#'   \item automlr.convert.XXX.to is one of the two out of \dQuote{numerics},
+#'     \dQuote{ordereds}, \dQuote{factors} that is not XXX.
+#'   \item automlr.impute controls whether one wrapper will be imputing
+#'     data even if the underlying learner can handle missing data.
+#'   \item automlr.wconverting.XXX.to.YYY decides which converting wrapper
+#'     does the respective conversion, if more than one wrapper is in question.
+#'   \item automlr.wimputing.XXX where XXX is one of numerics, factors, ordered.
+#'     If more than one wrapper is present with the capability of imputing XXX
+#'     data, this parameter chooses which one wrapper is responsible
+#'     for it.
 #' }
 #'
 #' The following parameters can be used by wrappers and learners in their
 #' \code{$requires}-parameter; they will be replaced here:
 #' \itemize{
-#'   \item automlr.remove.XXX: Only used by wrappers, may only be used if the
-#'     respective \code{$conversion} is present. It indicates that this
-#'     wrapper is responsible for removing the XXX type. If XXX does not occurr
-#'     in the data, autmlr.remove.XXX is always FALSE.
+#'   \item automlr.dummy: Only used by the imputing wrapper. This is
+#'     a \code{character(1)} with value \dQuote{no}, \dQuote{numerics}, or
+#'     \dQuote{factors}, indicating whether, and what kind of, dummy column
+#'     should be created.
 #'   \item automlr.has.XXX: May be used by all wrappers and all learners:
-#'     Indicates that the XXX type is present in the data. Care is taken e.g.
-#'     that when wrapperA comes before wrapperB which comes before wrapperC, and
-#'     wrapperB removes missings, that inside wrapperA (and wrapperB) the value
-#'     of automlr.has.missings is TRUE, but for wrapperC (and all the learners)
-#'     automlr.has.missings evaluates to FALSE.
-#'   \item automlr.may.have.XXX: May be used by all wrappers: Indicates that the
-#'     XXX type may be generated from the data present at this stage. This is
-#'     because the attached learner can handle the data, or because a later
-#'     wrapper converts the data into something the learner can handle.
+#'     Indicates that the XXX type is present in the data, where XXX is one of
+#'     numerics, factors, ordered, missings.
 #' }
 #' @param modelmultiplexer [\code{ModelMultiplexer}]\cr
 #'   A modelmultiplexer object that should have a \code{$searchspace} slot.
 #' @param wrappers [\code{list}]\cr
-#'   A named list of wrappers that have a \code{$required} element; names must
-#'   not contain \code{$}-character. Also: \code{$conversion},
-#'   \code{$searchspace}, \code{$constructor}.
-#' @param taskdesc [\code{TaskDesc}]\cr
-#'   The taskDesc object of the task for which to build the learner.
+#'   A named list of wrappers. Names must not contain \code{$}-character.
+#' @param taskDesc [\code{TaskDesc}]\cr
+#'   The \dQuote{TaskDesc} object of the task to be optimized over.
+#' @param missings [\code{logical}]\cr
+#'   A logical, with names according to the \emph{present} feature data types
+#'   (a subset of numerics, factors, ordered) indicating whether the columns
+#'   in question have any missing values.
 #' @param canHandleX [\code{list}]\cr
-#'   A named list that maps "missings", "factors", and "ordered" to a vector of
-#'   learner names that can handle the respective data.
+#'   A named list that maps "missings", "numerics", "factors", and "ordered"
+#'   to a vector of learner names that can handle the respective data.
 #' @param allLearners [\code{character}]\cr
 #'   The list of all learner names.
 #' 
@@ -89,17 +90,10 @@
 #' 
 #' The slot \code{$searchspace} should be used as \code{ParamSet} to tune
 #' parameters over.
-makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, canHandleX,
-    allLearners) {
+makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
+    canHandleX, allLearners) {
 
-  presentprops = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
-      if (taskdesc$has.missings) "missings")
-
-  classlvlcount = min(3, length(taskdesc$class.levels))
-  properties = c(c("oneclass", "twoclass", "multiclass")[classlvlcount],
-      presentprops)
-
-  aux = buildSearchSpace(wrappers, presentprops, canHandleX, allLearners)
+  aux = buildSearchSpace(wrappers, missings, canHandleX, allLearners)
   completeSearchSpace = c(modelmultiplexer$searchspace,
       aux$completeSearchSpace)
 
@@ -142,6 +136,11 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, canHandleX,
   
   visibleHyperIndex = names(getHyperPars(modelmultiplexer)) %in%
       getParamIds(learnerPars)
+  
+  properties = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
+      if (taskdesc$has.missings) "missings")
+  classlvlcount = min(3, length(taskdesc$class.levels))
+  properties %c=% c("oneclass", "twoclass", "multiclass")[classlvlcount]
 
   learner = wrapLearner("AMExoWrapper", "amlr", "automlrlearner",
       learner = modelmultiplexer,
@@ -241,7 +240,325 @@ setupLearnerParams = function(learner, staticParams, shadowparams, params) {
 # Searchspace                   #
 #################################
 
-buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
+# Take the list of wrappers, a vector named by feature types indicating whether
+# they have missings or not, the list of learner names by feature types /
+# missings they can handle, and the list of all learners.
+# return the set of "shadow" parameters which control wrapper behaviour,
+# and the list of psuedoparameter replacements.
+buildSearchSpace = function(wrappers, missings, canHandleX, allLearners) {
+  
+  outparams = list()
+  allTypes = c("factors", "ordered", "numerics")
+  
+  
+  cwrappers = wrappers[extractSubList(wrappers, "is.converter")]
+  
+  types.present = names(missings)
+  converters = list()  # a list source -> destination -> converternames
+  for (type in types.present) {
+    converters[[type]] = list()
+  }
+  for (cw in cwrappers) {
+    converters[[cw$convertfrom]][[cw$datatype]] %c=% cw$name
+  }
+  can.convert = as.logical(length(cwrappers))
+  
+  imputers = lapply(missings, function(x) character(0))
+  iwrappers = wrappers[extractSubList(wrappers, "is.imputer")]
+  for (iw in iwrappers) {
+    imputers[[iw$datatype]] %c=% iw$name
+  }
+  can.impute = all(sapply(imputers[missings], length))
+  can.convert.before.impute = all(sapply(imputers, length))
+  
+  ppwrappers = wrappers[(!extractSubList(wrappers, "is.imputer")) &
+          (!extractSubList(wrappers, "is.converter"))]
+  preprocs = list()
+  for (pw in ppwrappers) {
+    preprocs[[pw$datatype]] %c=% pw$name
+  }
+
+  # missings does not have all names, only the names of types that are actually
+  # present.
+  dtMissingBeforeConv = sapply(allTypes,
+      function(x) isTRUE(as.list(missings)[[x]]))
+
+  # return something like quote(selected.learner %in% canHandleX[[type]])
+  # but use TRUE of FALSE if this is always TRUE / FALSE.
+  learnerCanHandleQuote = function(type) {
+    if (setequal(allLearners, canHandleX[[type]])) {
+      TRUE
+    } else if (!length(canHandleX[[type]])) {
+      FALSE
+    } else {
+      substitute(selected.learner %in% x, list(x = canHandleX[[type]]))
+    }
+  }
+
+  `%&&%` = function(a, b) {
+    if (isTRUE(a)) {
+      return(b)
+    }
+    if (isFALSE(a) || isFALSE(b)) {
+      return(FALSE)
+    }
+    if (isTRUE(b)) {
+      return(a)
+    }
+    substitute(((a) && (b)), list(a = a, b = b))
+  }
+
+  `%||%` = function(a, b) {
+    if (isFALSE(a)) {
+      return(b)
+    }
+    if (isTRUE(a) || isTRUE(b)) {
+      return(TRUE)
+    }
+    if (isFALSE(b)) {
+      return(a)
+    }
+    substitute(((a) || (b)), list(a = a, b = b))
+  }
+
+  qNot = function(a) {
+    if (isFALSE(a)) {
+      TRUE
+    } else if (isTRUE(a)) {
+      FALSE
+    } else {
+      substitute((!(a)), list(a = a))
+    }
+  }
+
+  # call this as in 'makeParam(..., requires = setReq(requirement))`
+  setReq = function(r) {
+    if (isTRUE(r)) {
+      NULL
+    } else if (class(r) != "call") {
+      force(r)
+      substitute(identity(r))
+    } else {
+      r
+    }
+  }
+
+  # get a parameter's 'requires' or TRUE if no requires present.
+  getReq = function(r) {
+    req = r$requires
+    if (is.null(req)) {
+      TRUE
+    } else {
+      req
+    }
+  }
+  
+  # make a logical param which only appears when both 'alwaysTrueReq'
+  # and 'alwaysFalseReq' are FALSE. Otherwise, use AMLRFIX-magic to
+  # set the parameter to TRUE / FALSE, depending on the requirements.
+  # assumes alwaysTrueReq and alwaysFalseReq are mutually exclusive.
+  makeLParam0Req = function(id, alwaysTrueReq, alwaysFalseReq) {
+    list(
+        makeLogicalParam(id, requires = setReq(
+                qNot(alwaysTrueReq) %&&% qNot(alwaysFalseReq))),
+        makeDiscreteParam(paste0(id, ".AMLRFIX1"),
+                values = list(`TRUE` = TRUE),
+                requires = setReq(alwaysTrueReq)),
+        makeDiscreteParam(paste0(id, ".AMLRFIX2"),
+                values = list(`FALSE` = FALSE),
+                requires = setReq(alwaysFalseReq)))
+  }
+
+  # ----------------------------
+  # automlr.impute parameters
+  # ----------------------------
+  imputeparam = "automlr.impute"
+  outparams %c=% makeLParam0Req(imputeparam,
+      can.impute %&&% qNot(learnerCanHandleQuote("missings")),
+      !can.impute)
+  
+  miparam = "automlr.missing.indicators"
+  dtPresentBeforeConv = sapply(allTypes, function(x) x %in% types.present,
+      simplify = FALSE)
+  dtPresentBeforeConv$factors = dtPresentBeforeConv$factors %||%
+      asQuoted(miparam)
+
+  # ----------------------------
+  # automlr.convert.X parameters
+  # ----------------------------
+
+  convertanyparam = "automlr.convert"
+  outparams %c=% makeLParam0Req(convertanyparam, FALSE, !can.convert)
+
+  convparnames = list()  # type -> parname of automlr.convert.
+  convtargetnames = list()  # type -> parname of automlr.convert.X.to
+  for (type in allTypes) {
+    eligible.targets = Filter(function(totype) {
+          (totype != type) &&  # no identity conversion
+          (length(converters[[type]][[totype]]))  # only if converters exist
+    }, allTypes)
+
+    convparamname = sprintf("automlr.convert.%s", type)
+    convparnames[[type]] = convparamname
+
+    req = convertanyparam %&&%
+        Reduce(`%||%`, lapply(eligible.targets, learnerCanHandleQuote), FALSE)
+    
+    if (type == "factors") {
+      mayproducefactors = learnerCanHandleQuote(type) %||% req
+      outparams %c=% makeLParam0Req(miparam, FALSE,
+          !(any(missings) %&&% mayproducefactors))
+    }
+    
+    req = dtPresentBeforeConv[[type]] %&&% req
+
+    outparams %c=% makeLParam0Req(convparamname,
+        qNot(learnerCanHandleQuote(type)) %&&% req,
+        qNot(req))
+
+    if (length(eligible.targets) > 1) {
+      convtargetpname = sprintf("automlr.convert.%s.to", type)
+      convtargetnames[[type]] = convtargetpname
+      req = Reduce(`%&&%`, lapply(eligible.targets, learnerCanHandleQuote),
+          TRUE) %&&% asQuoted(convparamname)
+      outparams %c=% list(makeDiscreteParam(convtargetpname,
+              values = eligible.targets, requires = setReq(req)))
+    }
+    for (totype in eligible.targets) {
+      index = which(totype == eligible.targets)
+      other.targets = setdiff(eligible.targets, totype)
+
+      # it is possible and easy to handle the case where there are more than
+      # three types (and hence more than 2 eligible.targets), but the following
+      # would need to change for that.
+      assert(length(other.targets) <= 1)
+      
+      if (length(other.targets)) {
+        is.only.conv = qNot(learnerCanHandleQuote(other.targets))
+      } else {
+        is.only.conv = TRUE
+      }
+
+      pname = sprintf("automlr.convert.%s.to.AMLRFIX%d", type, index)
+      # dropping getReq(convparam) %&&% ..., because (A || B) && B == B.
+      req = learnerCanHandleQuote(totype) %&&% is.only.conv %&&%
+          asQuoted(convparamname)
+      outparams %c=% list(makeDiscreteParam(pname, values = totype,
+              requires = setReq(req)))
+
+      pname = sprintf("automlr.wconverting.%s.to.%s", type, totype)
+      req = learnerCanHandleQuote(totype) %&&% asQuoted(convparamname) %&&%
+          substitute(a == b, list(
+                  a = asQuoted(convtargetpname),
+                  b = totype))
+      outparams %c=% list(makeDiscreteParam(pname,
+              values = converters[[type]][[totype]], requires = setReq(req)))
+    }
+  }
+
+  # -------------------------------
+  # automlr.convert.before.impute
+  # -------------------------------
+
+  # 'automlr.convert.before.impute is only available if:
+  # - can.convert.after.impute
+  # - at least one convert param is TRUE
+  #   - which means, the convert param's requirements must also be TRUE
+  # - imputeparam is TRUE
+  cbiReq = can.convert.after.impute %&&% asQuoted(imputeparam) %&&%
+      Reduce(`||`, lapply(convparnames, asQuoted))
+
+  cbiparam = "automlr.convert.before.impute"
+  outparams %c=% makeLParam0Req(cbiparam, FALSE, qNot(cbiReq))
+  
+  # -------------------------------
+  # automlr.wrapafterconvert.XXX
+  # -------------------------------
+  
+  wrapagain = list()
+  for (type in allTypes) {
+    wrapagainname = sprintf("automlr.wrapafterconvert.%s", type)
+    outparams %c=% makeLParam0Req(wrapagainname,
+        asQuoted(cbiparam) %&&% asQuoted(convparnames[[type]]),
+        !asQuoted(convparnames[[type]]))
+    wrapagain$type = asQuoted(wrapagainname)
+  }
+
+  # -------------------------------
+  # check whether data type present
+  # -------------------------------
+
+  # take a list of truth values indexed by type, giving the state of something
+  # (presence, missingness) before conversion. This function generates the
+  # expression that gives the respective state *after* conversion.
+  transformProposition = function(proplist) {
+    sapply(allTypes, function(totype) {
+          noconversion = proplist[[totype]] %&&%
+              qNot(asQuoted(convparnames[[totype]]))
+          conversion = Reduce(`||`, lapply(setdiff(allTypes, totype)),
+              function(fromtype) {
+                proplist[[fromtype]] %&&%
+                    asQuoted(convparnames[[fromtype]]) %&&%
+                    substitute(a == b, list(
+                            a = asQuoted(convtargetnames[[fromtype]]),
+                            b = totype))
+              }, FALSE)
+          noconversion %||% conversion
+        }, simplify = FALSE)
+  }
+
+  # dtPresentAfterConv[[type]] is TRUE whenever 'type' data is present
+  #   after conversion.
+  
+  dtPresentAfterConv = transformProposition(dtPresentBeforeConv)
+  
+  # dtMissingAfterConv: similar
+  dtMissingAfterConv = transformProposition(dtMissingBeforeConv)
+  
+  # dtWrap[[type]] is TRUE whenever wrapping is supposed to happen.
+  dtWrap = sapply(allTypes, function(type) {
+        (qNot(asQuoted(cbiparam)) %&&% dtPresentBeforeConv[[type]]) %||%
+            transformProposition(wrapagain)[[type]]
+      }, simplify = FALSE)
+
+  # -------------------------------
+  # automlr.wimputing.XXX
+  # -------------------------------
+
+  for (type in allTypes) {
+    if (!length(imputers[[type]])) {
+      next
+    }
+    wimputingname = sprintf("automlr.wimputing.%s", type)
+    wimpreq = (qNot(asQuoted(cbiparam)) %&&% dtMissingBeforeConv[[type]]) %||%
+        (asQuoted(cbiparam) %&&% dtMissingAfterConv[[type]])
+    outparams %c=% makeDiscreteParam(wimputingname, values = imputers[[type]],
+        requires = setReq(asQuoted(imputeparam) %&&% wimpreq))
+  }
+
+  # -------------------------------
+  # automlr.preproc.XXX
+  # -------------------------------
+  
+  for (type in allTypes) {
+    ppname = sprintf("automlr.preproc.%s", type)
+    outparams %c=% makeDiscreteParam(ppname,
+        values = listWrapperCombinations(preprocs[[type]]),
+        requires = setReq(dtWrap[[type]]))
+    outparams %c=% makeDiscreteParam(paste0(ppname, ".AMLRFIX1"),
+        values = "$", requires = setReq(qNot(dtWrap[[type]])))
+  }
+  
+  replacelist = dtPresentAfterConv
+  names(replacelist) = paste0("automlr.has.", names(replacelist))
+  replacelist$automlr.has.missings = any(missings) %&&%
+      qNot(asQuoted(imputeparam))
+  
+  list(wrapperparams = outparams,
+      replaces = replacelist)
+}
+
+buildSearchSpace = function(wrappers, missings, canHandleX, allLearners) {
   # Introduce `automlr.wrappersetup` (in case there are any wrappers present at
   # all).
   newparams = list()
@@ -405,21 +722,18 @@ buildSearchSpace = function(wrappers, properties, canHandleX, allLearners) {
       replaces = replaceList)
 }
 
-listWrapperCombinations = function(ids, required) {
+listWrapperCombinations = function(ids) {
   combineNames = function(x) {
-    if (all(requiredIDs %in% x) && all(!duplicated(x))) {
+    if (all(!duplicated(x))) {
       paste(x, collapse = "$")
     }
   }
-  requiredIDs = ids[required]
   result = sapply(seq_along(ids), function(l) {
         apply(expand.grid(rep(list(ids), l)), 1, combineNames)
       })
-  if (all(!required)) {
-    # all wrappers are optional --> add "no wrappers" option. The empty string
-    # causes errors, however.
-    result = c("$", result)
-  }
+  # add "no wrappers" option. The empty string
+  # causes errors, however.
+  result = c("$", result)
   unlist(result)
 }
 
@@ -468,7 +782,6 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
     curpar = completeSearchSpace$pars[[param]]
     parid = removeAmlrfix(curpar$id)
     leaf = paste0(parid, ".AMLRFINAL")
-    # TODO: is .AMLRFIX be non-fix allowed?
     if ((curpar$type %in% c("discrete", "discretevector") &&
           length(curpar$values) == 1) ||  # this is a 'fixed' value
         (curpar$type %in%
