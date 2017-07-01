@@ -81,6 +81,7 @@ Collate:
     'automlr.R'
     'buildLearners.R'
     'buildSearchspace.R'
+    'buildWrapperSearchspace.R'
     'failImputationWrapper.R'
     'optDummy.R'
     'optGeneric.R'

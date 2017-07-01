@@ -294,7 +294,7 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
         next
       }
       cprequires = replaceRequires(cprequires, substitution)
-      newrequires = substitute(a && b,
+      newrequires = substitute((a) && (b),
           list(a = newrequires, b = cprequires))
       # at this position, newrequires has the form
       # (new requires) && (old requires)

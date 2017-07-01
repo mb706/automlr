@@ -7,6 +7,7 @@
 buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
     allLearners) {
   outparams = list()
+  wrapparams = makeParamSet()
   allTypes = c("factors", "ordered", "numerics")
   
   types.present = names(missings)
@@ -169,6 +170,13 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
                   b = totype))
       outparams %c=% list(makeDiscreteParam(pname,
               values = converters[[type]][[totype]], requires = setReq(req)))
+      
+      # Add the relevant wrapper's parameters to the exported param se
+      # with the right conditionals.
+      for (cname in converters[[type]][[totype]]) {
+        wrapparams %c=% addParamSetSelectorCondition(
+            wrappers[[cname]]$searchspace, pname, cname)
+      }
     }
   }
   
@@ -209,6 +217,10 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
     outparams %c=% makeDiscreteParam(wimpnames[[type]],
         values = imputers[[type]],
         requires = setReq(asQuoted(imputeparam) %&&% wimpreq))
+    for (iname in imputers[[type]]) {
+      wrapparams %c=% addParamSetSelectorCondition(
+          wrappers[[iname]]$searchspace, wimpnames[[type]], iname)
+    }
   }
   
   # -------------------------------
@@ -222,6 +234,11 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
         requires = setReq(dtWrap[[type]]))
     outparams %c=% makeDiscreteParam(paste0(ppname, ".AMLRFIX1"),
         values = "$", requires = setReq(qNot(dtWrap[[type]])))
+    for (pname in preprocs[[type]]) {
+      wrapparams %c=% addParamSetCondition(wrappers[[pname]]$searchspace,
+          substitute(b %in% strsplit(a, "$", fixed = TRUE)[[1]],
+              list(a = asQuoted(ppname), b = pname)))
+    }
   }
   
   replacelist = dtPresentAfterConv
@@ -229,7 +246,7 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   replacelist$automlr.has.missings = any(missings) %&&%
       qNot(asQuoted(imputeparam))
   
-  list(wrapperparams = outparams,
+  list(wrapperparams = c(wrapparams, makeParamSet(params = outparams)),
       replaces = replacelist)
 }
 
@@ -360,4 +377,32 @@ listWrapperCombinations = function(ids) {
   result = c("$", result)
   unlist(result)
 }
+
+#################################
+# Wrapper ParamSets             #
+#################################
+
+# modify the ParamSet so that every element has an additional condition
+# added to its requirements.
+addParamSetCondition = function(ps, cond) {
+  for (n in names(ps$pars)) {
+    if (is.null(ps$pars[[n]]$requires)) {
+      ps$pars[[n]]$requires = cond
+    } else {
+      ps$pars[[n]]$requires = substitute((a) && (b), list(
+              a = cond, b = ps$pars[[n]]$requires))
+    }
+  }
+  ps
+}
+
+# modify the ParamSet so that every element has the additional condition of
+# the parameter 'selector' equaling 'selectand'. This is used when wrapper
+# parameters depend on a wrapper selector actually selecting that wrapper to
+# have an effect.
+addParamSetSelectorCondition = function(ps, selector, selectand) {
+  addParamSetCondition(ps, substitute(x == y, list(x = asQuoted(selector),
+              y = selectand)))
+}
+
 

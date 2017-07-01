@@ -20,9 +20,9 @@
 #' @param hardKillInterval [\code{numeric(1)}]\cr
 #'   The interval (in seconds) in which a second Ctrl-C press after a first one
 #'   will kill the run regardless. Ctrl-C presses are only evaluated within
-#'   \code{\link{handleInterrupts}} calls; therefore this value is a minimum, the
-#'   maximum being the time interval between exiting one \code{handleInterrupts}
-#'   call and entering the next one.
+#'   \code{\link{handleInterrupts}} calls; therefore this value is a minimum,
+#'   the maximum being the time interval between exiting one
+#'   \code{handleInterrupts} call and entering the next one.
 #'
 #' @return [\code{any}]
 #' The result of the evaluation of \code{expr}.

@@ -92,10 +92,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
 
   aux = buildWrapperSearchSpace(wrappers, missings, canHandleX, allLearners)
 
-  completeSearchSpace = c(modelmultiplexer$searchspace,
-      do.call(base::c, extractSubList(wrappers, "searchspace",
-              simplify = FALSE)),
-      makeParamSet(params = aux$wraperparams))
+  completeSearchSpace = c(modelmultiplexer$searchspace, aux$wrapperps)
 
   # automlr.has.XXX replaces the parameters that are external-only.
   propertiesReplace = aux$replaces
@@ -126,10 +123,11 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
       finalSubstitutions)
   staticParams = substituteParamList(staticParams, substitutions)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
-  # shadowparams are supposed to be only visible on the outside.
-  # automlr.wrappersetup is handled separately.
-  staticParams[extractSubList(staticParams, "id") %in%
-          c("automlr.wrappersetup", shadowparams)] = NULL
+
+#  # shadowparams are supposed to be only visible on the outside.
+#  # automlr.wrappersetup is handled separately.
+#  staticParams[extractSubList(staticParams, "id") %in%
+#          c("automlr.wrappersetup", shadowparams)] = NULL
   
   completeSearchSpace = simplifyRequirements(completeSearchSpace)
 
@@ -147,7 +145,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
   properties %c=% c("oneclass", "twoclass", "multiclass")[classlvlcount]
 
   learner = wrapLearner("AMExoWrapper", "amlr", "automlrlearner",
-      learner = modelmultiplexer,
+      learner = removeHyperPars(modelmultiplexer,
+          setdiff(getHyperPars(modelmultiplexer), getParamIds(learnerPars))),
       type = taskdesc$type,
       properties = properties,
       par.set = learnerPars,
@@ -168,21 +167,20 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
 # Learner Interface             #
 #################################
 
+buildAMExoWrapped = function(learner, args, wrappers, shadowparams) {
+  
+}
+
 #' @export
 trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
     automlr.wrappersetup, ...) {
   # train selected learner model and remove prefix from its param settings
   learner = .learner$learner
-  
-  sl = list(...)$selected.learner
-  if (is.null(sl)) {
-    slIndex = which("selected.learner" ==
-            extractSubList(.learner$staticParams, "id"))
-    assert(length(slIndex) == 1)
-    sl = .learner$staticParams[[slIndex]]$value
-  }
+
+  args = getEffectiveHyperPars(learner, .learner$staticParams, list(...))
+
+  sl = args$selected.learner
   learner$properties = learner$base.learners[[sl]]$properties
-  
 
   if (length(.learner$wrappers) > 0) {
     if (length(.learner$wrappers) == 1) {
@@ -211,7 +209,9 @@ predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   NextMethod("predictLearner")
 }
 
-setupLearnerParams = function(learner, staticParams, shadowparams, params) {
+# collect hyperparameters from 'staticParams', the given parameters, and the
+# 
+getEffectiveHyperPars = function(learner, staticParams, params) {
   pnames = names(params)
   envir = insert(getHyperPars(learner), params)
   for (fp in staticParams) {
@@ -236,8 +236,7 @@ setupLearnerParams = function(learner, staticParams, shadowparams, params) {
       params[[p]] = NULL
     }
   }
-  params[c("automlr.wrappersetup", shadowparams)] = NULL
-  setHyperPars(learner, par.vals = params)
+  params
 }
 
 #################################
