@@ -167,10 +167,6 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
 # Learner Interface             #
 #################################
 
-buildAMExoWrapped = function(learner, args, wrappers, shadowparams) {
-  
-}
-
 #' @export
 trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
     automlr.wrappersetup, ...) {
@@ -182,31 +178,14 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   sl = args$selected.learner
   learner$properties = learner$base.learners[[sl]]$properties
 
-  if (length(.learner$wrappers) > 0) {
-    if (length(.learner$wrappers) == 1) {
-      # in this case automlr.wrappersetup will be *missing*.
-      automlr.wrappersetup = names(.learner$wrappers)
-    }
-    for (w in rev(unlist(strsplit(automlr.wrappersetup, "$", TRUE)))) {
-      learner = .learner$wrappers[[w]](learner)
-    }
-  } else {
-    automlr.wrappersetup = "$"
-  }
-  learner = setupLearnerParams(learner, .learner$staticParams,
-      .learner$shadowparams, list(automlr.wrappersetup = automlr.wrappersetup,
-          ...))
+  learner = buildCPO(args, .learner$wrappers) %>>% learner
+  
+  learner = setHyperPars(learner,
+      par.vals = dropNamed(args, .learner$shadowparams))
 
-  .learner$learner = learner
+  .learner$learner = learner  # respect automlrWrappedLearner interface
 
   NextMethod("trainLearner")
-}
-
-#' @export
-predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
-  on.exit(quickSuspendInterrupts(unpatchMlr()), add = TRUE)
-  patchMlrPredict()
-  NextMethod("predictLearner")
 }
 
 # collect hyperparameters from 'staticParams', the given parameters, and the
