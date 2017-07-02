@@ -66,11 +66,24 @@ autoWrapper = function(name, cpo, datatype, convertfrom = NULL) {
   assert(identical(grep("$", name, fixed = TRUE), integer(0)))
   assertClass(cpo, "CPO")
   
+  cpoprops = getCPOProperties(cpo)
+  
   if (!is.null(convertfrom)) {
     assertChoice(convertfrom, c("factors", "ordered", "numerics", "missings"))
+    assertChoice(convertfrom, cpoprops$properties.adding)
+    if (convertfrom != "missings") {
+      assert(datatype == cpoprops$properties.needed)
+    }
+  } else {
+    assertChoice(datatype, cpoprops$properties)
+  }
+  if (is.null(convertfrom) || convertfrom == "missings") {
+    assert(length(cpoprops$properties.needed) == 0)
   }
   assertChoice(datatype, c("factors", "ordered", "numerics"))
   assert(!identical(convertfrom, datatype))
+  
+  
   
   makeS3Obj("AutoWrapper",
       name = name,
