@@ -80,6 +80,8 @@
 #'   to a vector of learner names that can handle the respective data.
 #' @param allLearners [\code{character}]\cr
 #'   The list of all learner names.
+#' @param modelTuneParsets [\code{list} of \code{ParamSet}]\cr
+#'   List of each learner's ParamSet, indexed by learner ID.
 #' 
 #' @return [\code{AMExoWrapper}]
 #' A \code{Learner} that incorporates the wrappers and learners suitable for mlr
@@ -88,9 +90,11 @@
 #' The slot \code{$searchspace} should be used as \code{ParamSet} to tune
 #' parameters over.
 makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
-    canHandleX, allLearners) {
+    canHandleX, allLearners, modelTuneParsets) {
 
   aux = buildWrapperSearchSpace(wrappers, missings, canHandleX, allLearners)
+  
+  wrapperparnames = getParamIds(aux$wrapperps)
 
   completeSearchSpace = c(modelmultiplexer$searchspace, aux$wrapperps)
 
@@ -99,6 +103,24 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
   classlvlcount = min(3, length(taskdesc$class.levels))
   targettype = c("oneclass", "twoclass", "multiclass")[classlvlcount]
   propertiesReplace$automlr.targettype = targettype
+
+  # all the transformations that need to be done before training, but after
+  # the exact data is available.
+  expressiontrafos = filterNull(extractSubList(completeSearchSpace$pars,
+          "amlr.expressionTrafo", simplify = FALSE))
+  fulltps = modelTuneParsets
+  # a list 'param name' => 'which learner it belongs to'
+  learners.by.params = list()
+  for (l in names(fulltps)) {
+    fullpnames = paste(l, getParamIds(fulltps[[l]]), sep = ".")
+    learners.by.params[fullpnames] = l
+  }
+  # a list 'learner param' => 'collection of param names in the same learner'
+  epsources = sapply(names(expressiontrafos), function(n) {
+        l = learners.by.params[[n]]
+        assert(!is.null(l))
+        getParamIds(fulltps[[l]])
+      }, simplify = FALSE)
 
   shadowparams = c(
       extractSubList(aux$wrapperparams, "id"),
@@ -109,7 +131,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
   # Easy to forget: parameters set for the modelmultiplexer via setHyperPars,
   # but not visible externally, also need to be treated like this.
   
-  aux = extractStaticParams(completeSearchSpace, getHyperPars(modelmultiplexer))
+  aux = extractStaticParams(completeSearchSpace)
   staticParams = aux$staticParams
   substitutions = aux$substitutions
   finalSubstitutions = c(aux$finalSubstitutions, propertiesReplace)
@@ -123,6 +145,11 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
       finalSubstitutions)
   staticParams = substituteParamList(staticParams, substitutions)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
+  
+  # dependency on parameters with expression bounds is forbidden.
+  badreqs = names(expressiontrafos)
+  checkBadreqs(completeSearchSpace$pars, badreqs)
+  checkBadreqs(staticParams, badreqs)
 
 #  # shadowparams are supposed to be only visible on the outside.
 #  # automlr.wrappersetup is handled separately.
@@ -160,6 +187,11 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
   learner$fix.factors.prediction = TRUE
   learner$wrappers = extractSubList(wrappers, "constructor")
   learner$shadowparams = shadowparams
+  learner$wrapperparnames = wrapperparnames
+  
+  learner$expressiontrafos = expressiontrafos
+  learner$epsources = epsources
+  learner$learners.by.params = learners.by.params
   learner
 }
 
@@ -175,11 +207,21 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
 
   args = getEffectiveHyperPars(learner, .learner$staticParams, list(...))
 
+  wrapperargs = args[names(args) %in% c(.learner$wrapperparnames,
+          .learner$shadowparams)]
+  
+  args = args[names(args) %nin% .learner$wrapperparnames]
+
+  .task = .task %>>% buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers)
+
+  args = applyExpressionBoundTrafos(args, .learner$expressiontrafos,
+      .learner$epsources, .learner$learners.by.params, .task)
+
+  args = handleAmlrfix(args)
+
   sl = args$selected.learner
   learner$properties = learner$base.learners[[sl]]$properties
 
-  learner = buildCPO(args, .learner$wrappers) %>>% learner
-  
   learner = setHyperPars(learner,
       par.vals = dropNamed(args, .learner$shadowparams))
 
@@ -203,6 +245,11 @@ getEffectiveHyperPars = function(learner, staticParams, params) {
       params[[fp$id]] = fp$value
     }
   }
+  params
+}
+
+handleAmlrfix = function(params) {
+  pnames = names(params)
   for (p in pnames) {
     tp = removeAmlrfix(p)
     if (tp != p) {
@@ -218,11 +265,27 @@ getEffectiveHyperPars = function(learner, staticParams, params) {
   params
 }
 
+applyExpressionBoundTrafos = function(args, expressiontrafos, epsources,
+    learners.by.params, task) {
+  pvs = handleAmlrfix(args)
+  
+  tohandle = intersect(names(expressiontrafos), names(args))
+  env0 = list(n = getTaskSize(task), p = length(getTaskFeatureNames(task)))
+  for (th in tohandle) {
+    sources = epsources[[th]]
+    lname = learners.by.params[[th]]
+    sl = setNames(args[paste(lname, sources, sep = ".")],
+        paste0("PARAM.", sources))
+    args[[th]] = expressiontrafos[[th]](args[[th]], c(env0, sl))
+  }
+  args
+}
+
 #################################
 # Searchspace                   #
 #################################
 
-extractStaticParams = function(completeSearchSpace, presetStatics) {
+extractStaticParams = function(completeSearchSpace) {
   # How the substitution mechanism works:
   # There are two distinct problems that this is supposed to solve:
   # 1) Some parameters have different feasible regions depending on other
@@ -257,12 +320,11 @@ extractStaticParams = function(completeSearchSpace, presetStatics) {
   #
 
   # all parameters that have only a single value
-  staticParams = lapply(names(presetStatics), function(n)
-        list(id = n, value = presetStatics[[n]], requires = NULL))
+  staticParams = list()
   # substitution that will be used instead of the param inside of other
   # parameter's $requires.
   substitutions = list()
-  finalSubstitutions = presetStatics
+  finalSubstitutions = list()
   for (param in getParamIds(completeSearchSpace)) {
     curpar = completeSearchSpace$pars[[param]]
     parid = removeAmlrfix(curpar$id)
@@ -369,9 +431,8 @@ substituteParamList = function(paramList, substitutions, maxCycles = 32) {
     for (pid in seq_along(paramList)) {
       req = paramList[[pid]]$requires
       if (!is.null(req)) {
-        preReplace = as.expression(req)
         paramList[[pid]]$requires = replaceRequires(req, substitutions)
-        if (!identical(paramList[[pid]]$requires, preReplace)) {
+        if (!identical(paramList[[pid]]$requires, req)) {
           dirty = TRUE
         }
       }
@@ -381,6 +442,21 @@ substituteParamList = function(paramList, substitutions, maxCycles = 32) {
     }
   }
   stop("Too much recursion when replacing requirements")
+}
+
+# check that there is no dependency on 'badreqs'. This is currently only used
+# for parameters that have expression bounds.
+checkBadreqs = function(paramList, badreqs) {
+  substs = sapply(badreqs, function(dummy) quote(stop()), simplify = FALSE)
+  for (pid in seq_along(paramList)) {
+    req = paramList[[pid]]$requires
+    if (!is.null(req)) {
+      if (!identical(req, replaceRequires(req, substs))) {
+        stop("Parameter %s has requirement %s.", paramList[[pid]]$id,
+            "depending on expression bound")
+      }
+    }
+  }
 }
 
 # check if any requirements do not actually depend on parameters any more, e.g.

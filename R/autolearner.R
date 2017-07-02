@@ -481,10 +481,10 @@ createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
   # PARAM.x, p (number of features), n (number of rows)
   function(x, env) {
     if (is.language(pmin)) {
-      pmin = eval(pmin, envir = env)
+      pmin = eval(pmin, envir = env, enclose = globalenv())
     }
     if (is.language(pmax)) {
-      pmax = eval(pmax, envir = env)
+      pmax = eval(pmax, envir = env, enclos = globalenv())
     }
     assert(pmax >= pmin)
     if (is.exp) {
