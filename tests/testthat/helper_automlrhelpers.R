@@ -158,18 +158,20 @@ rcAL = autolearner(randfailClassif, list(
     sp("coordinates", "real", c(-10, 10), dim = 2)))
 
 # the preprocessing module, offering univariate and multivariate trafos
-preprocAL = autolearner(learner = autoWrapper(
-        name = "ampreproc",
-        constructor = makePreprocWrapperAm,
-        conversion = list(numerics = "numerics", factors = "factors",
-          ordered = "ordered")),
-    stacktype = "requiredwrapper",
-    searchspace = list(
-        sp("ppa.univariate.trafo", "cat", c("off", "center", "scale",
-                "centerscale", "range"),
-            req = quote(automlr.has.numerics == TRUE)),
-        sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"),
-            req = quote(automlr.has.numerics == TRUE))))
+# TODO
+preprocAL = NULL
+## preprocAL = autolearner(learner = autoWrapper(
+##         name = "ampreproc",
+##         constructor = makePreprocWrapperAm,
+##         conversion = list(numerics = "numerics", factors = "factors",
+##           ordered = "ordered")),
+##     stacktype = "requiredwrapper",
+##     searchspace = list(
+##         sp("ppa.univariate.trafo", "cat", c("off", "center", "scale",
+##                 "centerscale", "range"),
+##             req = quote(automlr.has.numerics == TRUE)),
+##         sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"),
+##             req = quote(automlr.has.numerics == TRUE))))
 
 # test whether using 'TRUE', 'FALSE' with the wrong names still works
 tf = c(TRUE, FALSE)
