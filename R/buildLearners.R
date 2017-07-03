@@ -59,7 +59,8 @@ buildLearners = function(searchspace, task, verbosity = 0) {
   if (taskdesc$has.weights) {
     stop("Tasks with weights are currently not supported.")
   }
-
+  
+  wrapperList = list()
   for (w in wrappers) {
     wl = w$learner
     wl$searchspace = makeParamSet(params = lapply(w$searchspace,
@@ -139,8 +140,8 @@ buildLearners = function(searchspace, task, verbosity = 0) {
       allParamNames)
   multiplexer$searchspace = tuneParamSet
   allLearners = unlist(tuneParamSet$pars$selected.learner$values)
-  am = makeAMExoWrapper(multiplexer, wrapperList, taskdesc, handlerList,
-      allLearners)
+  am = makeAMExoWrapper(multiplexer, wrapperList, taskdesc, reqs$datamissings,
+      handlerList, allLearners, modelTuneParsets)
   adjustLearnerVerbosity(am, verbosity)
 }
 
@@ -184,10 +185,17 @@ checkParamIds = function(parsets, verbosity) {
 }
 
 getLearnerRequirements = function(task, wrappers) {
+  taskdesc = getTaskDesc(task)
   featprops = names(taskdesc$n.feat)[taskdesc$n.feat > 0]
   
   data = getTaskData(task, target.extra = TRUE)$data
-  types = vcapply(data, function(x) class(x)[1])
+  types = vcapply(data, function(x)
+        switch(class(x)[1],
+            integer = "numerics",
+            numeric = "numerics",
+            factor = "factors",
+            ordered = "ordereds",
+            stopf("Unsupported type: %s", class(x)[1])))
   hasmissings = sapply(split(as.list(data), types),
       function(x) any(sapply(x, is.na)))
   datamissings = hasmissings
@@ -197,7 +205,7 @@ getLearnerRequirements = function(task, wrappers) {
   assertSetEqual(names(hasmissings), featprops)
   
   conv = list(factors = "factors", ordered = "ordered", numerics = "numerics")
-  wrapperList = list()
+  
   for (wl in wrappers) {
     if (wl$is.imputer) {
       hasmissings[wl$datatype] = FALSE

@@ -555,7 +555,7 @@ wrapLearner = function(cl, short.name, name, learner,
 
   
   wrapper$learner = removeHyperPars(learner,
-      coalesce(names(getHyperPars(learner)), character(0)))
+      intersect(names2(getHyperPars(learner)), getParamIds(par.set)))
   wrapper$config = config
   wclass = class(wrapper)
   clpos = which(wclass == cl)

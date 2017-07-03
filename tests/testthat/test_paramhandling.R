@@ -40,7 +40,7 @@ ssAL = autolearner(outerSS, list(
 test_that("buildLearners handles fixed, dummy, inject as required", {
   # expect warnings about fixed injects, missing requirement
   # test all expected parameters are present
-  expect_warning(lss <- bl(ssAL), "(is marked 'dummy/inject' and has type 'fix'|'test' has a 'requires' argument but the one given)", all = TRUE)
+  expect_warning(lss <- bl(ssAL), "(is marked 'inject' and has type 'fix'|'test' has a 'requires' argument but the one given)", all = TRUE)
   expect_set_equal(getParamIds(getParamSet(lss)),
       paste0("test.", c("int0", "int7", "int3", "int3.AMLRFIX1", "int2", "real2", "cat2", "bool2", "real0", "cat0", "bool0", "real7", "cat7", "bool7")))
 
@@ -54,13 +54,15 @@ test_that("buildLearners handles fixed, dummy, inject as required", {
   expect_true(isFeasibleNoneMissing(plss, x = list(test.int7 = 0, test.int3 = 0,
               test.int0 = 0, test.int2 = 0, test.real2 = 0, test.cat2 = "a", test.bool2 = TRUE, test.real0 = 0,
               test.cat0 = 0, test.bool0 = FALSE, test.real7 = 0, test.cat7 = 10, test.bool7 = FALSE)))
-  expect_false(isFeasible(plss, x = list(test.int7 = 0, test.int3.AMLRFIX1 = 2,
+  expect_false(isFeasible(plss, x = list(test.int7 = 0, test.int3.AMLRFIX1 = 2, test.int3 = NA,
               test.int0 = 0, test.int2 = 0, test.real2 = 0, test.cat2 = "a", test.bool2 = TRUE, test.real0 = 0,
               test.cat0 = 0, test.bool0 = FALSE, test.real7 = 0, test.cat7 = 10, test.bool7 = FALSE)))
   expect_true(isFeasibleNoneMissing(plss, x = list(test.int7 = 1, test.int3.AMLRFIX1 = 2,
               test.int0 = 0, test.int2 = 0, test.real2 = 0, test.cat2 = "a", test.bool2 = TRUE, test.real0 = 0,
               test.cat0 = 0, test.bool0 = FALSE, test.real7 = 0, test.cat7 = 10, test.bool7 = FALSE)))
-  expect_false(isFeasible(plss, x = list(test.int7 = 2, test.int3.AMLRFIX1 = 2)))
+  expect_false(isFeasible(plss, x = list(test.int7 = 2, test.int3.AMLRFIX1 = 2, test.int3 = NA,
+              test.int0 = 0, test.int2 = 0, test.real2 = 0, test.cat2 = "a", test.bool2 = TRUE, test.real0 = 0,
+              test.cat0 = 0, test.bool0 = FALSE, test.real7 = 0, test.cat7 = 10, test.bool7 = FALSE)))
   expect_true(isFeasibleNoneMissing(plss, x = list(test.int7 = 3,
               test.int0 = 0, test.int2 = 0, test.real2 = 0, test.cat2 = "a", test.bool2 = TRUE, test.real0 = 0,
               test.cat0 = 0, test.bool0 = FALSE, test.real7 = 0, test.cat7 = 10, test.bool7 = FALSE)))
@@ -96,34 +98,34 @@ names(truename) = truename
 innerSS2 = testLearner("test", makeParamSet(params = predefParams), c("numerics", "twoclass"))
 issAL2 = autolearner(innerSS2, list(
     sp("int1", "int", c(0, 3)),
-    sp("int2", "def", NULL),  # 'true' default is NULL
-    sp("int3", "def", 1),     # wrong default
+    sp("int2", "fixdef", NULL),  # 'true' default is NULL
+    sp("int3", "fixdef", 1),     # wrong default
     sp("int4", "int", c(0, 0), req = quote(int1==0)),
     sp("int5", "int", c(0, 2), req = quote(int1==0), dim = 3),
     sp("int5.AMLRFIX1", "int", c(2, 4), req = quote(int1==1), dim = 3),
     sp("int5.AMLRFIX2", "int", c(5, 5), req = quote(int1 >= 2), dim = 3),
     sp("int5.AMLRFIX3", "int", c(6, 6), req = quote(int1==3), dim = 3),
-    sp("int6", "def", 0),
+    sp("int6", "fixdef", 0),
     sp("real1", "real", c(0, 3)),
-    sp("real2", "def", NULL),  # 'true' default is NULL
-    sp("real3", "def", 1),     # wrong default
+    sp("real2", "fixdef", NULL),  # 'true' default is NULL
+    sp("real3", "fixdef", 1),     # wrong default
     sp("real4", "real", c(0, 0), req = quote(real1==0)),
     sp("real5", "real", c(0, 2), req = quote(real1==0), dim = 3),
     sp("real5.AMLRFIX1", "real", c(2, 4), req = quote(real1==1), dim = 3),
     sp("real5.AMLRFIX2", "real", c(5, 5), req = quote(real1 >= 2), dim = 3),
     sp("real5.AMLRFIX3", "real", c(6, 6), req = quote(real1==3), dim = 3),
-    sp("real6", "def", 0),
+    sp("real6", "fixdef", 0),
     sp("cat2", "cat", c("a", "b", "c")),
-    sp("cat1", "def", NULL),  # 'true' default is NULL
-    sp("cat3", "def", "b"),     # wrong default
+    sp("cat1", "fixdef", NULL),  # 'true' default is NULL
+    sp("cat3", "fixdef", "b"),     # wrong default
     sp("cat4", "cat", "a", req = quote(cat2=="a")),
     sp("cat5", "cat", c("a", "b"), req = quote(cat2=="a"), dim = 3),
     sp("cat5.AMLRFIX1", "cat", "c", req = quote(cat2!="a"), dim = 3),
     sp("cat5.AMLRFIX2", "cat", c("b", "c"), req = quote(cat2=="c"), dim = 3),
-    sp("cat6", "def", "a"),
+    sp("cat6", "fixdef", "a"),
     sp("bool1", "bool"),
-    sp("bool2", "def", NULL),  # 'true' default is NULL
-    sp("bool3", "def", TRUE),     # wrong default
+    sp("bool2", "fixdef", NULL),  # 'true' default is NULL
+    sp("bool3", "fixdef", TRUE),     # wrong default
     sp("bool4", "cat", truename, req = quote(bool1==TRUE)),
     sp("bool5", "bool", req = quote(bool1==TRUE), dim = 3),
     sp("bool5.AMLRFIX1", "cat", truename, req = quote(bool1==FALSE), dim = 3),
@@ -135,6 +137,8 @@ issAL2 = autolearner(innerSS2, list(
 # TODO: what happens when AMLRFIX conflicts with default?
 test_that("complicated parameter requirement dependencies are handled well", {
   expect_warning(lissAL2 <- bl(issAL2), "(differs from the true default|and has different \\(but feasible\\) type 'cat)", all = TRUE)
+
+
 
   # many default and fixed parameters are used, only these remain:
   expect_set_equal(getParamIds(getParamSet(lissAL2)),
@@ -158,10 +162,10 @@ test_that("complicated parameter requirement dependencies are handled well", {
                              bool1 = TRUE, bool4 = TRUE, bool5 = c(TRUE, TRUE, TRUE), bool6 = TRUE),
                         list(int3 = 1, int4 = 0, real3 = 1, real4 = 0, cat3 = "b", cat4 = "a", bool3 = TRUE, bool4 = TRUE))
 
-  expect_true(isFeasible(getParamSet(lissAL2), list(test.int1 = 0, test.int5 = c(1, 1, 1))))  # check that isFeasible ignores missing parameters
-  expect_false(isFeasible(getParamSet(lissAL2), list(test.int1 = 1, test.int5 = c(1, 1, 1))))
-  expect_false(isFeasible(getParamSet(lissAL2), list(test.real1 = 1, test.real5 = c(1, 1, 1))))
-  expect_false(isFeasible(getParamSet(lissAL2), list(test.cat2 = "b", test.cat5 = list("b", "b", "b"))))
+  expect_true(isFeasibleMissingPossible(getParamSet(lissAL2), list(test.int1 = 0, test.int5 = c(1, 1, 1))))  # check that isFeasible ignores missing parameters
+  expect_false(isFeasibleMissingPossible(getParamSet(lissAL2), list(test.int1 = 1, test.int5 = c(1, 1, 1))))
+  expect_false(isFeasibleMissingPossible(getParamSet(lissAL2), list(test.real1 = 1, test.real5 = c(1, 1, 1))))
+  expect_false(isFeasibleMissingPossible(getParamSet(lissAL2), list(test.cat2 = "b", test.cat5 = list("b", "b", "b"))))
 
   # requirements of int5 and real5 on int/real1 switch it to AMLRFIX1
   # cat5 disappears because of cat2 (defaults to "c")
@@ -256,7 +260,7 @@ test_that("complicated parameter requirement dependencies are handled well", {
   # The situation is: test.bool1 is FALSE, so both bool6 and bool6.AMLRFIX3 have fulfilled requirements.
   # AMLRFIX3 sets bool6 to TRUE, so running this works, even though isFeasibleNoneMissing gives an error here since test.bool6 is missing.
   # Giving test.bool6 as TRUE throws an error since bool6 is then provided twice.
-  expect_true(isFeasible(getParamSet(lissAL2), params))  
+  expect_true(isFeasibleMissingPossible(getParamSet(lissAL2), params))
   expect_learner_output(setHyperPars(lissAL2, par.vals = params), pid.task, "test",
                         list(int1 = 2, int5 = c(5, 5, 5), int6 = 0,
                              real1 = 2, real5 = c(5, 5, 5), real6 = 0,
@@ -271,13 +275,13 @@ test_that("default parameter values are handled as required", {
   # searchspace fully made up from default and fixed values
   issAL3 = autolearner(innerSS2HP, list(
       sp("int2", "def", NULL),  # 'true' default is NULL
-      sp("int3", "def", 1),     # wrong default
+      sp("int3", "fixdef", 1),     # wrong default
       sp("real2", "def", NULL),  # 'true' default is NULL
-      sp("real3", "def", 1),     # wrong default
-      sp("cat1", "def", NULL),  # 'true' default is NULL
-      sp("cat3", "def", "b"),     # wrong default
-      sp("bool2", "def", NULL),  # 'true' default is NULL
-      sp("bool3", "def", TRUE),   # wrong default
+      sp("real3", "fixdef", 1),     # wrong default
+      sp("cat1", "fixdef", NULL),  # 'true' default is NULL
+      sp("cat3", "fixdef", "b"),     # wrong default
+      sp("bool2", "fixdef", NULL),  # 'true' default is NULL
+      sp("bool3", "fixdef", TRUE),   # wrong default
       sp("int0", "fix", 1, special = "inject", dim = 2),
       sp("real0", "fix", 1, special = "inject", dim = 2),
       sp("cat0", "fix", "a", special = "inject", dim = 2)))
@@ -286,7 +290,7 @@ test_that("default parameter values are handled as required", {
                                                "but the learner has it already set to a different value|",
                                                "differs from the true default|",
                                                "was already set to a value; this value has been removed|",
-                                               "is marked 'dummy/inject' and has type 'fix')"), all = TRUE)
+                                               "is marked 'inject' and has type 'fix')"), all = TRUE)
 
   expect_set_equal(getParamIds(getParamSet(lissAL3)), character(0))
 

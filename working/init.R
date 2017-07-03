@@ -43,9 +43,10 @@ upstart <- function() {
   reloadPckgs(list(ParamHelpers="../../ParamHelpers", mlr="../../mlr",
                    smoof="../../smoof", mlrMBO="../../mlrMBO"))
   library('testthat')
+  library('checkmate')
   library(roxygen2)
   roxygenise('..')
   options(error=dump.frames)
   options(warn=1)
-  options(width=150)
+  options(width=100)
 }

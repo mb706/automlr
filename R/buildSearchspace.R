@@ -45,6 +45,8 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
 
   nondefParamNames = character(0)
 
+  tuneSearchSpace = list()
+
   for (param in sslist) {
     origParamName = removeAmlrfix(param$name)
     if (param$type != "def") {
@@ -67,14 +69,14 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
         lwarn(paste("Parameter '%s' for learner '%s' was already set to a",
                 "value; this value has been removed."),
             param$name, lrnid)
-        lrn = removeHyperPars(lrn, param$name)
+        lrn = removeHyperPars(lrn, origParamName)
       }
       if (param$type != "def") {  # variable parameter
         newparam = createParameter(param, learnerid = lrnid)
         newparam$amlr.id = param$id
         if (param$type == "cat" && param$dim > 1 &&
-            !is.null(lptypes[[param$name]]) && 
-            lptypes[[param$name]] != "discretevector") {
+            !is.null(lptypes[[origParamName]]) && 
+            lptypes[[origParamName]] != "discretevector") {
           # if the underlying type is a VectorParam but not discrete, we will
           # have to unlist().
           newparam$amlr.isNotCat = TRUE
@@ -166,7 +168,9 @@ checkDummies = function(sslist, lrn) {
         collapse(baddummy), lrnid)
   }
   dummytype = extractSubList(dummyParams, "type") 
-  badDummyType = dummyParams[dummytype %in% c("def", "fix", "fixdef")]
+  badDummyType = extractSubList(
+      dummyParams[dummytype %in% c("def", "fix", "fixdef")],
+      "name")
   if (length(badDummyType)) {
     stopf(paste("Dummy parameter(s) '%s' given for learner '%s' must not be",
             "of type 'fix', 'def', or 'fixdef'."),
@@ -245,7 +249,7 @@ makeParametersFeasible = function(sslist, lrn, verbosity) {
               param$name, lrnid, partype, param$type)
         }
         if (param$type %nin% c("fix", "def", "fixdef") &&
-            is.null(param$special) && hasRequires(lp$pars[[param$name]]) &&
+            is.null(param$special) && hasRequires(lp$pars[[origParamName]]) &&
             is.null(param$req)) {
           lwarn(paste("Parameter '%s' for learner '%s' has a 'requires'",
                   "argument but the one given in the search space has not."),
@@ -283,7 +287,7 @@ adjustSSDefaults = function(sslist, lrn, verbosity) {
   }
   defaults = getDefaults(getParamSet(lrn))
   parvals = getHyperPars(lrn)
-  sslist = lapply(sslist, function(param) {
+  lapply(sslist, function(param) {
         if (param$type == "def" && identical(param$values, "##")) {
           next
         }
@@ -305,7 +309,7 @@ adjustSSDefaults = function(sslist, lrn, verbosity) {
           if (!identical(truedefault, param$values)) {
             lwarn(paste("Parameter '%s' for learner '%s' is of type 'default'",
                     "but its alleged default '%s'",
-                    "differs from the true default'%s'."),
+                    "differs from the true default '%s'."),
                 param$name, lrnid, convertToShortString(param$values),
                 convertToShortString(truedefault))
             if (param$type == "fixdef") {

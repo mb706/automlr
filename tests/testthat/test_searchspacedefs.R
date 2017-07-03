@@ -9,11 +9,11 @@ test_that("wrong or unusual searchspace defs give warnings", {
 
   # dummy parameter can not be default
   dummyDef = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "def", 0, special = "dummy")))
-  expect_error(bl(dummyDef), "Dummy parameter 'test' given for learner 'test' must not be of type 'def'")
+  expect_error(bl(dummyDef), "Dummy parameter\\(s\\) 'test' given for learner 'test' must not be of type 'fix', 'def', or 'fixdef'")
 
   # dummy parameter can not be fixed
   dummyFix = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "fix", 0, special = "dummy")))
-  expect_error(bl(dummyFix), "Dummy parameter 'test' given for learner 'test' must not be of type 'fix'")
+  expect_error(bl(dummyFix), "Dummy parameter\\(s\\) 'test' given for learner 'test' must not be of type 'fix', 'def', or 'fixdef'")
 
   # injected parameter can not be default
   injectDef = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "def", 0, special = "inject")))
@@ -21,12 +21,12 @@ test_that("wrong or unusual searchspace defs give warnings", {
 
   # fixed injected parameter does not make much sense
   injectFix = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("test", "fix", 0, special = "inject")))
-  expect_warning(bl(injectFix), "Parameter 'test' for learner 'test' is marked 'dummy/inject' and has type 'fix'", all = TRUE)
+  expect_warning(bl(injectFix), "Parameter 'test' for learner 'test' is marked 'inject' and has type 'fix'", all = TRUE)
 
   # warn about singular param id
   singleId = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), id = "int")))
   expect_warning(bl(singleId), "'int1' of learner 'test' is the only one with parameter id 'int'", all = TRUE)
-  
+
   # warn about missing requirement
   tl = testLearner("test", makeParamSet(predefParams$int1, predefParams$int4), c("numerics", "twoclass"))
   reqDef = autolearner(tl, list(sp("int4", "int", c(0, 1)), sp("int1", "int", c(0, 1))))
@@ -73,11 +73,11 @@ test_that("parameter IDs behave as they should", {
 test_that("mismatching searchspace defs give errors", {
   # injecting a parameter that is already present fails
   injectOverwrite = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), special = "inject")))
-  expect_error(bl(injectOverwrite), "present in learner 'test' but is marked as 'inject'")
+  expect_error(bl(injectOverwrite), "present in learner 'test' but also marked as 'inject'")
 
   # adding a dummy parameter that is present fails
   dummyOverwrite = autolearner(testLearner("test", makeParamSet(predefParams$int1), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10), special = "dummy")))
-  expect_error(bl(dummyOverwrite), "present in learner 'test' but is marked as 'dummy'")
+  expect_error(bl(dummyOverwrite), "present in learner 'test' but also marked as 'dummy'")
 
   # optimizing over a non-existing parameter fails
   parNotFound = autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass")), list(sp("int1", "int", c(0, 10))))
@@ -155,7 +155,7 @@ test_that("mismatching searchspace defs give errors", {
   #bl(parType)
 
   # using types that are a subset of true parameter bounds gives warnings
-  # for bool -> cat, int -> real, cat -> real, cat -> int, cat 0> bool; for scalars and vectors 
+  # for bool -> cat, int -> real, cat -> real, cat -> int, cat 0> bool; for scalars and vectors
   tf = c(TRUE, FALSE)
   names(tf) = tf
   parType = autolearner(testLearner("test", makeParamSet(makeDiscreteLearnerParam("cat1", tf)), c("numerics", "twoclass")), list(sp("cat1", "bool")))
@@ -250,7 +250,7 @@ test_that("AMLRFIX correctness is checked", {
   expect_error(bl(aftest), "'int2\\.AMLRFIX1' for learner 'test' cannot have an \\.AMLRFIX suffix")
 
   # injecting AMLRFIX works
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "def", 0), sp("int2.AMLRFIX1", "int", c(0, 5), req = quote(int1==0), special = "inject"), sp("int2", "int", c(0, 5), req = quote(int1!=0))))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "def", 0), sp("int2.AMLRFIX1", "int", c(0, 5), req = quote(int1==0), special = "inject"), sp("int2", "int", c(0, 5), req = quote(int1!=0), special = "inject")))
   expect_class(bl(aftest), "RLearnerClassif")
 
   # injecting AMLRFIX works in reverse order

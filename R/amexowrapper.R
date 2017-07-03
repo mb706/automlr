@@ -69,7 +69,7 @@
 #'   A modelmultiplexer object that should have a \code{$searchspace} slot.
 #' @param wrappers [\code{list}]\cr
 #'   A named list of wrappers. Names must not contain \code{$}-character.
-#' @param taskDesc [\code{TaskDesc}]\cr
+#' @param taskdesc [\code{TaskDesc}]\cr
 #'   The \dQuote{TaskDesc} object of the task to be optimized over.
 #' @param missings [\code{logical}]\cr
 #'   A logical, with names according to the \emph{present} feature data types
@@ -89,7 +89,7 @@
 #' 
 #' The slot \code{$searchspace} should be used as \code{ParamSet} to tune
 #' parameters over.
-makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
+makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
     canHandleX, allLearners, modelTuneParsets) {
 
   aux = buildWrapperSearchSpace(wrappers, missings, canHandleX, allLearners)
@@ -122,8 +122,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
         getParamIds(fulltps[[l]])
       }, simplify = FALSE)
 
-  shadowparams = c(
-      extractSubList(aux$wrapperparams, "id"),
+  shadowparams = c(wrapperparnames,
       extractSubList(Filter(function(x) isTRUE(x$amlr.isDummy),
               completeSearchSpace$pars), "id"))
   # what's missing is removing the singleton parameters from the search space
@@ -156,7 +155,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
 #  staticParams[extractSubList(staticParams, "id") %in%
 #          c("automlr.wrappersetup", shadowparams)] = NULL
   
-  completeSearchSpace = simplifyRequirements(completeSearchSpace)
+  completeSearchSpace = simplifyRequirements(completeSearchSpace, staticParams)
 
   # transform into "LearnerParam" types. This is mostly dumb relabeling, except
   # for one thing: The limits / values of the parameters with "trafo" have to be
@@ -172,8 +171,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskDesc, missings,
   properties %c=% c("oneclass", "twoclass", "multiclass")[classlvlcount]
 
   learner = wrapLearner("AMExoWrapper", "amlr", "automlrlearner",
-      learner = removeHyperPars(modelmultiplexer,
-          setdiff(getHyperPars(modelmultiplexer), getParamIds(learnerPars))),
+      learner = modelmultiplexer,
       type = taskdesc$type,
       properties = properties,
       par.set = learnerPars,
@@ -348,6 +346,11 @@ extractStaticParams = function(completeSearchSpace) {
       }
       completeSearchSpace$pars[[param]] = NULL
       if (!is.null(curpar$requires)) {
+        # see if we can skip this when the requirement is trivially false
+        if (tryCatch(isFALSE(eval(curpar$requires, envir = globalenv())),
+            error = function(e) FALSE)) {
+          next
+        }
         # the following is a bit unfortunate, because it introduces a kind of
         # recursive dependence. I don't see a better way, however. The problem
         # is that if we have a variable xyz, and a variable xyz.AMLRFIX1, then
@@ -398,7 +401,12 @@ extractStaticParams = function(completeSearchSpace) {
       # possible to clean it up at some point.
       if (parid != curpar$id) {
         # substituting .AMLRFIX
-        assert(!is.null(curpar$requires))
+        if (is.null(curpar$requires)) {
+          opr = completeSearchSpace$pars[[parid]]$requires
+          assert(!is.null(opr))
+          assert(isFALSE(eval(opr, envir = globalenv())))
+          curpar$requires = quote(identity(TRUE))
+        }
         subst = substitute(if (isTRUE(req)) thisfix else original,
             list(req = curpar$requires,
                 thisfix = asQuoted(curpar$id), original = asQuoted(leaf)))
@@ -463,7 +471,7 @@ checkBadreqs = function(paramList, badreqs) {
 # because of fixed values. Remove parameters with unfulfilled requirements,
 # simplify parameters with requirements only depending on 'selected.learner'
 # and remove requirements that are always TRUE.
-simplifyRequirements = function(completeParamSpace) {
+simplifyRequirements = function(completeSearchSpace, staticParams) {
   allNames = getParamIds(completeSearchSpace)
   paramReferenceStop = rep(list(quote(stop("AMLR VARREF STOP"))),
       length(allNames))
@@ -530,6 +538,7 @@ simplifyRequirements = function(completeParamSpace) {
       }
     }
   }
+  completeSearchSpace
 }
 
 getSearchspace.AMExoWrapper = function(learner) {

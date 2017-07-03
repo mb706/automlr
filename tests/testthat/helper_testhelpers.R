@@ -75,16 +75,16 @@ changeColsWrapper = function (learner, prefix, ...) {
 
   # perform the operations as indicated by args
   colman = function(args, data, target = NULL) {
-    
+
     # remove prefix from argument names
     names(args) = sub(paste0("^", prefix, "\\."), "", names(args))
-    
+
     # convert ord->num
     ordereds = sapply(data, is.ordered)
     if (args$convert.ord2num) {
       data[ordereds] = lapply(data[ordereds], as.numeric)
     }
-    
+
     # convert fact->num
     factors = sapply(data, is.factor)
     if (args$convert.fac2num) {
@@ -93,7 +93,7 @@ changeColsWrapper = function (learner, prefix, ...) {
             function(lvl) as.numeric(col == lvl))
         names(newcs) = args$levels[[colname]]
         newcs
-      } 
+      }
       data = cbind(data, do.call(base::c, mapply(hotencoder, data[factors],
                   names(data)[factors], SIMPLIFY = FALSE)))
       args$remove.factors = TRUE
@@ -158,7 +158,7 @@ changeColsWrapper = function (learner, prefix, ...) {
 # human readable output of list
 debuglist = function(l, prefix = "") {
   res = ""
-  if (testNamed(l)) {
+  if (checkmate::testNamed(l)) {
     for (n in sort(names(l))) {
       res = paste0(res, paste0(prefix, n, ": "))
       if (is.list(l[[n]])) {
@@ -236,7 +236,7 @@ testLearner = function(name, parset, properties, isClassif = TRUE, ...) {
     ret$fix.factors.prediction = TRUE
   }
   pf = globalenv()
-  
+
   assign(paste0("trainLearner.", name), envir = pf,
       value = function (.learner, .task, .subset, .weights = NULL, ...) {
     debuglistout(list(myname = name, ...))
@@ -386,8 +386,9 @@ checkWrapperEffectEx = function(autolearnersPL, transformation = list,
 
 # shorthand for building learners for pid.task
 bl = function(...) {
-  buildLearners(list(...), pid.task, verbose = TRUE)
+  buildLearners(list(...), pid.task, verbosity = 5)
 }
+
 
 # check that x is feasible in the param set, and that all feasible parameters
 # are present.
@@ -395,6 +396,19 @@ isFeasibleNoneMissing = function(par, x) {
   nalist = rep(NA, length(par$pars))
   names(nalist) = getParamIds(par)
   isFeasible(par, insert(nalist, x))
+}
+
+isFeasibleMissingPossible = function(ps, x) {
+  assertSubset(names(x), getParamIds(ps))
+  for (n in names(x)) {
+    par = ps$pars[[n]]
+    val = x[[n]]
+    if ((!requiresOk(par, x) && !isScalarNA(val)) ||
+      !isFeasible(par, val)) {
+      return(FALSE)
+    }
+  }
+  TRUE
 }
 
 # shorthand for getting list of parameters
