@@ -21,7 +21,7 @@ mboSaveMode = TRUE
 #' @export
 makeBackendconfMbo = registerBackend("mbo",
     function(focussearch.restarts = 1, focussearch.maxit = 5,
-        focussearch.points = 100, mbo.save.mode = TRUE, resampling = hout) {
+        focussearch.points = 1000, mbo.save.mode = TRUE, resampling = hout) {
       assertCount(focussearch.restarts)
       assertCount(focussearch.maxit)
       assertCount(focussearch.points)
@@ -100,7 +100,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
     }
   }
   
-  resDesc = makeResampleDesc("Holdout")
+  resDesc = opt$resampling
   objective = smoof::makeSingleObjectiveFunction(
       name = "automlr learner optimization",
       id = "automlr.objective",
@@ -116,9 +116,9 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   
   control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
   control = mlrMBO::setMBOControlInfill(control, opt = "focussearch",
-      opt.focussearch.points = mbo.focussearch.points,
-      opt.focussearch.maxit = mbo.focussearch.maxit,
-      opt.restarts = mbo.focussearch.restarts)
+      opt.focussearch.points = opt$focussearch.points,
+      opt.focussearch.maxit = opt$focussearch.maxit,
+      opt.restarts = opt$focussearch.restarts)
   control = mlrMBO::setMBOControlTermination(control, iters = NULL,
       more.termination.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
@@ -132,15 +132,31 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   
   mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control, objective)
   mboLearner$config = list(on.learner.error = "stop",
-      on.learner.warning = "warn", show.learner.output = TRUE)
-  mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor = "distinct",
-      ppa.impute.numeric = "median")
+      on.learner.warning = "warn",
+      show.learner.output = verbosity.traceout(verbosity))
+  if (any(c("factors", "ordered") %in% getLearnerProperties(mboLearner))) {
+    mboLearner = cpoFixFactors() %>>%
+        cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
+        cpoImputeConstant("MISSING", affect.type = c("ordered", "factor"),
+            make.dummy.cols = FALSE) %>>%
+        cpoDropConstants() %>>%
+        mboLearner
+  } else {
+    mboLearner = cpoFixFactors() %>>%
+        cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
+        cpoDummyEncode(TRUE) %>>%
+        cpoDropConstants() %>>%
+        mboLearner
+  }
   
   myMBO = mlrMBO::mbo
   environment(myMBO) = new.env(parent = asNamespace("mlrMBO"))
   environment(myMBO)$mboFinalize2 = identity
   env$opt.state = myMBO(objective, learner = mboLearner, control = control,
-      show.info = TRUE)
+      show.info = verbosity.traceout(verbosity))
+  
+  zeroWalltime = as.numeric(env$opt.state$time.used, units = "secs")
+  zeroEvals = getOptPathLength(env$opt.state$opt.path)
   # clean up environment, it is used in objectiveFun().
   rm(myMBO, prior, env)
 }
@@ -158,22 +174,30 @@ amresult.ammbo = function(env) {
 amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # initialize for spent budget computation
   zero = env$runtimeEnv
+  starttime = proc.time()[3]
   
   # FIXME: right now, the infill crit optimization does not respect the
   # deadline. It is possible to change this, by changing the termination
   # criterion of the mbo run so that only one iteration gets performed per
   # call, and additionally creating backups of the opt.state before each call.
-  # I will choose the elegant over the correct solution here though.
-  zero$hardTimeout = proc.time()[3] + deadline
+  # I will choose the elegant (= quick) over the correct solution here though.
+  zero$hardTimeout = starttime + deadline
   
   zero$budget = stepbudget
   
-  result = runWithTimeout(mlrMBO:::mboTemplate.OptState(env$opt.state),
-      deadline, backend = "native")
+  result = runWithTimeout(withCallingHandlers(
+          mlrMBO:::mboTemplate.OptState(env$opt.state),
+          warning = function(w) {
+            if (any(grepl("Empty factor levels were dropped for columns", w))) {
+              invokeRestart("muffleWarning")
+            }
+          }), deadline, backend = "native")
   spent = spentBudget(env$opt.state, zero)
+  if ("walltime" %in% names(spent)) {
+    spent["walltime"] = proc.time()[3] - starttime  # b/c of possible timeout
+  }
   zero$zeroWalltime %+=% spent["walltime"]
   zero$zeroEvals %+=% spent["evals"]
-  
   spent
 }
 

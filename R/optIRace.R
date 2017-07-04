@@ -128,7 +128,6 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       nbConfigurations = minNbSurvival + opt$newpopulation,
       impute.val = generateRealisticImputeVal(measure, learner, task),
       n.instances = 100,
-      show.irace.output = TRUE,
       log.fun = logFunQuiet)  # make our life easy for now
   
   # we do the following to imitade mlr::tuneParams()
@@ -140,17 +139,12 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   iraceFunction = irace::irace
   env$iraceOriginal = iraceFunction
 
-  # breaking more rules than a maths teacher with anger management problems:
-#  environment(iraceFunction) = new.env(parent = asNamespace("irace"))
-#  environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix
-  
   # hard time limit, to be enforced even when progress may be lost. This will be
   # set by amoptimize.amirace
   env$hardTimeout = 0
   
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(scenario, parameters, ...) {
-
     if (exists("iraceResults", envir = env)) {
       # 'env' is the backendprivatedata env.
       # if iraceResults is in the environment then we are continuing, so we load
@@ -164,7 +158,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       # everything else stays the same from last round
       scenario = iraceResults$scenario
       # don't carry the heavyweight hookRun function's environment to the
-      # savefile. cf iraceRecoverFromFileFix()
+      # savefile.
       iraceResults$scenario$targetRunnerParallel = NULL
       evals.zero = iraceResults$state$experimentsUsedSoFar
     } else {
@@ -209,15 +203,9 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       evals.zero = 0
     }
 
-    scenario$recoveryFile = scenario$logFile
-    if ("logFile" %nin% irace:::.irace.params.recover) {
-      myAssignInNamespace(".irace.params.recover",
-          c(irace:::.irace.params.recover, "logFile"), "irace")
-    }
+    scenario$recoveryFile = paste0(scenario$logFile, ".recovery")
     while (TRUE) {
-      scenario$logFile = paste0(scenario$logFile, ".unused")
-      
-      
+
       scenario$nbExperimentsPerIteration = expPerIter(iraceResults)
       iraceResults$scenario$nbExperimentsPerIteration = expPerIter(iraceResults)
       
@@ -230,7 +218,8 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       # timeout, we return the old env$res and reinstate the old env$opt.path.
       optPathBackup = deepcopy(env$opt.path)
       res = runWithTimeout(iraceFunction(scenario, parameters, ...),
-          env$hardTimeout - proc.time()[3])
+          env$hardTimeout - proc.time()[3],
+          backend = "native")
       if (res$timeout) {
         env$opt.path = optPathBackup
         if (!exists("res", envir = env)) {
@@ -239,7 +228,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
         return(env$res)
       }
       env$res = res$result
-      load(scenario$recoveryFile)
+      load(scenario$logFile)
       env$usedbudget["evals"] =
           iraceResults$state$experimentsUsedSoFar - evals.zero
       env$usedbudget["walltime"] =
@@ -274,7 +263,8 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   env$starttime = Sys.time()
   env$stepbudget = stepbudget
   env$usedbudget = c(walltime = 0, evals = 0)
-  env$hardTimeout = deadline + proc.time()[3]
+  curtime = proc.time()[3]
+  env$hardTimeout = deadline + curtime
   # install the wrapper and make sure it gets removed as soon as we exit
   # patch mlr on CRAN
   originalTuneIrace = mlr:::tuneIrace
@@ -299,7 +289,7 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   tryCatch({
       env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
           list(env$measure), getSearchspace(env$learner), env$ctrl,
-          env$opt.path, TRUE)
+          env$opt.path, verbosity.traceout(verbosity), resample)
     }, error = function(e) {
       if (conditionMessage(e) == noResTimeout) {
         # NOOP
@@ -310,6 +300,9 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   # FIXME: why was this here? It interferes with my 'rollback' mechanism in
   # iraceWrapper
   # env$opt.path = env$tuneresult$opt.path
+  
+  # the following avoids endless restarts when hardTimeout is hit.
+  env$usedbudget["walltime"] = proc.time()[3] - curtime
   env$usedbudget
 }
 
