@@ -9,6 +9,12 @@ roxygenise('..')
 
 devtools::load_all("..")
 
+devtools::test("..", filter = "aux")
+devtools::test("..", filter = "automlr_errors")
+devtools::test("..", filter = "paramhandling")
+devtools::test("..", filter = "searchspacedefs")
+system.time(devtools::test("..", filter = "timeout"), FALSE)
+
 
 sp("type.multinomial", "cat", c("grouped", "ungrouped"), req = quote(automlr.targettype == "multiclass"))
 

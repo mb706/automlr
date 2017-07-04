@@ -104,6 +104,7 @@ buildLearners = function(searchspace, task, verbosity = 0) {
       }
     }
 
+    unfit.skip = FALSE
     for (pp in reqs$featprops) {
       if (!length(intersect(reqs$conversion[[pp]], learnerProps))) {
         # there are feature types that no wrapper can remove that the learner
@@ -113,8 +114,12 @@ buildLearners = function(searchspace, task, verbosity = 0) {
                     lil$id, "Learner can not handle feature types",
                     "and necessary conversion can not be done.")
         }
-        next
+        unfit.skip = TRUE
+        break
       }
+    }
+    if (unfit.skip) {
+      next
     }
     for (canHandle in intersect(learnerProps,
         c("factors", "ordered", "numerics", "missings"))) {

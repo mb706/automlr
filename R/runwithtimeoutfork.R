@@ -60,7 +60,11 @@ runWithTimeoutFork = function(expr, time, throwError, myName) {
         is.null(result) &&
         (remainingTime <- (thisTimeout - proc.time()[3])) > 0) {
       Sys.sleep(0.001)  # yield so that process can be created
-      result = parallel::mccollect(job, wait=FALSE, timeout=remainingTime + 1)
+      if (is.infinite(remainingTime)) {
+        result = parallel::mccollect(job, wait=TRUE)
+      } else {
+        result = parallel::mccollect(job, wait=FALSE, timeout=remainingTime + 1)
+      }
     }
     
     if (is.null(result)) {  # timeout

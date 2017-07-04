@@ -217,8 +217,7 @@ makeParametersFeasible = function(sslist, lrn, verbosity) {
           if (isSubset(param$values, names(vals)) &&
               param$dim == getParamLengths(lp)[[origParamName]]) {
             param$values = vals[param$values]
-            assert(allfeasible(lp, vals[param$values], origParamName,
-                    param$dim))
+            assert(allfeasible(lp, param$values, origParamName, param$dim))
           } else {
             stopf(paste("Parameter '%s' as listed in search space has",
                     "infeasible bounds '%s' for learner '%s'."),

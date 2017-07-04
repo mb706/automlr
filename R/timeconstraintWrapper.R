@@ -93,7 +93,7 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
     if (runinfo$specialFirstIter) {
       .learner$env$firstResampleError = TRUE
     }
-    stop(timeoutMessage)
+    stop("TimeoutWrapper Timeout")
   }
 
   result = result$result
@@ -125,7 +125,7 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
     # value, but still above the regular timeout value. In that case, we 
     # treat the run as if it did produce a timeout on a subsequent resampling
     # iteration and do the dummy prediction. 
-    stop(timeoutMessage)
+    stop("TimeoutWrapper Timeout")
   }
   result$result
 }

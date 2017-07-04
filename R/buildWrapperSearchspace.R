@@ -17,7 +17,7 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   preprocs = bwssPreprocs(wrappers)
   
   can.convert = as.logical(any(extractSubList(wrappers, "is.converter")))
-  can.impute = all(sapply(imputers[missings], length))
+  can.impute = all(sapply(imputers[missings], length)) && any(missings)
   can.convert.before.impute = all(sapply(imputers, length))
   
   imputeparam = "automlr.impute"
