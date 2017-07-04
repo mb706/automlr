@@ -89,9 +89,9 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   if (verbosity.traceout(verbosity)) {
     if (verbosity.memtraceout(verbosity)) {
       # the default output gives memory trace info.
-      log.fun = NULL
+      log.fun = "memory"
     } else {
-      log.fun = logFunTune
+      log.fun = "default"
     }
   } else {
     log.fun = logFunQuiet
