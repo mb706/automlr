@@ -132,8 +132,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
   
   aux = extractStaticParams(completeSearchSpace)
   staticParams = aux$staticParams
-  substitutions = aux$substitutions
-  finalSubstitutions = c(aux$finalSubstitutions, propertiesReplace)
+  substitutions = c(aux$substitutions, propertiesReplace)
+  finalSubstitutions = aux$finalSubstitutions
   completeSearchSpace = aux$completeSearchSpace
   
   # replace the singleton values inside the requirements of other parameters.
@@ -451,6 +451,21 @@ substituteParamList = function(paramList, substitutions, maxCycles = 32) {
   }
   stop("Too much recursion when replacing requirements")
 }
+
+# remove variable references in requirements that do not point to existing
+# parameters.
+removeBadReqRefs = function(ps) {
+  badvars = setdiff(getRequiredParamNames(ps), getParamIds(ps))
+  subst = sapply(badvars, function(x)
+        substitute(stop(msg), list(msg = sprintf("%s: %s %s",
+                    "Error during requirement evaluation", x,
+                    "referenced, but not in param set."))),
+      simplify = FALSE)
+  ps$pars = substituteParamList(ps$pars, subst)
+  ps
+}
+
+
 
 # check that there is no dependency on 'badreqs'. This is currently only used
 # for parameters that have expression bounds.

@@ -16,6 +16,10 @@ devtools::test("..", filter = "searchspacedefs")
 system.time(devtools::test("..", filter = "timeout"), FALSE)
 
 
+# TODO:
+# test_automlr_irace, _mbo, _random
+# using helper_automlrhelpers
+
 sp("type.multinomial", "cat", c("grouped", "ungrouped"), req = quote(automlr.targettype == "multiclass"))
 
 mlrLearnersNoWrap
