@@ -2,105 +2,30 @@
 # in the right way.
 context("coltypes")
 
-# define tasks and learnerswfor factors, numerics, ordereds, numerics+factors; each with and without missings
-# also make numerics+ordered task with and without missings, and make an additional learner for all things
-NumericsTask = createTestClassifTask("NumericsTask", 200, nNumeric = 3)
-FactorsTask = createTestClassifTask("FactorsTask", 200, nFactor = 3)
-OrderedTask = createTestClassifTask("OrderedTask", 200, nOrdered = 3)
-NumericsFactorsTask = createTestClassifTask("NumericsFactorsTask", 200, nNumeric = 3, nFactor = 3)
-NumericsOrderedTask = createTestClassifTask("NumericsOrderedTask", 200, nNumeric = 3, nOrdered = 3)
-MissingsNumericsTask = createTestClassifTask("MissingsNumericsTask", 200, nNumeric = 3, missings = TRUE)
-MissingsFactorsTask = createTestClassifTask("MissingsFactorsTask", 200, nFactor = 3, missings = TRUE)
-MissingsOrderedTask = createTestClassifTask("MissingsOrderedTask", 200, nOrdered = 3, missings = TRUE)
-MissingsNumericsFactorsTask = createTestClassifTask("MissingsNumericsFactorsTask", 200, nNumeric = 3, nFactor = 3, missings = TRUE)
-MissingsNumericsOrderedTask = createTestClassifTask("MissingsNumericsOrderedTask", 200, nNumeric = 3, nOrdered = 3, missings = TRUE)
-
-NumericsLearner = autolearner(
-    testLearner("NumericsLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass")),
-    list(sp("int1", "int", c(0, 10))))
-
-FactorsLearner = autolearner(
-    testLearner("FactorsLearner", makeParamSet(predefParams$int1), c("factors", "twoclass")),
-    list())
-
-OrderedsLearner = autolearner(
-    testLearner("OrderedsLearner", makeParamSet(predefParams$int1), c("ordered", "twoclass")),
-    list())
-
-MissingsNumericsLearner = autolearner(
-    testLearner("MissingsNumericsLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass", "missings")),
-    list(sp("int1", "int", c(0, 10), req = quote(automlr.has.missings==TRUE))))
-
-MissingsFactorsLearner = autolearner(
-    testLearner("MissingsFactorsLearner", makeParamSet(predefParams$int1), c("factors", "twoclass", "missings")),
-    list())
-
-MissingsFactorsNumericsLearner = autolearner(
-    testLearner("MissingsFactorsNumericsLearner", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1),
-                c("numerics", "twoclass", "missings", "factors")),
-    list(sp("int1", "int", c(0, 10), req = quote(automlr.has.missings==TRUE)),
-         sp("real1", "real", c(10, 10), req = quote(automlr.has.factors==TRUE)),
-         sp("bool1", "bool", req = quote(automlr.has.missings != automlr.has.factors))))
-
-FactorsNumericsLearner = autolearner(
-    testLearner("FactorsNumericsLearner", makeParamSet(predefParams$real1, predefParams$bool1), c("numerics", "twoclass", "factors")),
-    list(sp("real1", "real", c(0, 10), req = quote(automlr.has.factors==FALSE)),
-         sp("bool1", "cat", FALSE, req = quote(automlr.has.missings == automlr.has.factors)),
-         sp("bool1.AMLRFIX1", "cat", TRUE, req = quote(automlr.has.missings != automlr.has.factors))))
-
-AllLearner = autolearner(
-    testLearner("AllLearner", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1), c("numerics", "twoclass", "factors", "ordered", "missings")),
-    list(sp("int1", "int", c(0, 10), req = quote(automlr.has.missings==FALSE)),
-         sp("real1", "real", c(0, 10), req = quote(automlr.has.factors %in% c(TRUE, FALSE))),
-         sp("bool1", "fix", TRUE, req = quote(automlr.has.ordered == automlr.has.factors)),
-         sp("int1.AMLRFIX1", "int", c(2, 2), req = quote(automlr.has.missings==TRUE && automlr.has.factors == TRUE)),
-         sp("int1.AMLRFIX2", "int", c(11, 20), req = quote(automlr.has.missings==TRUE && automlr.has.factors == FALSE))))
-
-# make removing wrappers for missings, factors, missings+factors, and 'nothing'
-XRemover = autolearner(
-    autoWrapper("XRemover", function(learner, ...) changeColsWrapper(learner, "XRemover", ...), identity),
-    list(sp("XRemover.spare1", "int", c(0, 10), req = quote(2 %in% c(1, 2, 3))),
-         sp("XRemover.spare2", "fix", 9, req = quote(automlr.has.missings==TRUE))),
-    "requiredwrapper")
-
-NARemover = autolearner(
-    autoWrapper("NARemover", function(learner, ...) changeColsWrapper(learner, "NARemover", ...), function(x) switch(x, missings = c("missings", ""))),
-    list(sp("NARemover.remove.NA", "fix", TRUE, req = quote(automlr.remove.missings == TRUE))),
-    "requiredwrapper")
-
-FactorRemover = autolearner(
-    autoWrapper("FactorRemover", function(learner, ...) changeColsWrapper(learner, "FactorRemover", ...), function(x) switch(x, factors = c("factors", ""))),
-    list(sp("FactorRemover.remove.factors", "fix", FALSE, req = quote(automlr.remove.factors == FALSE)),
-         sp("FactorRemover.convertFactors", "bool", special = "dummy", req = quote(automlr.remove.factors == TRUE && automlr.has.numerics == TRUE)),
-         sp("FactorRemover.convert.fac2num", "fix", TRUE, req = quote(automlr.remove.factors && automlr.has.numerics && FactorRemover.convertFactors)),
-         sp("FactorRemover.remove.factors.AMLRFIX2", "fix", TRUE, req = quote(automlr.remove.factors && (!automlr.has.numerics || !FactorRemover.convertFactors)))),
-    "requiredwrapper")
-
-NAFactorRemover = autolearner(
-    autoWrapper("NAFactorRemover", function(learner, ...) changeColsWrapper(learner, "NAFactorRemover", ...),
-                function(x) switch(x, missings = c("missings", ""), factors = c("factors", ""))),
-    list(sp("NAFactorRemover.remove.NA", "fix", TRUE, req = quote(automlr.remove.missings == TRUE)),
-         sp("NAFactorRemover.remove.factors", "fix", TRUE, req = quote(automlr.remove.factors == TRUE))),
-    "requiredwrapper")
-
-
 # the subset of learners that can use the given task is chosen
 test_that("the correct learner is automatically chosen", {
+
+  nlr = NumericsLearner
+  nlr$searchspace[[1]] = sp("int1", "int", c(0, 10), req = quote(2 %in% c(1, 2, 3)))
+
   # test that '2 %in% c(1, 2, 3)' is removed since it is always true.
-  l = buildLearners(list(NumericsLearner, XRemover), NumericsTask)
-  expect_null(getParamSet(l)$pars$XRemover.spare1$requires)
+  l = blt(list(nlr), NumericsTask)
+  expect_null(getpars(l)$NumericsLearner.int1$requires)
 
   # only numericslearner remains for numericstask
-  l = buildLearners(list(NumericsLearner, FactorsLearner, OrderedsLearner), NumericsTask)
+  expect_message(l <- blt(list(NumericsLearner, FactorsLearner, OrderedsLearner), NumericsTask),
+    "Learner can not handle feature types", all = TRUE)
   checkLearnerBehaviour(l, NumericsTask, list(NumericsLearner.int1 = 1), "NumericsLearner", list(int1 = 1), list())
 
   # both numericslearner and missingsnumericslearner work on numericstask
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner), NumericsTask)
+  l = blt(list(NumericsLearner, MissingsNumericsLearner), NumericsTask)
   checkLearnerBehaviour(l, NumericsTask, list(selected.learner = "MissingsNumericsLearner"),
                         "MissingsNumericsLearner", list(), list())
 
   # only missingsnumericslearner works on missingsnumericstask, int1 must be set since missings are present
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner), MissingsNumericsTask)
+  expect_message(l <- blt(list(NumericsLearner, MissingsNumericsLearner), MissingsNumericsTask),
+    "Learner can not handle the task", all = TRUE)
+
   checkLearnerBehaviour(l, MissingsNumericsTask, list(MissingsNumericsLearner.int1 = 2),
                         "MissingsNumericsLearner", list(int1 = 2), list())
 })

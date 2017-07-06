@@ -52,109 +52,6 @@ createTestRegrTask = function(id, nrow, nNumeric = 0, nFactor = 0, nOrdered = 0,
   makeRegrTask(id, data, target, ...)
 }
 
-# Creates a wrapper that can impute missings, convert types, and remove features
-changeColsWrapper = function (learner, prefix, ...) {
-  par.set = makeParamSet(
-      makeLogicalLearnerParam(paste0(prefix, ".remove.factors"),
-          default = FALSE),
-      makeLogicalLearnerParam(paste0(prefix, ".remove.ordered"),
-          default = FALSE),
-      makeLogicalLearnerParam(paste0(prefix, ".remove.NA"),
-          default = FALSE),
-      makeLogicalLearnerParam(paste0(prefix, ".convert.fac2num"),
-          default = FALSE),
-      makeLogicalLearnerParam(paste0(prefix, ".convert.ord2fac"),
-          default = FALSE),
-      makeLogicalLearnerParam(paste0(prefix, ".convert.ord2num"),
-          default = FALSE),
-      makeIntegerLearnerParam(paste0(prefix, ".spare1"), default = 0),
-      makeIntegerLearnerParam(paste0(prefix, ".spare2"), default = 0)
-  )
-  par.vals = getDefaults(par.set)
-  par.vals = insert(par.vals, list(...))
-
-  # perform the operations as indicated by args
-  colman = function(args, data, target = NULL) {
-
-    # remove prefix from argument names
-    names(args) = sub(paste0("^", prefix, "\\."), "", names(args))
-
-    # convert ord->num
-    ordereds = sapply(data, is.ordered)
-    if (args$convert.ord2num) {
-      data[ordereds] = lapply(data[ordereds], as.numeric)
-    }
-
-    # convert fact->num
-    factors = sapply(data, is.factor)
-    if (args$convert.fac2num) {
-      hotencoder = function(col, colname) {
-        newcs = lapply(args$levels[[colname]],
-            function(lvl) as.numeric(col == lvl))
-        names(newcs) = args$levels[[colname]]
-        newcs
-      }
-      data = cbind(data, do.call(base::c, mapply(hotencoder, data[factors],
-                  names(data)[factors], SIMPLIFY = FALSE)))
-      args$remove.factors = TRUE
-      ordereds = sapply(data, is.ordered)
-      factors = sapply(data, is.factor)
-    }
-
-    # convert ord->fac
-    newordereds = sapply(data, is.ordered)  # in case ordereds already converted
-    if (args$convert.ord2fac) {
-      data[newordereds] = lapply(data[newordereds], factor, ordered = FALSE)
-      newordereds = FALSE
-    }
-
-    # remove factors, ordereds
-    # this removes even after conversion
-    data = data[!((args$remove.factors & factors) |
-              (args$remove.ordered & ordereds))]
-
-    # remove NA rows
-    if (args$remove.NA) {
-      narows = Reduce(`|`, lapply(data, is.na))
-      data = data[!narows, , drop = FALSE]
-      if (!is.null(target)) {
-        target = target[!narows, , drop = FALSE]
-      }
-    }
-
-    if (!is.null(target)) {
-      data = cbind(data, target)
-    }
-    data
-  }
-
-  trainfun = function(data, target, args) {
-    tcol = data[target]
-    data[target] = NULL
-    args$levels = lapply(data, levels)  # take levels from args for consistency
-    data = colman(args, data, tcol)
-    catf("wrapper %s train", prefix)
-    dput(args[[paste0(prefix, ".spare1")]])  # output .spare args for debugging
-    dput(args[[paste0(prefix, ".spare2")]])
-    for (pname in getParamIds(par.set)) {
-      if (par.set$pars[[pname]]$type == "logical" && args[[pname]] == TRUE) {
-        # output all set args
-        dput(pname)
-      }
-    }
-    list(data = data, control = args)
-  }
-
-  predictfun = function(data, target, args, control) {
-    catf("wrapper %s predict", prefix)
-    dput(args[[paste0(prefix, ".spare1")]])
-    dput(args[[paste0(prefix, ".spare2")]])
-    colman(control, data)
-  }
-  x = makePreprocWrapper(learner, trainfun, predictfun, par.set, par.vals)
-  addClasses(x, "PreprocWrapperAm")
-}
-
 # human readable output of list
 debuglist = function(l, prefix = "") {
   res = ""
@@ -212,8 +109,7 @@ expect_learner_output = function(learner, task, name, trainps = list(),
             }
           }
         }
-      }
-      )
+      })
   expectedlout = expectout(c(list(myname = name), trainps))
   expect_output(model <- train(learner, task),
       paste(c(wrapperoutput("train"), expectedlout), collapse = "\n"),
@@ -251,47 +147,6 @@ testLearner = function(name, parset, properties, isClassif = TRUE, ...) {
   ret
 }
 
-# interesting parameters to use.
-# there are 6 of each integer, real, factorial, boolean
-# the system is:
-# finite, infinite, when=predict, requirement, vector dim=3, vector dim=1
-predefParams = list(
-    int1 = makeIntegerLearnerParam("int1", 0, Inf, 0),
-    int2 = makeIntegerLearnerParam("int2", 0, 10),
-    int3 = makeIntegerLearnerParam("int3", default = 0, when = "predict"),
-    int4 = makeIntegerLearnerParam("int4", when = "both",
-        requires = quote(int1==0)),
-    int5 = makeIntegerVectorLearnerParam("int5", len = 3, 0, 10, c(0, 1, 2)),
-    int6 = makeIntegerVectorLearnerParam("int6", lower = 0, upper = 10),
-
-    real1 = makeNumericLearnerParam("real1", 0, Inf, default = 0),
-    real2 = makeNumericLearnerParam("real2", 0, 10),
-    real3 = makeNumericLearnerParam("real3", default = 0, when = "predict"),
-    real4 = makeNumericLearnerParam("real4", when = "both",
-        requires = quote(real1==0)),
-    real5 = makeNumericVectorLearnerParam("real5", len = 3, 0, 10,
-        default = c(0, 1, 2)),
-    real6 = makeNumericVectorLearnerParam("real6", lower = 0, upper = 10),
-
-    cat1 = makeDiscreteLearnerParam("cat1", c("a", "b", "c")),
-    cat2 = makeDiscreteLearnerParam("cat2", c("a", "b", "c", "d"), "c"),
-    cat3 = makeDiscreteLearnerParam("cat3", c("a", "b", "c"), "a",
-        when = "predict"),
-    cat4 = makeDiscreteLearnerParam("cat4", c("a", "b", "c"), when = "both",
-        requires = quote(cat1=="a")),
-    cat5 = makeDiscreteVectorLearnerParam("cat5", len = 3, c("a", "b", "c"),
-        default = list("a", "b", "a")),
-    cat6 = makeDiscreteVectorLearnerParam("cat6", values = c("a", "b", "c")),
-
-    bool1 = makeLogicalLearnerParam("bool1", TRUE),
-    bool2 = makeLogicalLearnerParam("bool2"),
-    bool3 = makeLogicalLearnerParam("bool3", default = FALSE, when = "predict"),
-    bool4 = makeLogicalLearnerParam("bool4", when = "both",
-        requires = quote(bool1==TRUE)),
-    bool5 = makeLogicalVectorLearnerParam("bool5", len = 3,
-        default = c(FALSE, TRUE, FALSE)),
-    bool6 = makeLogicalVectorLearnerParam("bool6", default = FALSE))
-
 
 optionalProps = c("numerics", "factors", "ordered",
     "missings", "twoclass", "multiclass")
@@ -308,16 +163,6 @@ propertyLearners = mapply(testLearner, name = names(allOPs),
 # these learners as automlr input objects
 autolearnersBASIC = lapply(propertyLearners, autolearner)
 
-# OBSOLETE
-defaultExpFun = function(mustBeHandled, mayBeHandled = character(0))
-  function(x) {  # yes we curry
-    # all things that must be handled are present
-    all(mustBeHandled %in% x) &&
-        # at least one type of column can be processed
-        any(intersect(union(mustBeHandled, mayBeHandled),
-                c("numerics", "factors", "ordered")) %in% x)
-}
-
 # which learner to expect to be present:
 # mustBeHandledList is a list of conditions, at lest one of which must be true.
 # The condition is that x must be a subset of the listed properties
@@ -332,7 +177,6 @@ defaultExpFun2 = function(mustBeHandledList)
         })
   any(possible)  # at least one type of column can be processed
 }
-
 
 # check that the learners with properties that make `expfun` return TRUE are
 # present in the automlr learner.
@@ -389,6 +233,10 @@ bl = function(...) {
   buildLearners(list(...), pid.task, verbosity = 5)
 }
 
+blt = function(learners, task) {
+  buildLearners(learners, task, verbosity = 5)
+}
+
 
 # check that x is feasible in the param set, and that all feasible parameters
 # are present.
@@ -420,4 +268,5 @@ checkLearnerBehaviour = function(learner, task, params, ...) {
 #predict(train(setHyperPars(learner, par.vals = params), task), task)
   expect_learner_output(setHyperPars(learner, par.vals = params), task, ...)
 }
+
 
