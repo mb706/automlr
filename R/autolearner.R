@@ -78,7 +78,8 @@ autoWrapper = function(name, cpo, datatype, convertfrom = NULL) {
     assertChoice(datatype, cpoprops$properties)
   }
   if (is.null(convertfrom) || convertfrom == "missings") {
-    assert(length(cpoprops$properties.needed) == 0)
+    assert(length(cpoprops$properties.needed) == 0 ||
+            identical(cpoprops$properties.needed, datatype))
   }
   assertChoice(datatype, c("factors", "ordered", "numerics"))
   assert(!identical(convertfrom, datatype))

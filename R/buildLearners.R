@@ -102,6 +102,7 @@ buildLearners = function(searchspace, task, verbosity = 0) {
         messagef("Skipping learner '%s': %s",
             lil$id, "Learner can not handle the task.")
       }
+      next
     }
 
     unfit.skip = FALSE
@@ -234,7 +235,7 @@ getLearnerRequirements = function(task, wrappers) {
   classlvlcount = min(3, length(taskdesc$class.levels))
   presentprops = c("oneclass", "twoclass", "multiclass")[classlvlcount]
   if (any(hasmissings)) {
-    presentprops %=c% "missings"
+    presentprops %c=% "missings"
   }
   list(
       featprops = featprops,
