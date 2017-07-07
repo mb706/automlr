@@ -244,3 +244,99 @@ recurseObj <- function(obj) {
 recurseObj(lapply(objects(), get))
 isNamespace(environment(lhs::maximinLHS))
 
+
+
+simplifyEval = function(lang) {
+  if (!is.recursive(lang)) {
+    if (is.symbol(lang)) {
+      return(NULL)
+    } else {
+      return(list(eval(lang, baseenv())))
+    }
+  }
+  asCond = function(x) {
+    x && TRUE
+  }
+  logOrNull = function(x) {
+    if (is.null(x)) {
+      NULL
+    } else {
+      list(asCond(x[[1]]))
+    }
+  }
+  if (identical(lang[[1]], quote(`if`))) {
+    # emulate 'if': if conditional is unknown,
+    # we may still rescue the situation if both
+    # cases give same result.
+    cond = simplifyEval(lang[[2]])
+    if (is.null(cond)) {
+      ca = simplifyEval(lang[[3]])
+      cb = simplifyEval(lang[[4]])
+      if (identical(ca, cb)) {
+        return(ca)
+      } else {
+        return(NULL)
+      }
+    } else if (cond[[1]]) {
+      return(simplifyEval(lang[[3]]))
+    } else {
+      return(simplifyEval(lang[[4]]))
+    }
+  } else if (identical(lang[[1]], quote(`&&`))) {
+    ca = simplifyEval(lang[[2]])
+    if (is.null(ca) || asCond(ca[[1]])) {
+      cb = simplifyEval(lang[[3]])
+      if (is.null(cb) || !asCond(cb[[1]])) {
+        return(logOrNull(cb))
+      }
+      return(logOrNull(ca))
+    } else {
+      return(list(FALSE))
+    }
+  } else if (identical(lang[[1]], quote(`||`))) {
+    ca = simplifyEval(lang[[2]])
+    if (is.null(ca) || !asCond(ca[[1]])) {
+      cb = simplifyEval(lang[[3]])
+      if (is.null(cb) || asCond(cb[[1]])) {
+        return(logOrNull(cb))
+      }
+      return(logOrNull(ca))
+    } else {
+      return(list(TRUE))
+    }
+  }
+  if (length(lang) == 2) {
+    allowedunary = list(quote(`(`), quote(isTRUE), quote(isFALSE),
+      quote(identity), quote(as.null), quote(`!`), quote(`+`), quote(`-`))
+    for (f in allowedunary) {
+      if (!identical(lang[[1]], f)) {
+        next
+      }
+      ca = simplifyEval(lang[[2]])
+      if (is.null(ca)) {
+        return(NULL)
+      }
+      return(list(get(as.character(f))(ca[[1]])))
+    }
+  } else if (length(lang) == 3) {
+    allowedbinary = list(quote(`==`), quote(`+`),
+      quote(`-`), quote(`*`), quote(`/`))
+    for (f in allowedbinary) {
+      if (!identical(lang[[1]], f)) {
+        next
+      }
+      ca = simplifyEval(lang[[2]])
+      if (is.null(ca)) {
+        return(NULL)
+      }
+      cb = simplifyEval(lang[[3]])
+      if (is.null(cb)) {
+        return(NULL)
+      }
+      return(list(get(as.character(f))(ca[[1]], cb[[1]])))
+    }
+  }
+  NULL
+}
+
+

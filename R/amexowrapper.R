@@ -183,7 +183,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
   learner$staticParams = staticParams
   learner$searchspace = completeSearchSpace
   learner$fix.factors.prediction = TRUE
-  learner$wrappers = extractSubList(wrappers, "constructor")
+  learner$wrappers = extractSubList(wrappers, "cpo", simplify = FALSE)
   learner$shadowparams = shadowparams
   learner$wrapperparnames = wrapperparnames
   
@@ -210,7 +210,7 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   
   args = args[names(args) %nin% .learner$wrapperparnames]
 
-  .task = .task %>>% buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers)
+  cpo = buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers)
 
   args = applyExpressionBoundTrafos(args, .learner$expressiontrafos,
       .learner$epsources, .learner$learners.by.params, .task)
@@ -223,7 +223,7 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   learner = setHyperPars(learner,
       par.vals = dropNamed(args, .learner$shadowparams))
 
-  .learner$learner = learner  # respect automlrWrappedLearner interface
+  .learner$learner = cpo %>>% learner  # respect automlrWrappedLearner interface
 
   NextMethod("trainLearner")
 }
@@ -454,12 +454,11 @@ substituteParamList = function(paramList, substitutions, maxCycles = 32) {
 
 # remove variable references in requirements that do not point to existing
 # parameters.
-removeBadReqRefs = function(ps) {
-  badvars = setdiff(getRequiredParamNames(ps), getParamIds(ps))
-  subst = sapply(badvars, function(x)
-        substitute(stop(msg), list(msg = sprintf("%s: %s %s",
+removeDanglingReqs = function(ps, danglingparams) {
+  subst = sapply(danglingparams, function(x)
+        substitute(stop(msg), list(msg = sprintf("%s: %s referenced, but %s",
                     "Error during requirement evaluation", x,
-                    "referenced, but not in param set."))),
+                    "its requirements are never fulfilled."))),
       simplify = FALSE)
   ps$pars = substituteParamList(ps$pars, subst)
   ps
@@ -491,6 +490,7 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
   paramReferenceStop = rep(list(quote(stop("AMLR VARREF STOP"))),
       length(allNames))
   names(paramReferenceStop) = allNames
+  danglingparams = character(0)
 # paramReferenceStop = list2env(paramReferenceStop, parent = baseenv())
   # Now after all the replacing going on, there might be parameters that have a
   # `requires` always TRUE or always FALSE.
@@ -521,7 +521,16 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
     }
     req = replaceRequires(curpar$requires, paramReferenceStop)
     tryResult = try(reqValue <- eval(req, globalenv()), silent = TRUE)
-    if (!is.error(tryResult)) {
+    evalResult = simplifyEval(req)
+    if (!is.error(tryResult) || !is.null(evalResult)) {
+      if (!is.error(tryResult) && !is.null(evalResult) &&
+          !identical(tryResult, evalResult[[1]])) {
+        stopf("Different requirement simplification heuristics %s%s",
+            " gave different results for parameter ", curpar$id)
+      }
+      if (is.error(tryResult)) {
+        reqValue = evalResult[[1]]
+      }
       if (isTRUE(reqValue)) {
         # always true -> remove requirement
         if (is.null(curpar$amlr.learnerName) ||
@@ -534,8 +543,10 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
       } else {
         # always false -> remove the parameter.
         completeSearchSpace$pars[[param]] = NULL
+        danglingparams %c=% param
       }
-    } else {
+    } 
+    if (is.error(tryResult)) {
       errormsg = attr(tryResult, "condition")$message
       if (!identical(errormsg, "AMLR VARREF STOP")) {
         stopf("Error while evaluating requirement for parameter '%s'%s: '%s'.",
@@ -553,7 +564,101 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
       }
     }
   }
-  completeSearchSpace
+  removeDanglingReqs(completeSearchSpace, danglingparams)
+}
+
+simplifyEval = function(lang) {
+  if (!is.recursive(lang)) {
+    if (is.symbol(lang)) {
+      return(NULL)
+    } else {
+      return(list(eval(lang, baseenv())))
+    }
+  }
+  asCond = function(x) {
+    x && TRUE
+  }
+  logOrNull = function(x) {
+    if (is.null(x)) {
+      NULL
+    } else {
+      list(asCond(x[[1]]))
+    }
+  }
+  if (identical(lang[[1]], quote(`if`))) {
+    # emulate 'if': if conditional is unknown,
+    # we may still rescue the situation if both
+    # cases give same result.
+    cond = simplifyEval(lang[[2]])
+    if (is.null(cond)) {
+      ca = simplifyEval(lang[[3]])
+      cb = simplifyEval(lang[[4]])
+      if (identical(ca, cb)) {
+        return(ca)
+      } else {
+        return(NULL)
+      }
+    } else if (cond[[1]]) {
+      return(simplifyEval(lang[[3]]))
+    } else {
+      return(simplifyEval(lang[[4]]))
+    }
+  } else if (identical(lang[[1]], quote(`&&`))) {
+    ca = simplifyEval(lang[[2]])
+    if (is.null(ca) || asCond(ca[[1]])) {
+      cb = simplifyEval(lang[[3]])
+      if (is.null(cb) || !asCond(cb[[1]])) {
+        return(logOrNull(cb))
+      }
+      return(logOrNull(ca))
+    } else {
+      return(list(FALSE))
+    }
+  } else if (identical(lang[[1]], quote(`||`))) {
+    ca = simplifyEval(lang[[2]])
+    if (is.null(ca) || !asCond(ca[[1]])) {
+      cb = simplifyEval(lang[[3]])
+      if (is.null(cb) || asCond(cb[[1]])) {
+        return(logOrNull(cb))
+      }
+      return(logOrNull(ca))
+    } else {
+      return(list(TRUE))
+    }
+  }
+  if (length(lang) == 2) {
+    allowedunary = list(quote(`(`), quote(isTRUE), quote(isFALSE),
+        quote(identity), quote(as.null), quote(`!`), quote(`+`), quote(`-`))
+    for (f in allowedunary) {
+      if (!identical(lang[[1]], f)) {
+        next
+      }
+      ca = simplifyEval(lang[[2]])
+      if (is.null(ca)) {
+        return(NULL)
+      }
+      return(list(get(as.character(f))(ca[[1]])))
+    }
+  } else if (length(lang) == 3) {
+    allowedbinary = list(quote(`==`), quote(`+`), quote(`-`), quote(`*`),
+        quote(`/`), quote(`!=`), quote(`>`), quote(`<`), quote(`>=`),
+        quote(`<=`))
+    for (f in allowedbinary) {
+      if (!identical(lang[[1]], f)) {
+        next
+      }
+      ca = simplifyEval(lang[[2]])
+      if (is.null(ca)) {
+        return(NULL)
+      }
+      cb = simplifyEval(lang[[3]])
+      if (is.null(cb)) {
+        return(NULL)
+      }
+      return(list(get(as.character(f))(ca[[1]], cb[[1]])))
+    }
+  }
+  NULL
 }
 
 getSearchspace.AMExoWrapper = function(learner) {

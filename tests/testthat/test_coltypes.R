@@ -30,85 +30,76 @@ test_that("the correct learner is automatically chosen", {
                         "MissingsNumericsLearner", list(int1 = 2), list())
 })
 
-# test that automlr.has.missings and automlr.remove.missings work as they should, are present only when needed, and respect wrapper order.
+# test that automlr.has.missings works as it should, is present only when needed
 test_that("parameters are fed to the correct learner / wrapper", {
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), NumericsTask)
+  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, pWW(nimp1), pWW(nimp2)), NumericsTask, verbosity = 5)
+
   # numericslearner for numericstask: wrappers don't do anything.
   checkLearnerBehaviour(l, NumericsTask,
-                        list(selected.learner = "NumericsLearner", NumericsLearner.int1 = 3, automlr.wrappersetup = "FactorRemover$XRemover$NARemover",
-                             XRemover.spare1 = 3),
-                        "NumericsLearner", list(int1 = 3), list(),
-                        FactorRemover = list(FactorRemover.spare1 = 0, FactorRemover.spare2 = 0),
-                        XRemover = list(XRemover.spare1 = 3, XRemover.spare2 = 0),
-                        NARemover = list(NARemover.spare1 = 0, NARemover.spare2 = 0))
+                        list(selected.learner = "NumericsLearner", NumericsLearner.int1 = 3),
+                        "NumericsLearner", list(int1 = 3), list())
 
   # numericslearner for missingsnumericstask: NARemover automatically removes NAs
   # also watch changed order of wrappers
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), MissingsNumericsTask)
+  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, pWW(nimp1), pWW(nimp2)), MissingsNumericsTask, verbosity = 6)
   checkLearnerBehaviour(l, MissingsNumericsTask,
-                        list(selected.learner = "NumericsLearner", NumericsLearner.int1 = 3, automlr.wrappersetup = "XRemover$FactorRemover$NARemover",
-                             XRemover.spare1 = 3),
-                        "NumericsLearner", list(int1 = 3), list(),
-                        XRemover = list(XRemover.spare1 = 3, XRemover.spare2 = 9),
-                        FactorRemover = list(FactorRemover.spare1 = 0, FactorRemover.spare2 = 0),
-                        NARemover = list(NARemover.spare1 = 0, NARemover.spare2 = 0, NARemover.remove.NA = TRUE))
+    list(selected.learner = "NumericsLearner", NumericsLearner.int1 = 3, automlr.wimputing.numerics = "numimputer1"),
+    "NumericsLearner", list(int1 = 3),
+    numimputer1 = list())
 
-  # putting NARemover before XRemover causes XRemover not seeing missings any more, therefore changing XRemover.spare2 from 9 to 0
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), MissingsNumericsTask)
-  checkLearnerBehaviour(l, NumericsTask,
-                        list(selected.learner = "NumericsLearner", NumericsLearner.int1 = 3, automlr.wrappersetup = "NARemover$XRemover$FactorRemover",
-                             XRemover.spare1 = 3),
-                        "NumericsLearner", list(int1 = 3), list(),
-                        NARemover = list(NARemover.spare1 = 0, NARemover.spare2 = 0, NARemover.remove.NA = TRUE),
-                        XRemover = list(XRemover.spare1 = 3, XRemover.spare2 = 0),
-                        FactorRemover = list(FactorRemover.spare1 = 0, FactorRemover.spare2 = 0))
+  checkLearnerBehaviour(l, MissingsNumericsTask,
+                        list(selected.learner = "NumericsLearner", NumericsLearner.int1 = 3, automlr.wimputing.numerics = "numimputer2", multiplier = 2),
+                        "NumericsLearner", list(int1 = 3), numimputer2 = list(multiplier = 2))
 
-  # using MissingsNumericsLearner has the same effect if automlr.remove.missings == TRUE
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), MissingsNumericsTask)
+
+    # using MissingsNumericsLearner has the same effect if automlr.remove.missings == TRUE
+  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, pWW(nimp1), pWW(nimp2), pWW(fimp1), pWW(fimp2), pWW(oimp1), pWW(oimp2)),
+    MissingsNumericsTask, verbosity = 6)
   checkLearnerBehaviour(l, NumericsTask,
-                        list(selected.learner = "MissingsNumericsLearner", automlr.wrappersetup = "NARemover$XRemover$FactorRemover",
-                             XRemover.spare1 = 3, automlr.remove.missings = TRUE),
+                        list(selected.learner = "MissingsNumericsLearner", automlr.impute = TRUE, automlr.wimputing.numerics = "numimputer2", multiplier = 2),
                         "MissingsNumericsLearner", list(), list(),
-                        NARemover = list(NARemover.spare1 = 0, NARemover.spare2 = 0, NARemover.remove.NA = TRUE),
-                        XRemover = list(XRemover.spare1 = 3, XRemover.spare2 = 0),
-                        FactorRemover = list(FactorRemover.spare1 = 0, FactorRemover.spare2 = 0))
+                        numimputer2 = list(multiplier = 2))
 
-  # with automlr.remove.missings == FALSE, XRemover sees the missings again and XRemover.spare2 is 9; also MissingsNumericsLearner.int1 has true requirement.
-  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, XRemover, NARemover, FactorRemover), MissingsNumericsTask)
+  # with automlr.remove.missings == FALSE, MissingsNumericsLearner.int1 has true requirement.
+  l = buildLearners(list(NumericsLearner, MissingsNumericsLearner, pWW(nimp1), pWW(nimp2), pWW(fimp1), pWW(fimp2), pWW(oimp1), pWW(oimp2)),
+    MissingsNumericsTask, verbosity = 6)
   checkLearnerBehaviour(l, NumericsTask,
-                        list(selected.learner = "MissingsNumericsLearner", automlr.wrappersetup = "NARemover$XRemover$FactorRemover",
-                             XRemover.spare1 = 3, automlr.remove.missings = FALSE, MissingsNumericsLearner.int1 = 9),
-                        "MissingsNumericsLearner", list(int1 = 9), list(),
-                        NARemover = list(NARemover.spare1 = 0, NARemover.spare2 = 0),
-                        XRemover = list(XRemover.spare1 = 3, XRemover.spare2 = 9),
-                        FactorRemover = list(FactorRemover.spare1 = 0, FactorRemover.spare2 = 0))
+                        list(selected.learner = "MissingsNumericsLearner", automlr.impute = FALSE, MissingsNumericsLearner.int1 = 9),
+                        "MissingsNumericsLearner", list(int1 = 9), list())
 })
 
-# automlr.remove.x and automlr.wremoving.x are present in the right cases, and cause the right behaviour.
+# automlr.impute and automlr.wimputing are present in the right cases, and cause the right behaviour.
 test_that("requirements using pseudoparameters behave as expected", {
-  # all learners and removers
+
+  # all learners and most removers
   expect_warning(l <- buildLearners(list(
       NumericsLearner, FactorsLearner, OrderedsLearner,
       MissingsNumericsLearner, MissingsFactorsLearner, MissingsFactorsNumericsLearner,
       FactorsNumericsLearner, AllLearner,
-      XRemover, NARemover, FactorRemover, NAFactorRemover), MissingsNumericsFactorsTask, verbose = TRUE),
-      "different \\(but feasible\\) type 'cat' listed", all = TRUE)
+      pWW(nimp1), pWW(nimp2), pWW(fimp1), pWW(fimp2), pWW(oimp1), pWW(oimp2),
+      pWW(fnconv1), pWW(onconv1), pWW(onconv2),
+      pWW(nfconv1), pWW(nfconv2), pWW(ofconv1), pWW(ofconv2),
+      pWW(noconv1), pWW(noconv2), pWW(foconv1), pWW(foconv2)), MissingsNumericsFactorsTask, verbosity = 6),
+      "different \\(but feasible\\) type 'cat' listed|has parameters .* not mentioned in search space", all = TRUE)
 
   # the wrappers that can remove factors, or missings, are the expected ones
-  expect_set_equal(unlist(getpars(l)$automlr.wremoving.factors$values), c("FactorRemover", "NAFactorRemover"))
-  expect_set_equal(unlist(getpars(l)$automlr.wremoving.missings$values), c("NARemover", "NAFactorRemover"))
+  expect_set_equal(unlist(getpars(l)$automlr.wconverting.factors.to.ordered$values), c("foconv1", "foconv2"))
+  expect_set_equal(unlist(getpars(l)$automlr.wimputing.ordered$values), c("ordimputer1", "ordimputer2"))
 
-  # the numericslearner requires removal of factors and missings; the wremoving parameters correctly determine which wrapper removes them.
+  # the numericslearner requires removal of factors and missings; most parameters correctly determine which conversions are necessary.
+  pvs = list(selected.learner = "NumericsLearner", automlr.missing.indicators = TRUE, automlr.convert.before.impute = FALSE,
+    automlr.wimputing.factors = "factimputer1",
+    automlr.wimputing.numerics = "numimputer1",
+    reference.cat = FALSE, fimp.const = "NAx", NumericsLearner.int1 = 8)
   checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
-                        list(selected.learner = "NumericsLearner", automlr.wrappersetup = "NARemover$XRemover$FactorRemover$NAFactorRemover",
-                             automlr.wremoving.factors = "FactorRemover", automlr.wremoving.missings = "NARemover",
-                             XRemover.spare1 = 3, FactorRemover.convertFactors = FALSE,
-                             NumericsLearner.int1 = 8),
-                        "NumericsLearner", list(int1 = 8), list(),
-                        NARemover = list(NARemover.spare1 = 0, NARemover.spare2 = 0, NARemover.remove.NA = TRUE),
-                        XRemover = list(XRemover.spare1 = 3, XRemover.spare2 = 0),
-                        FactorRemover = list(FactorRemover.spare1 = 0, FactorRemover.spare2 = 0, FactorRemover.remove.factors = TRUE),
-                        NAFactorRemover = list(NAFactorRemover.spare1 = 0, NAFactorRemover.spare2 = 0))
+    pvs, "NumericsLearner", list(int1 = 8), list(),
+    factimputer1 = list(fimp.const = "NAx"),
+    numimputer1 = list(),
+    fnconv1 = list(reference.cat = FALSE))
+
+#  pvx = namedList(getParamIds(getParamSet(l)), NA)
+#  isFeasible(getParamSet(l), insert(pvx, pvs))
+
 
   checkLearnerBehaviour(l, MissingsNumericsFactorsTask,
                         list(selected.learner = "NumericsLearner", automlr.wrappersetup = "NARemover$XRemover$FactorRemover$NAFactorRemover",

@@ -148,14 +148,14 @@ nimp2 = autolearner(
 fimp1 = autolearner(
     autoWrapper("factimputer1", cpoImputeConstant(make.dummy.cols = FALSE, id = "fimp"),
       "factors", "missings"),
-    list(sp("fimp.const", "cat", c("NA", "MISSING"))), stacktype = "wrapper")
+    list(sp("fimp.const", "cat", c("NAx", "MISSING"))), stacktype = "wrapper")
 fimp2 = autolearner(
     autoWrapper("factimputer2", cpoImputeHist(make.dummy.cols = FALSE),
       "factors", "missings"), stacktype = "wrapper")
 oimp1 = autolearner(
     autoWrapper("ordimputer1", cpoImputeConstant(make.dummy.cols = FALSE, id = "oimp") %>>% fremover(),
       "ordered", "missings"),
-    list(sp("oimp.const", "cat", c("NA", "MISSING"))), stacktype = "wrapper")
+    list(sp("oimp.const", "cat", c("NAx", "MISSING"))), stacktype = "wrapper")
 oimp2 = autolearner(
     autoWrapper("ordimputer2", cpoImputeHist(make.dummy.cols = FALSE) %>>% fremover(),
       "ordered", "missings"), stacktype = "wrapper")
@@ -168,10 +168,10 @@ fnconv2 = autolearner(
     autoWrapper("fnconv2", asnumcpo(),
       "numerics", "factors"), stacktype = "wrapper")
 onconv1 = autolearner(
-    autoWrapper("fnconv1", cpoDummyEncode(),
-      "numerics", "ordered"), list(sp("reference.cat", "bool")), "wrapper")
+    autoWrapper("onconv1", cpoDummyEncode(id = "onconv"),
+      "numerics", "ordered"), list(sp("onconv.reference.cat", "bool")), "wrapper")
 onconv2 = autolearner(
-    autoWrapper("fnconv2", asnumcpo(),
+    autoWrapper("onconv2", asnumcpo(),
       "numerics", "ordered"), stacktype = "wrapper")
 nfconv1 = autolearner(
     autoWrapper("nfconv1", splitnumcpo(),

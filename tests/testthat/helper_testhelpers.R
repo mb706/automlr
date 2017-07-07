@@ -55,7 +55,7 @@ createTestRegrTask = function(id, nrow, nNumeric = 0, nFactor = 0, nOrdered = 0,
 # human readable output of list
 debuglist = function(l, prefix = "") {
   res = ""
-  if (checkmate::testNamed(l)) {
+  if (length(l) && checkmate::testNamed(l)) {
     for (n in sort(names(l))) {
       res = paste0(res, paste0(prefix, n, ": "))
       if (is.list(l[[n]])) {
@@ -99,25 +99,24 @@ expect_learner_output = function(learner, task, name, trainps = list(),
   wrapperoutput = function(which) capture.output(
       for (w in names(wrapperArgs)) {
         catf("wrapper %s %s", w, which)
-        dput(wrapperArgs[[w]][[paste0(w, ".spare1")]])
-        dput(wrapperArgs[[w]][[paste0(w, ".spare2")]])
         if (which == "train") {
-          for (pname in wrapperflags) {
-            pcomplete = paste0(w, pname)
-            if (isTRUE(wrapperArgs[[w]][[pcomplete]])) {
-              dput(pcomplete)
-            }
-          }
+          debuglistout(wrapperArgs[[w]])
         }
       })
   expectedlout = expectout(c(list(myname = name), trainps))
-  expect_output(model <- train(learner, task),
-      paste(c(wrapperoutput("train"), expectedlout), collapse = "\n"),
-      fixed = TRUE)
+  expect_output({
+    catf("BEGINNING")
+    model <- train(learner, task)
+    catf("END")
+  }, paste(c("BEGINNING", wrapperoutput("train"), expectedlout, "END"), collapse = "\n"),
+  fixed = TRUE)
   expectedpout = expectout(c(list(myname = name), predps))
-  expect_output(predict(model, task),
-      paste(c(wrapperoutput("predict"), expectedpout), collapse = "\n"),
-      fixed = TRUE)
+  expect_output({
+    catf("BEGINNING")
+    predict(model, task)
+    catf("END")
+  }, paste(c("BEGINNING", wrapperoutput("predict"), expectedpout, "END"), collapse = "\n"),
+  fixed = TRUE)
   do.call(configureMlr, oldopts)
 }
 
@@ -269,4 +268,22 @@ checkLearnerBehaviour = function(learner, task, params, ...) {
   expect_learner_output(setHyperPars(learner, par.vals = params), task, ...)
 }
 
-
+# print wrapper for wrappers
+pWW = function(al) {
+  origcpo = al$learner$cpo
+  al$learner$cpo = makeCPO(paste0("wrapped.", origcpo$bare.name), .par.set = getParamSet(origcpo),
+    .par.vals = getHyperPars(origcpo), .datasplit = "task", cpo.trafo = function(data, target, ...) {
+      catf("wrapper %s train", al$learner$name)
+      debuglistout(list(...)[extractSubList(al$searchspace, "name")])
+      data = data %>>% setHyperPars(origcpo, par.vals = list(...))
+      control = retrafo(data)
+      retrafo(data) = NULL
+      data
+    }, cpo.retrafo = function(data, control, ...) {
+      catf("wrapper %s predict", al$learner$name)
+      data %>>% control
+    })()
+  al$learner$cpo$properties = origcpo$properties
+  al$learner$cpo$properties$properties.data = al$learner$cpo$properties$properties
+  al
+}

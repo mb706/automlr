@@ -9,23 +9,23 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   outparams = list()
   wrapparams = makeParamSet()
   allTypes = c("factors", "ordered", "numerics")
-  
+
   types.present = names(missings)
-  
-  converters = bwssConverters(wrappers, missings)
-  imputers = bwssImputers(wrappers, missings)
+
+  converters = bwssConverters(wrappers)
+  imputers = bwssImputers(wrappers)
   preprocs = bwssPreprocs(wrappers)
-  
+
   can.convert = as.logical(any(extractSubList(wrappers, "is.converter")))
-  can.impute = all(sapply(imputers[missings], length)) &&
+  can.impute = all(sapply(imputers[names(missings)][missings], length)) &&
       length(imputers[missings])
   can.convert.before.impute = all(sapply(imputers, length))
-  
+
   imputeparam = "automlr.impute"
   miparam = "automlr.missing.indicators"
   convertanyparam = "automlr.convert"
   cbiparam = "automlr.convert.before.impute"
-  
+
   ppnames = list()
   wanames = list()
   wrapagain = list()
@@ -39,9 +39,9 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
     wrapagain[[type]] = asQuoted(wanames[[type]])
     wimpnames[[type]] = sprintf("automlr.wimputing.%s", type)
     ppnames[[type]] = sprintf("automlr.preproc.%s", type)
-    
+
   }
-  
+
   # return something like quote(selected.learner %in% canHandleX[[type]])
   # but use TRUE of FALSE if this is always TRUE / FALSE.
   learnerCanHandleQuote = function(type) {
@@ -53,7 +53,7 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
       substitute(selected.learner %in% x, list(x = canHandleX[[type]]))
     }
   }
-  
+
   # take a list of truth values indexed by type, giving the state of something
   # (presence, missingness) before conversion. This function generates the
   # expression that gives the respective state *after* conversion.
@@ -72,7 +72,7 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
           noconversion %||% conversion
         }, simplify = FALSE)
   }
-  
+
   # -------------------------------
   # indicators telling which types are present at each stage
   # -------------------------------
@@ -97,48 +97,48 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
         (qNot(asQuoted(cbiparam)) %&&% dtPresentBeforeConv[[type]]) %||%
             transformProposition(wrapagain)[[type]]
       }, simplify = FALSE)
-  
-  
+
+
   # ----------------------------
   # automlr.impute parameters
   # ----------------------------
   outparams %c=% makeLParam0Req(imputeparam,
       can.impute %&&% qNot(learnerCanHandleQuote("missings")),
       !can.impute)
-  
+
   # ----------------------------
   # automlr.convert.X parameters
   # ----------------------------
-  
+
   # param whether to convert at all
-  outparams %c=% makeLParam0Req(convertanyparam, 
+  outparams %c=% makeLParam0Req(convertanyparam,
       can.convert %&&% Reduce(`%||%`, lapply(allTypes, function(t)
                 dtPresentBeforeConv[[t]] %&&% qNot(learnerCanHandleQuote(t)))),
       !can.convert)
-  
+
   for (type in allTypes) {
     eligible.targets = Filter(function(totype) {
           (totype != type) &&  # no identity conversion
               (length(converters[[type]][[totype]]))  # only if converters exist
         }, allTypes)
-    
+
     convparamname = convparnames[[type]]
-    
-    req = convertanyparam %&&%
+
+    req = asQuoted(convertanyparam) %&&%
         Reduce(`%||%`, lapply(eligible.targets, learnerCanHandleQuote), FALSE)
-    
+
     if (type == "factors") {
       mayproducefactors = learnerCanHandleQuote(type) %||% req
       outparams %c=% makeLParam0Req(miparam, FALSE,
-          !(any(missings) %&&% mayproducefactors))
+          qNot(any(missings) %&&% mayproducefactors))
     }
-    
+
     req = dtPresentBeforeConv[[type]] %&&% req
-    
+
     outparams %c=% makeLParam0Req(convparamname,
         qNot(learnerCanHandleQuote(type)) %&&% req,
         qNot(req))
-    
+
     if (length(eligible.targets) > 1) {
       req = Reduce(`%&&%`, lapply(eligible.targets, learnerCanHandleQuote),
           TRUE) %&&% asQuoted(convparamname)
@@ -148,70 +148,82 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
     for (totype in eligible.targets) {
       index = which(totype == eligible.targets)
       other.targets = setdiff(eligible.targets, totype)
-      
+
       # it is possible and easy to handle the case where there are more than
       # three types (and hence more than 2 eligible.targets), but the following
       # would need to change for that.
       assert(length(other.targets) <= 1)
-      
+
       if (length(other.targets)) {
         is.only.conv = qNot(learnerCanHandleQuote(other.targets))
       } else {
         is.only.conv = TRUE
       }
-      
+
       pname = sprintf("automlr.convert.%s.to.AMLRFIX%d", type, index)
       # dropping getReq(convparam) %&&% ..., because (A || B) && B == B.
       req = learnerCanHandleQuote(totype) %&&% is.only.conv %&&%
           asQuoted(convparamname)
       outparams %c=% list(makeDiscreteParam(pname, values = totype,
               requires = setReq(req)))
-      
+
       pname = sprintf("automlr.wconverting.%s.to.%s", type, totype)
       req = learnerCanHandleQuote(totype) %&&% asQuoted(convparamname) %&&%
           substitute(a == b, list(
-                  a = asQuoted(convtargetpname),
+                  a = asQuoted(convtargetnames[[type]]),
                   b = totype))
-      outparams %c=% list(makeDiscreteParam(pname,
-              values = converters[[type]][[totype]], requires = setReq(req)))
+      outparams %c=% list(
+          makeDiscreteParam(pname,
+              values = converters[[type]][[totype]], requires = setReq(req)),
+          makeDiscreteParam(paste0(pname, ".AMLRFIX1"),
+              values = "$", requires = setReq(qNot(req))))
       
+
       # Add the relevant wrapper's parameters to the exported param se
       # with the right conditionals.
       for (cname in converters[[type]][[totype]]) {
-        wrapparams %c=% list(addParamSetSelectorCondition(
-            wrappers[[cname]]$searchspace, pname, cname))
+        wrapparams %c=% addParamSetSelectorCondition(
+            wrappers[[cname]]$searchspace, pname, cname)
       }
     }
   }
-  
+
   # -------------------------------
   # automlr.convert.before.impute
   # -------------------------------
-  
+
   # 'automlr.convert.before.impute is only available if:
   # - can.convert.before.impute
   # - at least one convert param is TRUE
   #   - which means, the convert param's requirements must also be TRUE
   # - imputeparam is TRUE
-  cbiReq = can.convert.before.impute %&&% asQuoted(imputeparam) %&&%
-      Reduce(`%||%`, lapply(convparnames, asQuoted))
+  cbiReq = can.convert.before.impute %&&%
+      Reduce(`%||%`, lapply(convparnames, asQuoted)) %&&%
+      asQuoted(imputeparam)
   outparams %c=% makeLParam0Req(cbiparam, FALSE, qNot(cbiReq))
-  
+
   # -------------------------------
   # automlr.wrapafterconvert.XXX
   # -------------------------------
 
   for (type in allTypes) {
+    possible.targets = setdiff(allTypes, type)
+    assert(length(possible.targets) == 2)
+    wrappingHappens = substitute(if (a == b) acanconv else bcanconv,
+        list(a = asQuoted(convtargetnames[[type]]), b = possible.targets[1],
+            acanconv = length(preprocs[[possible.targets[1]]]) != 0,
+            bcanconv = length(preprocs[[possible.targets[2]]]) != 0))
     wrapagainname = wanames[[type]]
     outparams %c=% makeLParam0Req(wrapagainname,
-        asQuoted(cbiparam) %&&% asQuoted(convparnames[[type]]),
-        qNot(asQuoted(convparnames[[type]])))
+        asQuoted(cbiparam) %&&% asQuoted(convparnames[[type]]) %&&%
+            wrappingHappens,
+        qNot(asQuoted(convparnames[[type]]) %&&% wrappingHappens))
   }
 
   # -------------------------------
   # automlr.wimputing.XXX
   # -------------------------------
-  
+
   for (type in allTypes) {
     if (!length(imputers[[type]])) {
       outparams %c=% list(makeDiscreteParam(wimpnames[[type]], values = "$"))
@@ -224,17 +236,17 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
         requires = setReq(asQuoted(imputeparam) %&&% wimpreq)))
     outparams %c=% list(makeDiscreteParam(
             paste0(wimpnames[[type]], ".AMLRFIX1"), values = "$",
-        requires = setReq(asQuoted(imputeparam) %&&% qNot(wimpreq))))
+        requires = setReq(qNot(asQuoted(imputeparam) %&&% wimpreq))))
     for (iname in imputers[[type]]) {
-      wrapparams %c=% list(addParamSetSelectorCondition(
-          wrappers[[iname]]$searchspace, wimpnames[[type]], iname))
+      wrapparams %c=% addParamSetSelectorCondition(
+          wrappers[[iname]]$searchspace, wimpnames[[type]], iname)
     }
   }
-  
+
   # -------------------------------
   # automlr.preproc.XXX
   # -------------------------------
-  
+
   for (type in allTypes) {
     ppname = ppnames[[type]]
     outparams %c=% list(makeDiscreteParam(ppname,
@@ -243,17 +255,17 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
     outparams %c=% list(makeDiscreteParam(paste0(ppname, ".AMLRFIX1"),
         values = "$", requires = setReq(qNot(dtWrap[[type]]))))
     for (pname in preprocs[[type]]) {
-      wrapparams %c=% list(addParamSetCondition(wrappers[[pname]]$searchspace,
+      wrapparams %c=% addParamSetCondition(wrappers[[pname]]$searchspace,
           substitute(b %in% strsplit(a, "$", fixed = TRUE)[[1]],
-              list(a = asQuoted(ppname), b = pname))))
+              list(a = asQuoted(ppname), b = pname)))
     }
   }
-  
+
   replacelist = dtPresentAfterConv
   names(replacelist) = paste0("automlr.has.", names(replacelist))
   replacelist$automlr.has.missings = any(missings) %&&%
       qNot(asQuoted(imputeparam))
-  
+
   list(wrapperps = c(wrapparams, makeParamSet(params = outparams)),
       replaces = replacelist)
 }
@@ -272,7 +284,7 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   if (isTRUE(b)) {
     return(a)
   }
-  substitute(((a) && (b)), list(a = a, b = b))
+  substitute(a && b, list(a = a, b = b))
 }
 
 `%||%` = function(a, b) {
@@ -285,7 +297,7 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   if (isFALSE(b)) {
     return(a)
   }
-  substitute(((a) || (b)), list(a = a, b = b))
+  substitute(a || b, list(a = a, b = b))
 }
 
 qNot = function(a) {
@@ -294,7 +306,7 @@ qNot = function(a) {
   } else if (isTRUE(a)) {
     FALSE
   } else {
-    substitute((!(a)), list(a = a))
+    substitute(!a, list(a = a))
   }
 }
 
@@ -328,7 +340,7 @@ getReq = function(r) {
 makeLParam0Req = function(id, alwaysTrueReq, alwaysFalseReq) {
   list(
       makeLogicalParam(id, requires = setReq(
-              qNot(alwaysTrueReq) %&&% qNot(alwaysFalseReq))),
+              qNot(alwaysFalseReq) %&&% qNot(alwaysTrueReq))),
       makeDiscreteParam(paste0(id, ".AMLRFIX1"),
           values = list(`TRUE` = TRUE),
           requires = setReq(alwaysTrueReq)),
@@ -341,7 +353,7 @@ makeLParam0Req = function(id, alwaysTrueReq, alwaysFalseReq) {
 # Wrapper lists                 #
 #################################
 
-bwssConverters = function(wrappers, missings) {
+bwssConverters = function(wrappers) {
   allTypes = c("factors", "ordered", "numerics")
   cwrappers = wrappers[extractSubList(wrappers, "is.converter")]
   converters = list()  # a list source -> destination -> converternames
@@ -351,14 +363,16 @@ bwssConverters = function(wrappers, missings) {
   for (cw in cwrappers) {
     converters[[cw$convertfrom]][[cw$datatype]] %c=% cw$name
   }
+  converters
 }
 
-bwssImputers = function(wrappers, missings) {
-  imputers = lapply(missings, function(x) character(0))
+bwssImputers = function(wrappers) {
   iwrappers = wrappers[extractSubList(wrappers, "is.imputer")]
+  imputers = list()
   for (iw in iwrappers) {
     imputers[[iw$datatype]] %c=% iw$name
   }
+  imputers
 }
 
 bwssPreprocs = function(wrappers) {
@@ -368,6 +382,7 @@ bwssPreprocs = function(wrappers) {
   for (pw in ppwrappers) {
     preprocs[[pw$datatype]] %c=% pw$name
   }
+  preprocs
 }
 
 # get the possible values of preprocessor-wrapper parameters
@@ -421,24 +436,24 @@ addParamSetSelectorCondition = function(ps, selector, selectand) {
 
 
 buildCPO = function(args, wrappers) {
-  
+
   allTypes = c("factors", "ordered", "numerics")
-  
+
   propToType = function(p) switch(p, factors = "factor", numerics = "numeric",
         ordered = "ordered", stop("unknown property"))
-  
+
   setProperArgs = function(cpo) {
     hpnames = intersect(names(getParamSet(cpo)$pars), names(args))
     setHyperPars(cpo, par.vals = args[hpnames])
   }
-  
+
 #  applyCpoToType = function(cpo, type, level) {
 #    sname = sprintf("automlr.selector.%s.%d", type, level)
 #    snameinv = paste0(sname, ".inv")
 #    cpoCbind(cpoSelect(type = propToType(type), id = sname) %>>% cpo,
 #        cpoSelect(type = type, invert = TRUE, id = snameinv))
 #  }
-  
+
   applyTypeCPOs = function(cpos, selector.id.prefix) {
     cbound = do.call(cpoCbind, lapply(allTypes, function(t) {
               cpoSelect(type = propToType(t),
@@ -447,12 +462,12 @@ buildCPO = function(args, wrappers) {
     cbound = setProperArgs(cbound)
     cpoApply(cbound, id = selector.id.prefix)
   }
-  
+
   impute.cpo = NULLCPO
   convert.cpo = NULLCPO
-  
+
   pppipeline = list()
-  
+
   for (type in allTypes) {
     wpreproc = sprintf("automlr.preproc.%s", type)
     pppipeline[[type]] = NULLCPO
@@ -464,9 +479,9 @@ buildCPO = function(args, wrappers) {
     }
     pppipeline[[type]] = setProperArgs(pppipeline[[type]])
   }
-  
+
   pp.cpo = applyTypeCPOs(pppipeline, "automlr.ppselect.")
-  
+
   if (args$automlr.impute) {
     impute.cpo = applyTypeCPOs(sapply(allTypes, function(type) {
                     wimp = args[[sprintf("automlr.wimputing.%s", type)]]
@@ -476,34 +491,54 @@ buildCPO = function(args, wrappers) {
                       wrappers[[wimp]]
                     }
                 }, simplify = FALSE), "automlr.impselect.")
+    impute.cpo$properties$properties.adding = "missings"
+    impute.cpo$par.vals$automlr.impselect..cpo$properties =
+        impute.cpo$properties
   }
-  
+
   if (args$automlr.convert) {
     convert.cpo = applyTypeCPOs(sapply(allTypes, function(type) {
-                    if (!args[[sprintf("automlr.convert.%s", type)]]) {
-                        NULLCPO
-                    }
-                    totype = args[[sprintf("automlr.convert.%s.to", type)]]
-                    wconv = args[[sprintf("automlr.wconverting.%s.to.%s", type, totype)]]
-                    if (!args$automlr.convert.before.impute &&
-                            args[[sprintf("automlr.wrapafterconvert.%s", type)]]) {
-                        wrappers[[wconv]] %>>% cpoApply(pppipeline[[totype]],
-                                id = sprintf("automlr.postconvertcpo.", type))
-                    } else {
-                        wrappers[[wconv]]
-                    }
-                }, simplify = FALSE), "automlr.convselect.")
+              if (!args[[sprintf("automlr.convert.%s", type)]]) {
+                return(NULLCPO)
+              }
+              totype = args[[sprintf("automlr.convert.%s.to", type)]]
+              wconv = args[[sprintf("automlr.wconverting.%s.to.%s", type,
+                      totype)]]
+              if (!args$automlr.convert.before.impute &&
+                  args[[sprintf("automlr.wrapafterconvert.%s", type)]]) {
+                wrappers[[wconv]] %>>% cpoApply(pppipeline[[totype]],
+                    id = sprintf("automlr.postconvertcpo.", type))
+              } else {
+                wrappers[[wconv]]
+              }
+            }, simplify = FALSE), "automlr.convselect.")
+    fromconv = character(0)
+    toconv = character(0)
+    for (type in allTypes) {
+      if (!args[[sprintf("automlr.convert.%s", type)]]) {
+        next
+      }
+      fromconv %c=% type
+      toconv %c=% args[[sprintf("automlr.convert.%s.to", type)]]
+    }
+    noconv = intersect(fromconv, toconv)
+    fromconv = setdiff(fromconv, noconv)
+    toconv = setdiff(toconv, noconv)
+    convert.cpo$properties$properties.adding = fromconv
+    convert.cpo$properties$properties.needed = toconv
+    convert.cpo$par.vals$automlr.convselect..cpo$properties =
+        convert.cpo$properties
   }
-  
+
   fullcpo = NULLCPO
   if (args$automlr.convert.before.impute) {
     if (args$automlr.missing.indicators) {
-      fullcpo = cpoCbind(NULLCPO, cpoMissingIndicators())
+      fullcpo = cpoCbind(NULLCPO, missing.factors = cpoMissingIndicators())
     }
     fullcpo = fullcpo %>>% convert.cpo %>>% impute.cpo %>>% pp.cpo
   } else {
     if (args$automlr.missing.indicators) {
-      fullcpo = cpoCbind(impute.cpo, cpoMissingIndicators())
+      fullcpo = cpoCbind(impute.cpo, missing.factors = cpoMissingIndicators())
     } else {
       fullcpo = impute.cpo
     }
