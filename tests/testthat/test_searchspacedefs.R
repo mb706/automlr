@@ -216,26 +216,26 @@ test_that("AMLRFIX correctness is checked", {
   expect_error(bl(aftest), "'int3\\.AMLRFIX1' for learner 'test' cannot have an \\.AMLRFIX suffix")
 
   # AMLRFIX additionally to fixed or default parameter doesn't work, in either order
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "fix", 5, req = quote(int1!=0)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0))))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "fix", 5), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0))))
   expect_error(bl(aftest), "'int3\\.AMLRFIX1' for learner 'test' cannot have an \\.AMLRFIX suffix")
 
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "fix", 5, req = quote(int1!=0)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0))))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "fix", 5), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0))))
   expect_error(bl(aftest), "'int3\\.AMLRFIX1' for learner 'test' cannot have an \\.AMLRFIX suffix")
 
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "def", 0, req = quote(int1!=0)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0))))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "def", 0), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0))))
   expect_error(bl(aftest), "'int3\\.AMLRFIX1' for learner 'test' cannot have an \\.AMLRFIX suffix")
 
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0)), sp("int3", "fix", 5), req = quote(int1!=0)))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0)), sp("int3", "fix", 5)))
   expect_error(bl(aftest), "'int3' for learner 'test' already defined with \\.AMLRFIX suffix cannot be given")
 
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0)), sp("int3", "def", 0), req = quote(int1!=0)))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3.AMLRFIX1", "int", c(0, 10), req = quote(int1==0)), sp("int3", "def", 0)))
   expect_error(bl(aftest), "'int3' for learner 'test' already defined with \\.AMLRFIX suffix cannot be given")
 
   # AMLRFIX cannot be def or fix itself.
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "int", c(0, 10), req = quote(int1!=0)), sp("int3.AMLRFIX1", "fix", 5, req = quote(int1==0))))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "int", c(0, 10), req = quote(int1!=0)), sp("int3.AMLRFIX1", "fix", 5)))
   expect_error(bl(aftest), "'int3\\.AMLRFIX1' for learner 'test' is of type 'fix' but has an \\.AMLRFIX suffix")
 
-  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "int", c(0, 10), req = quote(int1!=0)), sp("int3.AMLRFIX1", "def", 0, req = quote(int1==0))))
+  aftest = autolearner(tl, list(sp("int1", "int", c(0, 10)), sp("int3", "int", c(0, 10), req = quote(int1!=0)), sp("int3.AMLRFIX1", "def", 0)))
   expect_error(bl(aftest), "'int3\\.AMLRFIX1' for learner 'test' is of type 'def' but has an \\.AMLRFIX suffix")
 
   # AMLRFIX cannot be dummy

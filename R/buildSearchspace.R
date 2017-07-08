@@ -109,16 +109,17 @@ checkAmlrFix = function(sslist, lrn, verbosity) {
     #  - not be DUMMY
     #  - not have the same prefix as a parameter does any of this
     if (param$name != origParamName) {
-      if (is.null(param$req)) {
-        stopf(paste("Parameter '%s' for learner '%s' has an .AMLRFIX suffix",
-                "but no requirements"),
-            param$name, lrnid)
-      }
       if (param$type %in% c("fix", "def", "fixdef")) {
         stopf(paste("Parameter '%s' for learner '%s' is of type '%s' but has",
                 "an .AMLRFIX suffix."),
             param$name, lrnid, param$type)
       }
+      if (is.null(param$req)) {
+        stopf(paste("Parameter '%s' for learner '%s' has an .AMLRFIX suffix",
+                "but no requirements"),
+            param$name, lrnid)
+      }
+      
       if (identical(param$special, "dummy")) {
         stopf(paste("Parameter '%s' for learner '%s' has an .AMLRFIX suffix",
                 "but is also a DUMMY parameter."),

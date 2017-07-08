@@ -310,8 +310,8 @@ trivialParams = list(
     sp("disc4x", "cat", c("trueFun", "falseFun")))
 
 noiseCL = autolearner(noiseClassif, c(trivialParams, list(
-    sp("often", "def", FALSE, req = quote(1==1)),
-    sp("seldom", "def", FALSE, req = quote(1==1)),
+    sp("often", "def", FALSE),
+    sp("seldom", "def", FALSE),
     sp("testReqs", "def", FALSE))))
 
 reqsCL = autolearner(noiseClassif, c(trivialParams, list(

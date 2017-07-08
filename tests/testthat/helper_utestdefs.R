@@ -91,7 +91,7 @@ AllLearner = autolearner(
     testLearner("AllLearner", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1), c("numerics", "twoclass", "factors", "ordered", "missings")),
     list(sp("int1", "int", c(0, 10), req = quote(automlr.has.missings==FALSE)),
          sp("real1", "real", c(0, 10), req = quote(automlr.has.factors %in% c(TRUE, FALSE))),
-         sp("bool1", "fix", TRUE, req = quote(automlr.has.ordered == automlr.has.factors)),
+         sp("bool1", "cat", TRUE, req = quote(automlr.has.ordered == automlr.has.factors)),
          sp("int1.AMLRFIX1", "int", c(2, 2), req = quote(automlr.has.missings==TRUE && automlr.has.factors == TRUE)),
          sp("int1.AMLRFIX2", "int", c(11, 20), req = quote(automlr.has.missings==TRUE && automlr.has.factors == FALSE))))
 
@@ -127,7 +127,7 @@ splitnumcpo = makeCPO("as.factor", numsplits: integer[2, 5],
   .properties.adding = "numerics", .properties.needed = "factors",
   .datasplit = "numeric", cpo.trafo = {
     breaks = lapply(data, function(d)
-      unique(c(-Inf, quantile(d, (1:(numsplits - 1)) / numsplits), Inf)))
+      unique(c(-Inf, quantile(d, (1:(numsplits - 1)) / numsplits, na.rm = TRUE), Inf)))
     cpo.retrafo = function(data) {
       as.data.frame(mapply(function(d, b) cut(d, breaks = b), d = data, b = breaks, SIMPLIFY = FALSE),
         row.names = rownames(data))

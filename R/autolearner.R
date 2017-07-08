@@ -238,6 +238,10 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
   if (!is.null(special)) {
     assertChoice(special, c("dummy", "inject"))
   }
+  
+  if (type %in% c("fix", "def", "fixdef") && !is.null(req)) {
+    stop("Requirements not allowed when type is 'fix', 'def', or 'fixdef'.")
+  }
 
   if (!is.null(req)) {
     assert(checkClass(req, "call"), checkClass(req, "expression"))

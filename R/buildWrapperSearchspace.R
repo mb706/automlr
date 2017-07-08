@@ -95,6 +95,8 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   # dtWrap[[type]] is TRUE whenever wrapping is supposed to happen.
   dtWrap = sapply(allTypes, function(type) {
         (qNot(asQuoted(cbiparam)) %&&% dtPresentBeforeConv[[type]]) %||%
+            (qNot(asQuoted(convparnames[[type]])) %&&%
+              dtPresentBeforeConv[[type]]) %||%
             transformProposition(wrapagain)[[type]]
       }, simplify = FALSE)
 
@@ -114,7 +116,16 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
   outparams %c=% makeLParam0Req(convertanyparam,
       can.convert %&&% Reduce(`%||%`, lapply(allTypes, function(t)
                 dtPresentBeforeConv[[t]] %&&% qNot(learnerCanHandleQuote(t)))),
-      !can.convert)
+      # automlr.convert is FALSE if either conversion can not happen, or
+      # if there is exactly one type both in the data and in the learner's
+      # capabilities.
+      (!can.convert) %||% Reduce(`%||%`, lapply(allTypes, function(type) {
+            Reduce(`%&&%`, lapply(setdiff(allTypes, type), function(otype) {
+                      qNot(dtPresentBeforeConv[[otype]]) %&&%
+                          qNot(learnerCanHandleQuote(otype))
+                    }), TRUE) %&&%
+            dtPresentBeforeConv[[type]] %&&% learnerCanHandleQuote(type)
+          }), FALSE))
 
   for (type in allTypes) {
     eligible.targets = Filter(function(totype) {
@@ -124,11 +135,13 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
 
     convparamname = convparnames[[type]]
 
-    req = asQuoted(convertanyparam) %&&%
-        Reduce(`%||%`, lapply(eligible.targets, learnerCanHandleQuote), FALSE)
+    halfreq = Reduce(`%||%`, lapply(eligible.targets, learnerCanHandleQuote),
+        FALSE)
+    req = asQuoted(convertanyparam) %&&% halfreq
+        
 
     if (type == "factors") {
-      mayproducefactors = learnerCanHandleQuote(type) %||% req
+      mayproducefactors = learnerCanHandleQuote(type) %||% halfreq
       outparams %c=% makeLParam0Req(miparam, FALSE,
           qNot(any(missings) %&&% mayproducefactors))
     }

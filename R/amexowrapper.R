@@ -368,9 +368,10 @@ extractStaticParams = function(completeSearchSpace) {
           # This can happen, if the requirements of the fixed values do not
           # cover the whole domain.
           finalSubstitutions[[leaf]] = substitute(
-              stop(sprintf(paste("Parameter %s is fixed, but its reqs do not",
-                               "cover the whole domain."), parname)),
-                  list(parname = parid))
+              stop(errtext),
+                  list(errtext = sprintf(paste("Parameter %s",
+                              "is fixed, but its reqs do not cover",
+                              "the whole domain."), parid)))
         }
         if (is.null(finalSubstitutions[[leaf]])) {
           # check whether it is null; we don't want to overwrite it if the

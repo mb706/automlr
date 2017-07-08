@@ -168,6 +168,11 @@ deExpression = function(language) {
 }
 
 replaceRequires = function(cprequires, substitution) {
+  # bug in R core 'deparse' means we need to add parantheses in substitution.
+  # if the `replaceRequires` worked without 'deparse', this would *still*
+  # be necessary for irace, since irace deparses the requirements.
+  substitution = lapply(substitution, function(q) substitute((q), list(q = q)))
+  
   # what we are going to do is substitute the variable names with their new
   # prefixed versions.
   # HOWEVER: R uses different scoping for function calls than for variables.

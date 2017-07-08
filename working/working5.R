@@ -13,6 +13,8 @@ devtools::test("..", filter = "aux")
 devtools::test("..", filter = "automlr_errors")
 devtools::test("..", filter = "paramhandling")
 devtools::test("..", filter = "searchspacedefs")
+devtools::test("..", filter = "coltypes")
+
 system.time(devtools::test("..", filter = "timeout"), FALSE)
 
 
@@ -339,4 +341,46 @@ simplifyEval = function(lang) {
   NULL
 }
 
+l <- buildLearners(list(
+      NumericsLearner,
+      pWW(nimp1), pWW(nimp2), pWW(fimp1), pWW(fimp2), pWW(oimp1), pWW(oimp2),
+      pWW(fnconv1), pWW(onconv1), pWW(onconv2),
+      pWW(nfconv1), pWW(nfconv2), pWW(ofconv1), pWW(ofconv2),
+      pWW(noconv1), pWW(noconv2), pWW(foconv1), pWW(foconv2)), MissingsNumericsTask, verbosity = 6)
 
+pvs = list(automlr.missing.indicators = FALSE,
+    automlr.wimputing.numerics = "numimputer2", multiplier = 1,
+    NumericsLearner.int1 = 9)
+
+
+
+  pvx = namedList(getParamIds(getParamSet(l)), NA)
+  isFeasible(getParamSet(l), insert(pvx, pvs))
+
+
+getpars(l)$automlr.convert$requires
+
+
+eval(getpars(l)$reference.cat$requires[[2]], pvs)
+
+eval(getpars(l)$reference.cat$requires[[2]][[2]][[2]], pvs)
+
+
+getpars(l)$reference.cat$requires[[2]][[2]][[2]][[2]][[2]][[2]][[1]]
+
+getpars(l)$reference.cat$requires[[2]][[2]][[2]][[2]][[2]][[2]][[2]]
+
+eval(l$staticParams[[8]]$requires[[2]], pvs)
+
+
+l$staticParams[[9]]
+
+which(extractSubList(l$staticParams, "id") == "automlr.wconverting.factors.to.numerics")
+
+which(extractSubList(l$staticParams, "id") == "automlr.convert.factors")
+
+eval(l$staticParams[[4]]$requires, pvs)
+
+pvs$automlr.missing.indicators
+
+l$staticParams[[9]]
