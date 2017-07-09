@@ -10,7 +10,7 @@ test_that("requirements including pseudoparameters are simplified as they should
   l0 = autolearner(
       testLearner("l0", makeParamSet(predefParams$int1), c("numerics", "twoclass")),
       list(sp("int1", "int", c(0, 10))))
-  # learner with parameter requirements, among others depending on task properties 
+  # learner with parameter requirements, among others depending on task properties
   l1 = autolearner(
       testLearner("l1", makeParamSet(predefParams$int1, predefParams$real1, predefParams$bool1, predefParams$cat1),
                   c("numerics", "twoclass", "factors", "ordered", "missings")),
@@ -27,41 +27,16 @@ test_that("requirements including pseudoparameters are simplified as they should
            sp("cat1.AMLRFIX1", "cat", "c", req = quote(int1!=2)),
            sp("nevertrue", "bool", special = "dummy", req = quote(bool1 == FALSE))))
 
-  # wrapper that removes NAs, factors, simple parameter space
-  NAFactorRemover1 = autolearner(
-      autoWrapper("NAFactorRemover1", function(learner, ...) changeColsWrapper(learner, "NAFactorRemover1", ...),
-                  function(x) switch(x, missings = c("missings", ""), factors = c("factors", ""))),
-      list(sp("NAFactorRemover1.remove.NA", "cat", TRUE, req = quote(automlr.remove.missings == TRUE)),
-           sp("NAFactorRemover1.remove.factors", "fix", TRUE, req = quote(automlr.remove.factors == TRUE))),
-      "requiredwrapper")
-
-  # wrapper that removes NAs & factors, more complicated parameter space 
-  NAFactorRemover2 = autolearner(
-      autoWrapper("NAFactorRemover2", function(learner, ...) changeColsWrapper(learner, "NAFactorRemover2", ...),
-                  function(x) switch(x, missings = c("missings", ""), factors = c("factors", ""))),
-      list(sp("NAFactorRemover2.remove.NA", "fix", TRUE, req = quote(automlr.remove.missings == TRUE)),
-           sp("NAFactorRemover2.intermediate", "int", c(0, 1), req = quote(FALSE == TRUE), special = "dummy"),
-           sp("NAFactorRemover2.intermediate.AMLRFIX1", "int", c(1, 1), req = quote(automlr.remove.factors == TRUE), special = "dummy"),
-           sp("NAFactorRemover2.intermediate.AMLRFIX2", "int", c(0, 0), req = quote(automlr.remove.factors == FALSE), special = "dummy"),
-           sp("NAFactorRemover2.remove.factors", "fix", TRUE, req = quote(NAFactorRemover2.intermediate == 1)),
-           sp("NAFactorRemover2.intermediate2", "int", c(0, 3), req = quote(automlr.remove.missings==TRUE), special = "dummy"),
-           sp("NAFactorRemover2.intermediate2.AMLRFIX1", "int", c(1, 3), req = quote(automlr.remove.missings==FALSE && automlr.remove.factors==FALSE), special = "dummy"),
-           sp("NAFactorRemover2.intermediate2.AMLRFIX2", "int", c(2, 2), req = quote(automlr.remove.missings==FALSE && automlr.remove.factors==TRUE), special = "dummy"),
-           sp("NAFactorRemover2.spare1", "int", c(0, 3), req = quote(NAFactorRemover2.intermediate2==1)),
-           sp("NAFactorRemover2.spare1.AMLRFIX1", "int", c(4, 4), req = quote(NAFactorRemover2.intermediate2!=1))),
-      "requiredwrapper")
-
   # work with the learner containing all the above
-  l = buildLearners(list(l0, l1, NAFactorRemover1, NAFactorRemover2), theTask)
+  l = buildLearners(list(l0, l1, pWW(nimp1), pWW(nimp2), pWW(fimp1), pWW(fnconv1)), theTask, verbosity = 6)
 
   # all expected parameters are present
   expect_set_equal(getParamIds(getParamSet(l)),
-                   c("selected.learner", "automlr.wrappersetup", "automlr.remove.missings", "automlr.wremoving.missings",
-                     "automlr.remove.factors", "automlr.wremoving.factors",
-                     "l0.int1", "l1.int1", "l1.int1.AMLRFIX2", "l1.intermediate2", "l1.intermediate3",
-                     "l1.real1", "l1.cat1",
-                     "NAFactorRemover2.intermediate2", "NAFactorRemover2.intermediate2.AMLRFIX1",
-                     "NAFactorRemover2.spare1"))
+    c("selected.learner", "automlr.impute", "automlr.convert", "automlr.convert.factors",
+      "automlr.wimputing.numerics",  "automlr.missing.indicators", "automlr.convert.before.impute",
+      "reference.cat", "fimp.const", "multiplier",
+      "l0.int1", "l1.int1", "l1.int1.AMLRFIX2", "l1.intermediate2", "l1.intermediate3",
+      "l1.real1", "l1.cat1"))
 
   # always true requirement is removed
   expect_equal(deparse(getParamSet(l)$pars[["l1.real1"]]$requires), 'selected.learner == "l1"')
@@ -80,19 +55,23 @@ test_that("requirements including pseudoparameters are simplified as they should
   #  - NAFR2.intermediate2 present / absent depending on automlr.remove.x
   #  - NAFR2.spare1 present if removing factors, otherwise defaults to 4
 
-  checkLearnerBehaviour(l, theTask,
-                        list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
-                             automlr.remove.missings = TRUE, automlr.remove.factors = TRUE,
-                             automlr.wremoving.missings = "NAFactorRemover1", automlr.wremoving.factors = "NAFactorRemover1",
-                             l1.int1 = 0, # also try others
-                             l1.intermediate2 = TRUE,
-                             l1.real1 = 5,
-                             NAFactorRemover2.intermediate2.AMLRFIX1 = 1, # also try != 1
-                             NAFactorRemover2.spare1 = 2),
+  pvs = list(selected.learner = "l1",
+    automlr.impute = TRUE, automlr.convert = TRUE, automlr.convert.factors = TRUE,
+    automlr.missing.indicators = TRUE,
+    automlr.convert.before.impute = FALSE,
+    automlr.wimputing.numerics = "numimputer1",
+    reference.cat = TRUE,
+    fimp.const = "NAx",
+    l1.int1 = 0, # also try others
+    l1.intermediate2 = TRUE,
+    l1.real1 = 5)
+
+  checkLearnerBehaviour(l, theTask, pvs,
                         "l1", list(int1 = 0, bool1 = TRUE, real1 = 5, cat1 = "c"),
-                        NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0,
-                            NAFactorRemover1.remove.NA = TRUE, NAFactorRemover1.remove.factors = TRUE),
-                        NAFactorRemover2 = list(NAFactorRemover2.spare1 = 2, NAFactorRemover2.spare2 = 0))
+                        factimputer1 = list(fimp.const = "NAx"),
+                        numimputer1 = list(),
+                        fnconv1 = list(reference.cat = TRUE))
+
 
   checkLearnerBehaviour(l, theTask,
                         list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",

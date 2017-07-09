@@ -157,6 +157,9 @@ buildWrapperSearchSpace = function(wrappers, missings, canHandleX,
           TRUE) %&&% asQuoted(convparamname)
       outparams %c=% list(makeDiscreteParam(convtargetnames[[type]],
               values = eligible.targets, requires = setReq(req)))
+    } else {
+      outparams %c=% list(makeDiscreteParam(convtargetnames[[type]],
+              values = list("null" = NULL), requires = setReq(FALSE)))
     }
     for (totype in eligible.targets) {
       index = which(totype == eligible.targets)

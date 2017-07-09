@@ -132,7 +132,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
   
   aux = extractStaticParams(completeSearchSpace)
   staticParams = aux$staticParams
-  substitutions = c(aux$substitutions, propertiesReplace)
+  substitutions = c(aux$substitutions, propertiesReplace,
+      getHyperPars(modelmultiplexer))
   finalSubstitutions = aux$finalSubstitutions
   completeSearchSpace = aux$completeSearchSpace
   
@@ -349,19 +350,20 @@ extractStaticParams = function(completeSearchSpace) {
         # see if we can skip this when the requirement is trivially false
         if (tryCatch(isFALSE(eval(curpar$requires, envir = globalenv())),
             error = function(e) FALSE)) {
-          next
+          subst = asQuoted(leaf)
+        } else {
+          # the following is a bit unfortunate, because it introduces a kind of
+          # recursive dependence. I don't see a better way, however. The problem
+          # is that if we have a variable xyz, and a variable xyz.AMLRFIX1, then
+          # we want to remove the xyz.AMLRFIX1 and replace it with its fixed value
+          # given the requirement. However, if the requirement is not given, the
+          # parameter space given value must be used.
+          # SOLUTION: append a suffix that prevents cycling in on itself.
+          
+          subst = substitute(if (isTRUE(req)) value else original,
+              list(req = curpar$requires, value = fixvalue,
+                  original = asQuoted(leaf)))
         }
-        # the following is a bit unfortunate, because it introduces a kind of
-        # recursive dependence. I don't see a better way, however. The problem
-        # is that if we have a variable xyz, and a variable xyz.AMLRFIX1, then
-        # we want to remove the xyz.AMLRFIX1 and replace it with its fixed value
-        # given the requirement. However, if the requirement is not given, the
-        # parameter space given value must be used.
-        # SOLUTION: append a suffix that prevents cycling in on itself.
-        
-        subst = substitute(if (isTRUE(req)) value else original,
-            list(req = curpar$requires, value = fixvalue,
-                original = asQuoted(leaf)))
         if (parid == curpar$id) {
           # the value itself is fixed -> if there are references remaining in
           # a requirement after all substitutions were done, it is an error.
@@ -369,14 +371,22 @@ extractStaticParams = function(completeSearchSpace) {
           # cover the whole domain.
           finalSubstitutions[[leaf]] = substitute(
               stop(errtext),
-                  list(errtext = sprintf(paste("Parameter %s",
-                              "is fixed, but its reqs do not cover",
-                              "the whole domain."), parid)))
+              list(errtext = sprintf(paste("Parameter %s",
+                          "is fixed, but its reqs do not cover",
+                          "the whole domain."), parid)))
         }
         if (is.null(finalSubstitutions[[leaf]])) {
           # check whether it is null; we don't want to overwrite it if the
           # original is a fixed value.
-          finalSubstitutions[[leaf]] = asQuoted(parid)
+          if (parid %in% getParamIds(completeSearchSpace)) {
+            finalSubstitutions[[leaf]] = asQuoted(parid)
+          } else {
+            finalSubstitutions[[leaf]] = substitute(
+                    stop(errtext),
+                    list(errtext = sprintf(paste("Parameter %s",
+                                "is fixed, but its reqs do not cover",
+                                "the whole domain."), parid)))
+          }
         }
       } else {
         subst = fixvalue
@@ -389,13 +399,17 @@ extractStaticParams = function(completeSearchSpace) {
         # yay, we already have this substitution. This is only allowed to happen
         # if there are exclusive reuqirements, so we are able to substitute the
         # substitutions inside each other.
-        assert(!is.null(curpar$requires))
+        # Exception: there was a substitution earlier with trivially false
+        # requirement. In that case, substitions[[parid]] is *.AMLRFINAL.
+        if (is.null(curpar$requires)) {
+          assert(identical(substitutions[[parid]], asQuoted(leaf)))
+        }
         sl = list()
-        sl[[leaf]] = substitutions[[parid]]
+        sl[leaf] = substitutions[parid]
         # FIXME: the following has the c() vs. c vulnerability
         substitutions[[parid]] = do.call(substitute, list(subst, sl))
       } else {
-        substitutions[[parid]] = subst
+        substitutions[parid] = list(subst)  # subst may be NULL here
       }
     } else {
       # FIXME: the following is half a copy of the code above. maybe it is
@@ -521,7 +535,8 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
       paramReferenceStop$selected.learner = curpar$amlr.learnerName
     }
     req = replaceRequires(curpar$requires, paramReferenceStop)
-    tryResult = try(reqValue <- eval(req, globalenv()), silent = TRUE)
+    tryResult = try(reqValue <- eval(req, parent.env(environment())),
+        silent = TRUE)
     evalResult = simplifyEval(req)
     if (!is.error(tryResult) || !is.null(evalResult)) {
       if (!is.error(tryResult) && !is.null(evalResult) &&
