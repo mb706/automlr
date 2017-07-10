@@ -72,69 +72,101 @@ test_that("requirements including pseudoparameters are simplified as they should
                         numimputer1 = list(),
                         fnconv1 = list(reference.cat = TRUE))
 
+  pvs = list(selected.learner = "l1",
+    automlr.impute = TRUE, automlr.convert = TRUE, automlr.convert.factors = TRUE,
+    automlr.missing.indicators = TRUE,
+    automlr.convert.before.impute = FALSE,
+    automlr.wimputing.numerics = "numimputer1",
+    reference.cat = TRUE,
+    fimp.const = "NAx",
+    l1.int1 = 0, # also try others
+    l1.intermediate2 = TRUE,
+    l1.real1 = 5)
+  checkLearnerBehaviour(l, theTask, pvs,
+                        "l1", list(int1 = 0, bool1 = TRUE, real1 = 5, cat1 = "c"),
+                        factimputer1 = list(fimp.const = "NAx"),
+                        numimputer1 = list(),
+                        fnconv1 = list(reference.cat = TRUE))
 
-  checkLearnerBehaviour(l, theTask,
-                        list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
-                             automlr.remove.missings = TRUE, automlr.remove.factors = TRUE,
-                             automlr.wremoving.missings = "NAFactorRemover2", automlr.wremoving.factors = "NAFactorRemover1",
-                             l1.int1 = 2,
-                             l1.intermediate3 = TRUE,  # also try 'false'
-                             l1.real1 = 5,
-                             l1.cat1 = "b",
-                             NAFactorRemover2.intermediate2 = 2),
+  pvs = list(selected.learner = "l1",
+    automlr.impute = TRUE, automlr.convert = TRUE, automlr.convert.factors = TRUE,
+    automlr.missing.indicators = TRUE,
+    automlr.convert.before.impute = FALSE,
+    automlr.wimputing.numerics = "numimputer2",
+    multiplier = 2,
+    reference.cat = TRUE,
+    fimp.const = "NAx",
+    l1.int1 = 2,
+    l1.intermediate3 = TRUE,  # also try 'false'
+    l1.real1 = 5,
+    l1.cat1 = "b")
+  checkLearnerBehaviour(l, theTask, pvs,
                         "l1", list(int1 = 2, bool1 = TRUE, real1 = 5, cat1 = "b"),
-                        NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0,
-                            NAFactorRemover1.remove.factors = TRUE),
-                        NAFactorRemover2 = list(NAFactorRemover2.spare1 = 4L, NAFactorRemover2.spare2 = 0,
-                            NAFactorRemover2.remove.NA = TRUE))
+                        factimputer1 = list(fimp.const = "NAx"),
+                        numimputer2 = list(multiplier = 2),
+                        fnconv1 = list(reference.cat = TRUE))
 
-  checkLearnerBehaviour(l, theTask,
-                        list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
-                             automlr.remove.missings = TRUE, automlr.remove.factors = TRUE,
-                             automlr.wremoving.missings = "NAFactorRemover1", automlr.wremoving.factors = "NAFactorRemover2",
-                             l1.int1 = 2,
-                             l1.intermediate3 = FALSE,
-                             l1.real1 = 5),
+  pvs = list(selected.learner = "l1",
+    automlr.impute = TRUE, automlr.convert = TRUE, automlr.convert.factors = TRUE,
+    automlr.missing.indicators = TRUE,
+    automlr.convert.before.impute = FALSE,
+    automlr.wimputing.numerics = "numimputer2",
+    multiplier = 2,
+    reference.cat = TRUE,
+    fimp.const = "NAx",
+    l1.int1 = 2,
+    l1.intermediate3 = FALSE,
+    l1.real1 = 5)
+  checkLearnerBehaviour(l, theTask, pvs,
                         "l1", list(int1 = 2, bool1 = TRUE, real1 = 5),
-                        NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0,
-                            NAFactorRemover1.remove.NA = TRUE),
-                        NAFactorRemover2 = list(NAFactorRemover2.spare1 = 4L, NAFactorRemover2.spare2 = 0,
-                            NAFactorRemover2.remove.factors = TRUE))
+                        factimputer1 = list(fimp.const = "NAx"),
+                        numimputer2 = list(multiplier = 2),
+                        fnconv1 = list(reference.cat = TRUE))
 
-  checkLearnerBehaviour(l, theTask,
-                        list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
-                             automlr.remove.missings = TRUE, automlr.remove.factors = TRUE,
-                             automlr.wremoving.missings = "NAFactorRemover2", automlr.wremoving.factors = "NAFactorRemover2",
-                             l1.int1 = 3,
-                             l1.real1 = 5,
-                             NAFactorRemover2.intermediate2 = 1,
-                             NAFactorRemover2.spare1 = 2),
+  pvs = list(selected.learner = "l1",
+    automlr.impute = TRUE, automlr.convert = TRUE, automlr.convert.factors = TRUE,
+    automlr.missing.indicators = TRUE,
+    automlr.convert.before.impute = FALSE,
+    automlr.wimputing.numerics = "numimputer2",
+    multiplier = 2,
+    reference.cat = TRUE,
+    fimp.const = "NAx",
+    l1.int1 = 3,
+    l1.real1 = 5)
+  checkLearnerBehaviour(l, theTask, pvs,
                         "l1", list(int1 = 3, bool1 = TRUE, real1 = 5, cat1 = "c"),
-                        NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0),
-                        NAFactorRemover2 = list(NAFactorRemover2.spare1 = 2, NAFactorRemover2.spare2 = 0,
-                            NAFactorRemover2.remove.NA = TRUE, NAFactorRemover2.remove.factors = TRUE))
+                        factimputer1 = list(fimp.const = "NAx"),
+                        numimputer2 = list(multiplier = 2),
+                        fnconv1 = list(reference.cat = TRUE))
 
-  checkLearnerBehaviour(l, theTask,
-                        list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
-                             automlr.remove.missings = FALSE, automlr.remove.factors = TRUE,
-                             automlr.wremoving.factors = "NAFactorRemover2",
-                             l1.real1 = 5,
-                             l1.intermediate3 = FALSE),
+
+  pvs = list(selected.learner = "l1",
+    automlr.impute = FALSE, automlr.convert = TRUE, automlr.convert.factors = TRUE,
+    automlr.missing.indicators = TRUE,
+    reference.cat = TRUE,
+    l1.intermediate3 = FALSE,
+    l1.real1 = 5)
+  checkLearnerBehaviour(l, theTask, pvs,
                         "l1", list(int1 = 2, bool1 = TRUE, real1 = 5),
-                        NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0),
-                        NAFactorRemover2 = list(NAFactorRemover2.spare1 = 4L, NAFactorRemover2.spare2 = 0,
-                            NAFactorRemover2.remove.factors = TRUE))
+                        fnconv1 = list(reference.cat = TRUE))
 
-  checkLearnerBehaviour(l, theTask,
-                        list(selected.learner = "l1", automlr.wrappersetup = "NAFactorRemover1$NAFactorRemover2",
-                             automlr.remove.missings = FALSE, automlr.remove.factors = FALSE,
-                             l1.int1.AMLRFIX2 = 4,
-                             l1.real1 = 5,
-                             NAFactorRemover2.intermediate2.AMLRFIX1 = 1,
-                             NAFactorRemover2.spare1 = 2),
-                        "l1", list(int1 = 4, bool1 = TRUE, real1 = 5, cat1 = "c"),
-                        NAFactorRemover1 = list(NAFactorRemover1.spare1 = 0, NAFactorRemover1.spare2 = 0),
-                        NAFactorRemover2 = list(NAFactorRemover2.spare1 = 2, NAFactorRemover2.spare2 = 0))
+  pvs = list(selected.learner = "l1",
+    automlr.impute = FALSE, automlr.convert = FALSE,
+    automlr.missing.indicators = TRUE,
+    l1.int1.AMLRFIX2 = 4,
+    l1.real1 = 5)
+  checkLearnerBehaviour(l, theTask, pvs,
+                        "l1", list(int1 = 4, bool1 = TRUE, real1 = 5, cat1 = "c"))
+
+
+  pvs = list(selected.learner = "l0",
+    automlr.missing.indicators = TRUE, automlr.wimputing.numerics = "numimputer2",
+    multiplier = 2, reference.cat = TRUE, automlr.convert.before.impute = TRUE,
+    l0.int1 = 3)
+  checkLearnerBehaviour(l, theTask, pvs,
+    "l0", list(int1 = 3),
+    fnconv1 = list(reference.cat = TRUE),
+    numimputer2 = list(multiplier = 2))
 
 })
 

@@ -14,6 +14,7 @@ devtools::test("..", filter = "automlr_errors")
 devtools::test("..", filter = "paramhandling")
 devtools::test("..", filter = "searchspacedefs")
 devtools::test("..", filter = "coltypes")
+devtools::test("..", filter = "requirements")
 
 system.time(devtools::test("..", filter = "timeout"), FALSE)
 
