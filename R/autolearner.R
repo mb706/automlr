@@ -97,7 +97,17 @@ autoWrapper = function(name, cpo, datatype, convertfrom = NULL) {
 
 #' @export
 print.Autolearner = function(x, ...) {
-  catf("<automlr learner '%s' [%s]>",
+  catf("<automlr %s '%s' [%s]>",
+      if (x$stacktype == "learner") learner else {
+            if (x$learner$is.imputer) {
+              sprintf("imputer (%s)", x$learner$datatype)
+            } else if (x$learner$is.converter) {
+              sprintf("converter (%s -> %s)", x$learner$convertfrom,
+                  x$learner$datatype)
+            } else {
+              sprintf("preproc (%s)", x$learner$datatype)
+            }
+          },
       ifelse(is.character(x$learner), x$learner,
           coalesce(x$learner$id, x$learner$name)),
       if (length(x$searchspace) == 0) "" else {
