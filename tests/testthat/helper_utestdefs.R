@@ -135,6 +135,18 @@ splitnumcpo = makeCPO("as.factor", numsplits: integer[2, 5],
     cpo.retrafo(data)
   }, cpo.retrafo = NULL)
 
+cpoToBinary = makeCPO("to.binary", .datasplit = "factor", cpo.trafo = {
+  maxnames = sapply(data, function(x) { tbl = table(x) ; names(tbl)[which.max(tbl)] })
+  cpo.retrafo = function(data) {
+    for (i in seq_along(data)) {
+      lvls = c(maxnames[i], paste0("not.", maxnames[i]))
+      data[[i]] = factor(ifelse(data[[i]] == lvls[1], lvls[1], lvls[2]), levels = lvls)
+    }
+    data
+  }
+  cpo.retrafo(data)
+}, cpo.retrafo = NULL)
+
 # there are three types of wrappers: converters, imputers, preprocessors.
 
 # imputers
@@ -200,3 +212,24 @@ foconv2 = autolearner(
     autoWrapper("foconv2", facasordcpo() %>>% reversefacorder(), "ordered", "factors"),
     stacktype = "wrapper")
 
+# preprocs
+np1 = autolearner(
+    autoWrapper("np1", cpoPca(id = "pca"), "numerics"),
+    list(sp("pca.scale", "bool"), sp("pca.center", "bool")),
+    "wrapper")
+np2 = autolearner(
+    autoWrapper("np2", cpoScale(id = "scale"), "numerics"),
+    list(sp("scale.scale", "bool"), sp("scale.center", "bool")),
+    "wrapper")
+fp1 = autolearner(
+    autoWrapper("fp1", cpoToBinary(),"factors"),
+    list(), "wrapper")
+fp2 = autolearner(
+    autoWrapper("fp1", reversefacorder(),"factors"),
+    list(), "wrapper")
+op1 = autolearner(
+    autoWrapper("fp1", cpoToBinary(),"ordered"),
+    list(), "wrapper")
+op2 = autolearner(
+    autoWrapper("fp1", reversefacorder(),"ordered"),
+    list(), "wrapper")
