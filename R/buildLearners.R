@@ -65,6 +65,7 @@ buildLearners = function(searchspace, task, verbosity = 0) {
     wl = w$learner
     wl$searchspace = makeParamSet(params = lapply(w$searchspace,
             createParameter, learnerid = wl$name, forWrapper = TRUE))
+    assert(wl$name %nin% names(wrapperList))
     wrapperList[[wl$name]] = wl
   }
 
@@ -200,7 +201,7 @@ getLearnerRequirements = function(task, wrappers) {
             integer = "numerics",
             numeric = "numerics",
             factor = "factors",
-            ordered = "ordereds",
+            ordered = "ordered",
             stopf("Unsupported type: %s", class(x)[1])))
   hasmissings = sapply(split(as.list(data), types),
       function(x) any(sapply(x, is.na)))

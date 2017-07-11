@@ -9,7 +9,7 @@ test_that("trivial learners are returned when appropriate", {
   trivialLearner1 = list(autolearner(testLearner("test", makeParamSet(), c("numerics", "twoclass"))))
   trivialLearner2 = list(autolearner(testLearner("test", makeParamSet(), c("factors", "twoclass"))))
 
-  # using learner that fits the task works 
+  # using learner that fits the task works
   expect_class(buildLearners(trivialLearner1, taskNormal), "RLearnerClassif")
 
   # empty searchspace gives NULL result
@@ -68,91 +68,61 @@ test_that("the right kind of learners are filtered out", {
   # removing missings, factors, ordereds, missings-and-factors
   # converting ordereds to numerics, factors to numerics
   # combined removing of factors and missings and conversion of factors to numerics
-  MRemover = autoWrapper("M.R", identity, function(x) switch(x, missings = c("missings", ""), x))
-  FRemover = autoWrapper("F.R", identity, function(x) switch(x, factors = c("factors", ""), x))
-  ORemover = autoWrapper("O.R", identity, function(x) switch(x, ordered = c("ordered", ""), x))
-  MFRemover = autoWrapper("MF.R", identity, function(x) switch(x, missings = c("missings", ""), factors = c("factors", ""), x))
-  OConverter = autoWrapper("O.C", identity, function(x) switch(x, ordered = c("ordered", "numerics"), x))
-  FConverter = autoWrapper("F.C", identity, function(x) switch(x, factors = c("factors", "numerics"), x))
-  MFRemoverFConverter = autoWrapper("MF.R.F.C", identity, function(x) switch(x, factors = c("factors", "numerics", ""), missings = c("missings", ""), x))
+  MRemover = list(nimp1, fimp1, oimp1)
+  FRemover = list(fnconv1)
+  ORemover = list(onconv1)
+  MFRemover = c(MRemover, FRemover)
+  MFORemover = c(MRemover, FRemover, ORemover)
 
   # check that without wrappers, exactly those learners remain that fit the tasks
   autolearnersPL = autolearnersBASIC
   checkWrapperEffect(autolearnersPL)
   checkWrapperEffectEx(autolearnersPL)
 
-  # non-required wrappers have no effect. TODO: this should not be.
-  for (uneffectiveWrapper in list(MRemover, FRemover, ORemover, MFRemover, OConverter, FConverter, MFRemoverFConverter)) {
-    autolearnersPL = c(autolearnersBASIC, list(autolearner(uneffectiveWrapper, stacktype = "wrapper")))
-    checkWrapperEffect(autolearnersPL)
-    checkWrapperEffectEx(autolearnersPL)
-  }
-
   # learners that cannot handle a certain property are present if the appropriate removing wrapper is present.
   # test for: missings, factors, ordereds, factors-and-missings
   # test for combination of multiple wrappers: missings + factors, factors-and-missings + ordereds,
   # test interplay of converters and removers
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(MRemover, stacktype = "requiredwrapper")))
+  autolearnersPL = c(autolearnersBASIC, MRemover)
   checkWrapperEffect(autolearnersPL, function(x) list(setdiff(x, "missings")))
   checkWrapperEffectEx(autolearnersPL, function(x) list(setdiff(x, "missings")))
 
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(FRemover, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) list(x, setdiff(x, "factors")))
-  checkWrapperEffectEx(autolearnersPL, function(x) list(x, setdiff(x, "factors")))
+  autolearnersPL = c(autolearnersBASIC, FRemover)
+  conv = function(x) {
+    c(if ("factors" %in% x) {
+        list(union(setdiff(x, "factors"), "numerics"))
+      }, list(x))
+  }
+  checkWrapperEffect(autolearnersPL, conv)
+  checkWrapperEffectEx(autolearnersPL, conv)
 
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(ORemover, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) list(x, setdiff(x, "ordered")))
-  checkWrapperEffectEx(autolearnersPL, function(x) list(x, setdiff(x, "ordered")))
+  autolearnersPL = c(autolearnersBASIC, MFRemover)
+  conv = function(x) {
+    c(if ("factors" %in% x) {
+        list(union(setdiff(x, c("factors", "missings")), "numerics"))
+      }, if ("missings" %in% x) {
+           list(union(setdiff(x, c("factors", "missings")), "numerics"),
+             union(setdiff(x, "missings"), "numerics"))
+      }, list(setdiff(x, "missings")))
+  }
+  checkWrapperEffect(autolearnersPL, conv)
+  checkWrapperEffectEx(autolearnersPL, conv)
 
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(MFRemover, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x = x))
-  checkWrapperEffectEx(autolearnersPL, function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x = x))
 
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(MRemover, stacktype = "requiredwrapper"), autolearner(FRemover, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x = x))
-  checkWrapperEffectEx(autolearnersPL, function(x) lapply(list(c("factors", "missings"), "missings"), setdiff, x = x))
+  autolearnersPL = c(autolearnersBASIC, MFORemover)
+  conv = function(x) {
+    xnew = unique(c(if ("factors" %in% x) {
+        list(union(setdiff(x, c("factors", "missings")), "numerics"))
+      }, if ("missings" %in% x) {
+           list(union(setdiff(x, c("factors", "missings")), "numerics"),
+             union(setdiff(x, "missings"), "numerics"))
+         }, list(setdiff(x, "missings"))))
+    unlist(lapply(xnew, function(x) c(list(x),
+      if ("ordered" %in% x) {
+        list(union(setdiff(x, "ordered"), "numerics"))
+      })), recursive = FALSE)
+  }
+  checkWrapperEffect(autolearnersPL, conv)
+  checkWrapperEffectEx(autolearnersPL, conv)
 
-  # if a wrapper is not required, it is ignored.
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(MRemover, stacktype = "requiredwrapper"), autolearner(FRemover, stacktype = "wrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) list(setdiff(x, "missings")))
-  checkWrapperEffectEx(autolearnersPL, function(x) list(setdiff(x, "missings")))
-
-  # when removing more than one factor type, we still remove these types from the requirements list. however, each learner must support at least
-  # one of the factor types present, therefore the complicated transformation function.
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(MFRemover, stacktype = "requiredwrapper"), autolearner(ORemover, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) lapply(list("ordered", "factors", c("ordered", "factors")), function(y) setdiff(x, c("missings", y))))
-  checkWrapperEffectEx(autolearnersPL, function(x) lapply(list("ordered", "factors", c("ordered", "factors")), function(y) setdiff(x, c("missings", y))))
-
-  # the MFRemoverFConverter can either remove factors or convert them to numerics
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(MFRemoverFConverter, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y = "missings"))
-  checkWrapperEffectEx(autolearnersPL, function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y = "missings"))
-
-  # fconverter + mfremover has the same effect
-  autolearnersPL = c(autolearnersBASIC, list(autolearner(FConverter, stacktype = "requiredwrapper"), autolearner(MFRemover, stacktype = "requiredwrapper")))
-  checkWrapperEffect(autolearnersPL, function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y = "missings"))
-  checkWrapperEffectEx(autolearnersPL, function(x) lapply(list(x, setdiff(x, "factors"), sub("factors", "numerics", x)), setdiff, y = "missings"))
-
-  # TODO: it is natural that the following fails, but it would be nice if it worked.
-  #       TODO: why does it fail? It shouldn't?
-  #autolearnersPL = c(autolearnersBASIC, list(autolearner(OConverter, stacktype = "requiredwrapper")))
-  #checkWrapperEffect(autolearnersPL, function(x) list(x, sub("ordered", "numerics", x)))
-  #checkWrapperEffectEx(autolearnersPL, function(x) list(x, sub("ordered", "numerics", x)))
-  #
-  #autolearnersPL = c(autolearnersBASIC, list(autolearner(FConverter, stacktype = "requiredwrapper")))
-  #checkWrapperEffect(autolearnersPL, function(x) list(x, sub("factors", "numerics", x)))
-  #checkWrapperEffectEx(autolearnersPL, function(x) list(x, sub("factors", "numerics", x)))
-  #
-  #autolearnersPL = c(autolearnersBASIC, list(
-  #    autolearner(FConverter, stacktype = "requiredwrapper"),
-  #    autolearner(MFRemover, stacktype = "requiredwrapper"),
-  #    autolearner(ORemover, stacktype = "requiredwrapper")))
-  #chgfun = function(x) {
-  #  urlist = list(x, setdiff(x, "factors"), sub("factors", "numerics", x))
-  #  c(lapply(urlist, setdiff, y = "missings"), lapply(urlist, setdiff, y = c("missings", "ordered")))
-  #}
-  # TODO: the following should work
-  #checkWrapperEffect(autolearnersPL, chgfun)
-  #checkWrapperEffectEx(autolearnersPL, chgfun)
-  ###
 })

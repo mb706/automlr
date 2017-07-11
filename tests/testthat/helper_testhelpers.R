@@ -169,10 +169,7 @@ defaultExpFun2 = function(mustBeHandledList)
   function(x) {  # yes we curry
     possible = sapply(mustBeHandledList, function(mustBeHandled) {
           # all things that must be handled are present
-          all(mustBeHandled %in% x) &&
-              # at least one of numerics, factors, ordered is present
-              any(intersect(mustBeHandled,
-                      c("numerics", "factors", "ordered")) %in% x)
+          all(mustBeHandled %in% x)
         })
   any(possible)  # at least one type of column can be processed
 }
@@ -237,6 +234,7 @@ blt = function(learners, task) {
 }
 
 
+
 # check that x is feasible in the param set, and that all feasible parameters
 # are present.
 isFeasibleNoneMissing = function(par, x) {
@@ -266,6 +264,14 @@ checkLearnerBehaviour = function(learner, task, params, ...) {
   expect_true(isFeasibleNoneMissing(getParamSet(learner), params))
 #predict(train(setHyperPars(learner, par.vals = params), task), task)
   expect_learner_output(setHyperPars(learner, par.vals = params), task, ...)
+}
+
+checkLearnerData = function(learner, params, data, testdata) {
+  capture.output(m <- train(setHyperPars(learner, par.vals = params), data))
+  datacmp = m$learner.model$learner.model$next.model$learner.model$next.model$learner.model$data
+  testdata = unname(sort(sapply(testdata, collapse)))
+  datacmp = unname(sort(sapply(datacmp, collapse)))
+  expect_set_equal(testdata, datacmp)
 }
 
 # print wrapper for wrappers

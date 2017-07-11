@@ -471,12 +471,15 @@ buildCPO = function(args, wrappers) {
 #  }
 
   applyTypeCPOs = function(cpos, selector.id.prefix) {
-    cbound = do.call(cpoCbind, lapply(allTypes, function(t) {
-              cpoSelect(type = propToType(t),
-                      id = paste0(selector.id.prefix, t)) %>>% cpos[[t]]
-            }))
+    uniprefix = "automlr."
+    cols = lapply(allTypes, function(t) {
+          cpoSelect(type = propToType(t),
+              id = paste0(uniprefix, selector.id.prefix, t)) %>>% cpos[[t]]
+        })
+    names(cols) = paste0(selector.id.prefix, allTypes)
+    cbound = do.call(cpoCbind, cols)
     cbound = setProperArgs(cbound)
-    cpoApply(cbound, id = selector.id.prefix)
+    cpoApply(cbound, id = paste0(uniprefix, selector.id.prefix))
   }
 
   impute.cpo = NULLCPO
@@ -496,7 +499,10 @@ buildCPO = function(args, wrappers) {
     pppipeline[[type]] = setProperArgs(pppipeline[[type]])
   }
 
-  pp.cpo = applyTypeCPOs(pppipeline, "automlr.ppselect.")
+  pp.cpo = applyTypeCPOs(pppipeline, "ppselect.")
+  pp.cpo$properties$properties = union(c("factors", "numerics", "ordered"),
+      pp.cpo$properties$properties)
+  pp.cpo$par.vals$automlr.ppselect..cpo$properties = pp.cpo$properties
 
   if (args$automlr.impute) {
     impute.cpo = applyTypeCPOs(sapply(allTypes, function(type) {
@@ -506,7 +512,7 @@ buildCPO = function(args, wrappers) {
                     } else {
                       wrappers[[wimp]]
                     }
-                }, simplify = FALSE), "automlr.impselect.")
+                }, simplify = FALSE), "impselect.")
     impute.cpo$properties$properties.adding = "missings"
     impute.cpo$par.vals$automlr.impselect..cpo$properties =
         impute.cpo$properties
@@ -523,11 +529,11 @@ buildCPO = function(args, wrappers) {
               if (!args$automlr.convert.before.impute &&
                   args[[sprintf("automlr.wrapafterconvert.%s", type)]]) {
                 wrappers[[wconv]] %>>% cpoApply(pppipeline[[totype]],
-                    id = sprintf("automlr.postconvertcpo.", type))
+                    id = paste0("automlr.postconvertcpo.", type))
               } else {
                 wrappers[[wconv]]
               }
-            }, simplify = FALSE), "automlr.convselect.")
+            }, simplify = FALSE), "convselect.")
     fromconv = character(0)
     toconv = character(0)
     for (type in allTypes) {
@@ -540,6 +546,8 @@ buildCPO = function(args, wrappers) {
     noconv = intersect(fromconv, toconv)
     fromconv = setdiff(fromconv, noconv)
     toconv = setdiff(toconv, noconv)
+    convert.cpo$properties$properties = union(
+        c("factors", "numerics", "ordered"), convert.cpo$properties$properties)
     convert.cpo$properties$properties.adding = fromconv
     convert.cpo$properties$properties.needed = toconv
     convert.cpo$par.vals$automlr.convselect..cpo$properties =

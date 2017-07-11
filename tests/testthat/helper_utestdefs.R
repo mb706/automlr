@@ -147,6 +147,20 @@ cpoToBinary = makeCPO("to.binary", .datasplit = "factor", cpo.trafo = {
   cpo.retrafo(data)
 }, cpo.retrafo = NULL)
 
+
+cpoToBinaryFc = makeCPO("to.binary", .datasplit = "factor", cpo.trafo = {
+  maxnames = sapply(data, function(x) { tbl = table(x) ; names(tbl)[which.max(tbl)] })
+  cpo.retrafo = function(data) {
+    for (i in seq_along(data)) {
+      lvls = c(maxnames[i], paste0("not.", maxnames[i]))
+      data[[i]] = factor(ifelse(data[[i]] == lvls[1], lvls[1], lvls[2]),
+        levels = lvls, ordered = TRUE)
+    }
+    data
+  }
+  cpo.retrafo(data)
+}, cpo.retrafo = NULL)
+
 # there are three types of wrappers: converters, imputers, preprocessors.
 
 # imputers
@@ -162,14 +176,15 @@ fimp1 = autolearner(
       "factors", "missings"),
     list(sp("fimp.const", "cat", c("NAx", "MISSING"))), stacktype = "wrapper")
 fimp2 = autolearner(
-    autoWrapper("factimputer2", cpoImputeHist(make.dummy.cols = FALSE),
+    autoWrapper("factimputer2", cpoImputeHist(make.dummy.cols = FALSE, id = "fimp2"),
       "factors", "missings"), stacktype = "wrapper")
 oimp1 = autolearner(
-    autoWrapper("ordimputer1", cpoImputeConstant(make.dummy.cols = FALSE, id = "oimp") %>>% fremover(),
+    autoWrapper("ordimputer1", cpoImputeConstant(make.dummy.cols = FALSE, id = "oimp") %>>% fremover(id = "oimp.fremover"),
       "ordered", "missings"),
     list(sp("oimp.const", "cat", c("NAx", "MISSING"))), stacktype = "wrapper")
 oimp2 = autolearner(
-    autoWrapper("ordimputer2", cpoImputeHist(make.dummy.cols = FALSE) %>>% fremover(),
+    autoWrapper("ordimputer2", cpoImputeHist(make.dummy.cols = FALSE, id = "oimp2") %>>%
+                               fremover(id = "oimp2.fremover"),
       "ordered", "missings"), stacktype = "wrapper")
 
 # converters
@@ -214,7 +229,9 @@ foconv2 = autolearner(
 
 # preprocs
 np1 = autolearner(
-    autoWrapper("np1", cpoPca(id = "pca"), "numerics"),
+    autoWrapper("np1", cpoImputeMedian(id = "pcaimp") %>>%
+                       fremover(id = "pcaimp.fremove") %>>%
+                       cpoPca(id = "pca"), "numerics"),
     list(sp("pca.scale", "bool"), sp("pca.center", "bool")),
     "wrapper")
 np2 = autolearner(
@@ -225,11 +242,11 @@ fp1 = autolearner(
     autoWrapper("fp1", cpoToBinary(),"factors"),
     list(), "wrapper")
 fp2 = autolearner(
-    autoWrapper("fp1", reversefacorder(),"factors"),
+    autoWrapper("fp2", reversefacorder(),"factors"),
     list(), "wrapper")
 op1 = autolearner(
-    autoWrapper("fp1", cpoToBinary(),"ordered"),
+    autoWrapper("op1", cpoToBinaryFc(),"ordered"),
     list(), "wrapper")
 op2 = autolearner(
-    autoWrapper("fp1", reversefacorder(),"ordered"),
+    autoWrapper("op2", reversefacorder(),"ordered"),
     list(), "wrapper")
