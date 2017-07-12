@@ -4,7 +4,7 @@
 #' \code{Autolearner} objects wrap mlr \code{Learner} objects as well as
 #' preprocessing functions and provide additional meta information. This is used
 #' to define the automlr searchspace.
-#' 
+#'
 #' @param learner [\code{Learner}|list]\cr
 #'   An mlr \code{Learner} object for a \code{"learner"} stacktype, otherwise
 #'   an object returned by \code{\link{autoWrapper}}.\cr
@@ -40,11 +40,11 @@ autolearner = function(learner, searchspace = list(), stacktype = "learner") {
 }
 
 #' @title Create a wrapper object for \code{\link{autolearner}}.
-#' 
+#'
 #' @description
 #' Build a wrapper object that can be plugged into \code{\link{autolearner}} to
 #' give wrapper functions to \code{\link{buildLearners}}.
-#' 
+#'
 #' @param name [\code{character(1)}]\cr
 #'   the name of the wrapper. Must not contain a \code{$} character.
 #' @param cpo [\code{CPO}]\cr
@@ -65,9 +65,9 @@ autoWrapper = function(name, cpo, datatype, convertfrom = NULL) {
   assertString(name)
   assert(identical(grep("$", name, fixed = TRUE), integer(0)))
   assertClass(cpo, "CPO")
-  
+
   cpoprops = getCPOProperties(cpo)
-  
+
   if (!is.null(convertfrom)) {
     assertChoice(convertfrom, c("factors", "ordered", "numerics", "missings"))
     assertChoice(convertfrom, cpoprops$properties.adding)
@@ -83,9 +83,9 @@ autoWrapper = function(name, cpo, datatype, convertfrom = NULL) {
   }
   assertChoice(datatype, c("factors", "ordered", "numerics"))
   assert(!identical(convertfrom, datatype))
-  
-  
-  
+
+
+
   makeS3Obj("AutoWrapper",
       name = name,
       cpo = cpo,
@@ -123,18 +123,18 @@ print.AutoWrapper = function(x, ...) {
 }
 
 #' @title Define the searchspace parameter in a short form
-#' 
+#'
 #' @description
 #' This function is used to define the search space related to a given learner.
 #' The priority here is that the function should be saving space: Much of the
 #' information about a parameter is inferred from the learner itself; In
 #' principle only the name, the type, and a range of a parameter are needed.
-#' 
+#'
 #' However, to get notifications about changes in the mlr package, also all the
 #' parameters that are not given should be referenced with an \code{sp()} of
 #' type \code{"def"}; otherwise, a warning will be given upon instantiation of
-#' the learner.  
-#' 
+#' the learner.
+#'
 #' @param name [\code{character(1)}]\cr
 #'   The name of the parameter which must match the id of the \code{Param} it
 #'   refers to. May be suffixed with \code{.AMLRFIX#}, where \code{#} is a
@@ -248,7 +248,7 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
   if (!is.null(special)) {
     assertChoice(special, c("dummy", "inject"))
   }
-  
+
   if (type %in% c("fix", "def", "fixdef") && !is.null(req)) {
     stop("Requirements not allowed when type is 'fix', 'def', or 'fixdef'.")
   }
@@ -256,7 +256,7 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
   if (!is.null(req)) {
     assert(checkClass(req, "call"), checkClass(req, "expression"))
   }
-  
+
   if (identical(values, "##") && type != "def") {
     stop("Only type 'def' parameters can have value '##'.")
   }
@@ -290,7 +290,7 @@ print.Searchparam = function(x, ...) {
       collapse(deparse(val, width.cutoff=500), sep = "\n")
     }
   }
-  
+
   catf("%s%s %s%s%s%s%s%s%s", x$type,
       if (x$dim > 1) sprintf("^%s", x$dim) else "", x$name,
       if (!is.null(x$trafo))
@@ -321,7 +321,7 @@ makeNamedAlList = function(...) {
 # This is an interface for makeXYZParam
 # where X is the type (Numeric, Integer, ...)
 #       Y may be "Vector"
-#       Z may be "Learner" 
+#       Z may be "Learner"
 # param: a "Searchparam" created with sp()
 # learnerid: for debug messages
 # makeLearnerParam
@@ -505,6 +505,10 @@ createTrafo = function(min, max, invert, is.int) {
 }
 
 createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
+  force(pmin)
+  force(pmax)
+  force(is.int)
+  force(is.exp)
   # env must contain:
   # PARAM.x, p (number of features), n (number of rows)
   function(x, env) {
@@ -515,26 +519,39 @@ createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
       pmax = eval(pmax, envir = env, enclos = globalenv())
     }
     assert(pmax >= pmin)
-    if (is.exp) {
-      trafo = createTrafo(pmin, pmax, FALSE, is.int)
-      trafofn = trafo$trafo
-      pmin = trafo$newmin
-      pmax = trafo$newmax
-    }
     if (is.int) {
       assertIntegerish(pmin, any.missing = FALSE, len = 1)
       assertIntegerish(pmax, any.missing = FALSE, len = 1)
       pmax = pmax + 1
-      ret = min(floor(x * (pmax - pmin) + pmin), pmax)
+      if (is.exp) {
+        addzero = pmin == 0
+        if (addzero) {
+          pmin = 1
+          pmax %+=% 1
+        }
+        ratio = sqrt((pmin + 1) / pmin)
+        res = pmin * ratio ^ (x * log(pmax / pmin, base = ratio))
+        if (addzero) {
+          res %-=% 1
+          pmax %-=% 1
+        }
+      } else {
+        res = x * (pmax - pmin) + pmin
+      }
+      min(floor(res), pmax - 1)
     } else {
+      trafofn = identity
+      if (is.exp) {
+        trafo = createTrafo(pmin, pmax, FALSE, FALSE)
+        trafofn = trafo$trafo
+        pmin = trafo$newmin
+        pmax = trafo$newmax
+      }
       assertNumeric(pmin, any.missing = FALSE, len = 1)
       assertNumeric(pmax, any.missing = FALSE, len = 1)
-      ret = x * (pmax - pmin) + pmin
+      
+      trafofn(x * (pmax - pmin) + pmin)
     }
-    if (is.exp) {
-      ret = trafofn(ret)
-    }
-    return(ret)
   }
 }
 
@@ -549,8 +566,8 @@ makeLearnerPars = function(learnerPars) {
         learnerPars$pars[[p]]$lower = -Inf
         learnerPars$pars[[p]]$upper = Inf
       } else {
-        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$amlr.origValues[1]
-        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$amlr.origValues[2]
+        learnerPars$pars[[p]]$lower = learnerPars$pars[[p]]$amlr.origValues[[1]]
+        learnerPars$pars[[p]]$upper = learnerPars$pars[[p]]$amlr.origValues[[2]]
       }
       # convert type to "numeric(vector)", since after trafo we are not sure
       # it is still an int
