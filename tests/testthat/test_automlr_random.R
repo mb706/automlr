@@ -29,7 +29,8 @@ test_that("backend 'random' works with search space with preprocessing and model
   source("helper_automlrhelpers.R")
   backendToTest = "random"
   searchSpaceToTest = withPPSearchSpace
-  checkBackend(searchSpaceToTest, backendToTest, thorough = TRUE, learnersMayFail = TRUE)
+  checkBackend(searchSpaceToTest, backendToTest, thorough = TRUE,
+    learnersMayFail = TRUE)
 })
 
 ###

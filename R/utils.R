@@ -146,7 +146,7 @@ extractSubList = function(xs, element, element.value, simplify = TRUE,
 }
 
 #################################
-# Parameters                    #
+# Parameters & Expressions      #
 #################################
 
 removeAmlrfix = function(name) {
@@ -209,6 +209,16 @@ replaceRequires = function(cprequires, substitution) {
   deExpression(eval(asQuoted(paste(parsed, collapse = "\n"))))
 }
 
+remsrc = function(lang) {
+  dumf = function() {}
+  body(dumf) = lang
+  body(removeSource(dumf))
+}
+
+langIdentical = function(l1, l2) {
+  identical(remsrc(l1), remsrc(l2))
+}
+
 #################################
 # OptPath Imputation            #
 #################################
@@ -231,22 +241,22 @@ verbosity.traceout = function(verbosity) {
 
 #whether to output memory info
 verbosity.memtraceout = function(verbosity) {
-  verbosity >= 2
+  verbosity >= 5
 }
 
 # whether to output detailed search space warnings
 verbosity.sswarnings = function(verbosity) {
-  verbosity >= 3
+  verbosity >= 2
 }
 
 # whether to output learner warnings
 verbosity.learnerwarnings = function(verbosity) {
-  verbosity >= 4
+  verbosity >= 3
 }
 
 # whether to give learner output
 verbosity.learneroutput = function(verbosity) {
-  verbosity >= 5
+  verbosity >= 4
 }
 
 # stop on learner error

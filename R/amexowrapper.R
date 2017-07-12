@@ -447,6 +447,7 @@ extractStaticParams = function(completeSearchSpace) {
 }
 
 substituteParamList = function(paramList, substitutions, maxCycles = 32) {
+
   for (dummy in seq_len(maxCycles)) {
     # go `cycles` steps deep, in case one of the substituted variables itself
     # requires another variable.
@@ -455,7 +456,7 @@ substituteParamList = function(paramList, substitutions, maxCycles = 32) {
       req = paramList[[pid]]$requires
       if (!is.null(req)) {
         paramList[[pid]]$requires = replaceRequires(req, substitutions)
-        if (!identical(paramList[[pid]]$requires, req)) {
+        if (!langIdentical(paramList[[pid]]$requires, req)) {
           dirty = TRUE
         }
       }
@@ -488,8 +489,8 @@ checkBadreqs = function(paramList, badreqs) {
   for (pid in seq_along(paramList)) {
     req = paramList[[pid]]$requires
     if (!is.null(req)) {
-      if (!identical(req, replaceRequires(req, substs))) {
-        stop("Parameter %s has requirement %s.", paramList[[pid]]$id,
+      if (!langIdentical(req, replaceRequires(req, substs))) {
+        stopf("Parameter %s has requirement %s.", paramList[[pid]]$id,
             "depending on expression bound")
       }
     }
@@ -601,7 +602,7 @@ simplifyEval = function(lang) {
       list(asCond(x[[1]]))
     }
   }
-  if (identical(lang[[1]], quote(`if`))) {
+  if (langIdentical(lang[[1]], quote(`if`))) {
     # emulate 'if': if conditional is unknown,
     # we may still rescue the situation if both
     # cases give same result.
@@ -619,7 +620,7 @@ simplifyEval = function(lang) {
     } else {
       return(simplifyEval(lang[[4]]))
     }
-  } else if (identical(lang[[1]], quote(`&&`))) {
+  } else if (langIdentical(lang[[1]], quote(`&&`))) {
     ca = simplifyEval(lang[[2]])
     if (is.null(ca) || asCond(ca[[1]])) {
       cb = simplifyEval(lang[[3]])
@@ -630,7 +631,7 @@ simplifyEval = function(lang) {
     } else {
       return(list(FALSE))
     }
-  } else if (identical(lang[[1]], quote(`||`))) {
+  } else if (langIdentical(lang[[1]], quote(`||`))) {
     ca = simplifyEval(lang[[2]])
     if (is.null(ca) || !asCond(ca[[1]])) {
       cb = simplifyEval(lang[[3]])
@@ -646,7 +647,7 @@ simplifyEval = function(lang) {
     allowedunary = list(quote(`(`), quote(isTRUE), quote(isFALSE),
         quote(identity), quote(as.null), quote(`!`), quote(`+`), quote(`-`))
     for (f in allowedunary) {
-      if (!identical(lang[[1]], f)) {
+      if (!langIdentical(lang[[1]], f)) {
         next
       }
       ca = simplifyEval(lang[[2]])
@@ -660,7 +661,7 @@ simplifyEval = function(lang) {
         quote(`/`), quote(`!=`), quote(`>`), quote(`<`), quote(`>=`),
         quote(`<=`))
     for (f in allowedbinary) {
-      if (!identical(lang[[1]], f)) {
+      if (!langIdentical(lang[[1]], f)) {
         next
       }
       ca = simplifyEval(lang[[2]])

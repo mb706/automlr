@@ -15,6 +15,13 @@ devtools::test("..", filter = "paramhandling")
 devtools::test("..", filter = "searchspacedefs")
 devtools::test("..", filter = "coltypes")
 devtools::test("..", filter = "requirements")
+devtools::test("..", filter = "wrappers")
+devtools::test("..", filter = "taskbuilding")
+devtools::test("..", filter = "trafos")
+
+
+devtools::test("..", filter = "automlr_random")
+devtools::test("..", filter = "automlr_mbo")
 
 system.time(devtools::test("..", filter = "timeout"), FALSE)
 
@@ -353,11 +360,15 @@ pvs = list(automlr.missing.indicators = FALSE,
     automlr.wimputing.numerics = "numimputer2", multiplier = 1,
     NumericsLearner.int1 = 9)
 
-
+predict(train(setHyperPars(l, par.vals=pvs), MissingsNumericsTask), MissingsNumericsTask)
 
   pvx = namedList(getParamIds(getParamSet(l)), NA)
-  isFeasible(getParamSet(l), insert(pvx, pvs))
+  x = isFeasible(getParamSet(l), insert(pvx, pvs))
+  substr(attr(x, "warning"), 1, 200)
 
+m = train(setHyperPars(l, par.vals = pvs), MissingsNumericsOrderedTask)
+
+head(m$learner.model$learner.model$next.model$learner.model$next.model$learner.model$data)
 
 getpars(l)$automlr.convert$requires
 
@@ -385,3 +396,22 @@ eval(l$staticParams[[4]]$requires, pvs)
 pvs$automlr.missing.indicators
 
 l$staticParams[[9]]
+
+
+library(lineprof)
+
+#tmp <- "profiling"
+#Rprof(tmp, interval = 0.1)
+#Rprof(NULL)
+
+lprof <- lineprof(automlr(theTask, searchspace = searchSpaceToTest, backend = "random",
+  budget = c(evals = 100), verbosity = 0))
+
+ll = buildLearners(searchSpaceToTest, theTask)
+
+lprof <- lineprof(tuneParams(ll, theTask, cv5, par.set = ll$searchspace,
+  control = makeTuneControlRandom(maxit = 500)))
+
+save(lprof, file = "lprof_profiling.Rsv")
+
+shine(lprof)

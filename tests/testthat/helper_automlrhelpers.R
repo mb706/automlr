@@ -157,21 +157,6 @@ rcAL = autolearner(randfailClassif, list(
     sp("radius", "real", c(0.1, 10), "exp"),
     sp("coordinates", "real", c(-10, 10), dim = 2)))
 
-# the preprocessing module, offering univariate and multivariate trafos
-# TODO
-preprocAL = NULL
-## preprocAL = autolearner(learner = autoWrapper(
-##         name = "ampreproc",
-##         constructor = makePreprocWrapperAm,
-##         conversion = list(numerics = "numerics", factors = "factors",
-##           ordered = "ordered")),
-##     stacktype = "requiredwrapper",
-##     searchspace = list(
-##         sp("ppa.univariate.trafo", "cat", c("off", "center", "scale",
-##                 "centerscale", "range"),
-##             req = quote(automlr.has.numerics == TRUE)),
-##         sp("ppa.multivariate.trafo", "cat", c("off", "pca", "ica"),
-##             req = quote(automlr.has.numerics == TRUE))))
 
 # test whether using 'TRUE', 'FALSE' with the wrong names still works
 tf = c(TRUE, FALSE)
@@ -401,27 +386,14 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
   amfile = tempfile()
   on.exit(STALLTIME <<- FALSE, add = TRUE)
   on.exit(try(file.remove(paste0(amfile, ".rds")), silent = TRUE), add = TRUE)
-  on.exit(configureMlr(show.learner.output = TRUE, on.learner.error = "warn"),
-      add = TRUE)
 
-  # make runs go faster by decreasing iteration counts
-  origmfp = automlr:::mbo.focussearch.points  # TODO: this changed
-  origmfm = automlr:::mbo.focussearch.maxit
-  originp = automlr:::irace.newpopulation
-  on.exit(assignInNamespace("mbo.focussearch.points", origmfp, ns = "automlr"),
-      add = TRUE)
-  on.exit(assignInNamespace("mbo.focussearch.maxit", origmfm, ns = "automlr"),
-      add = TRUE)
-  on.exit(assignInNamespace("irace.newpopulation", originp, ns = "automlr"),
-      add = TRUE)
-  assignInNamespace("mbo.focussearch.points", 10L, ns = "automlr")
-  assignInNamespace("mbo.focussearch.maxit", 2L, ns = "automlr")
-  assignInNamespace("irace.newpopulation", 1, ns = "automlr")
-
-
-  configureMlr(show.learner.output = FALSE,
-    on.learner.error = ifelse(learnersMayFail, "quiet", "stop"),
-    on.learner.warning = ifelse(learnersMayFail, "quiet", "warn"))
+  backendObject = switch(backendToTest,
+    random = "random",
+    mbo = makeBackendconfMbo(
+        focussearch.restarts = 1,
+        focussearch.maxit = 2,
+        focussearch.points = 10),
+    irace = makeBackendconfIrace(newpopulation = 1))
 
   for (methodOfContinuation in methodsToTest) {
     for (budgettest in budgetsToTest) {
@@ -435,7 +407,8 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
 
       starttime = Sys.time()
       oc(amobject <- automlr(theTask, searchspace = searchSpaceToTest,
-              backend = backendToTest, budget = budget, savefile = amfile))
+        backend = backendObject, budget = budget, savefile = amfile,
+        verbosity = if (learnersMayFail) 0 else 4))
       runtime = as.numeric(difftime(Sys.time(), starttime, units = "secs"))
       # see if the file was modified, prevent rounding errors
       expect_gt(as.numeric(difftime(file.mtime(amobject$savefile),
@@ -469,18 +442,3 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
     }
   }
 }
-
-# search spaces to test. Differences:
-#  no random errors
-#  random errors
-#  random errors AND preprocessing
-#  searchspace with very complicated parameter space
-#  searchspace with complicated requirements
-nofailSearchSpace = list(ccAL, cicAL, mcAL)
-withFailSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL)
-withPPSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL, preprocAL)
-paramtestSearchSpace = list(noiseCL)
-reqstestSearchSpace = list(mcAL, reqsCL)
-
-# example task to perform automlr over
-theTask = generateCircleTask('circle', 200, 1, 2, 3)

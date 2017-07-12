@@ -250,3 +250,20 @@ op1 = autolearner(
 op2 = autolearner(
     autoWrapper("op2", reversefacorder(),"ordered"),
     list(), "wrapper")
+
+
+
+# search spaces to test. Differences:
+#  no random errors
+#  random errors
+#  random errors AND preprocessing
+#  searchspace with very complicated parameter space
+#  searchspace with complicated requirements
+nofailSearchSpace = list(ccAL, cicAL, mcAL)
+withFailSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL)
+withPPSearchSpace = list(ccAL, cicAL, mcAL, dcAL, rcAL, np1, np2)
+paramtestSearchSpace = list(noiseCL)
+reqstestSearchSpace = list(mcAL, reqsCL)
+
+# example task to perform automlr over
+theTask = generateCircleTask('circle', 200, 1, 2, 3)

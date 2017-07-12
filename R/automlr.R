@@ -97,10 +97,10 @@
 #'   \describe{
 #'     \item{0}{Default: Only give essential warning messages and errors.}
 #'     \item{>=1}{Output info about evaluated points.}
-#'     \item{>=2}{Output memory usage stats.}
-#'     \item{>=3}{Detailed warning messages about search space.}
-#'     \item{>=4}{Detailed warning messages from learners.}
-#'     \item{>=5}{Output from all learners.}
+#'     \item{>=2}{Detailed warning messages about search space.}
+#'     \item{>=3}{Detailed warning messages from learners.}
+#'     \item{>=4}{Output from all learners.}
+#'     \item{>=5}{Output memory usage stats.}
 #'     \item{>=6}{Stop on learner error.}
 #'   } 
 #' @param ... No further arguments should be given.
