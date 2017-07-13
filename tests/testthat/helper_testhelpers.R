@@ -248,7 +248,7 @@ isFeasibleMissingPossible = function(ps, x) {
   for (n in names(x)) {
     par = ps$pars[[n]]
     val = x[[n]]
-    if ((!requiresOk(par, x) && !isScalarNA(val)) ||
+    if ((!ParamHelpers:::requiresOk(par, x) && !isScalarNA(val)) ||
       !isFeasible(par, val)) {
       return(FALSE)
     }

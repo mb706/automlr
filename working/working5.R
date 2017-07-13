@@ -6,11 +6,11 @@
 
 upstart()
 roxygenise('..')
-
+library("automlr")
 devtools::load_all("..")
 
 devtools::test("..", filter = "aux")
-devtools::test("..", filter = "automlr_errors")
+devtools::test("..", filter = "automlr_errors")  # makes warnings
 devtools::test("..", filter = "paramhandling")
 devtools::test("..", filter = "searchspacedefs")
 devtools::test("..", filter = "coltypes")
@@ -415,3 +415,15 @@ lprof <- lineprof(tuneParams(ll, theTask, cv5, par.set = ll$searchspace,
 save(lprof, file = "lprof_profiling.Rsv")
 
 shine(lprof)
+
+
+
+
+bd = body(devtools:::process_imports)
+pidash = devtools:::process_imports
+body(pidash)[[7]][[4]] = bd[[7]][[4]][[3]]
+
+pidash
+
+assignIn
+assignInNamespace("process_imports", pidash, ns = "devtools")
