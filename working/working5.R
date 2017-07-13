@@ -6,11 +6,11 @@
 
 upstart()
 roxygenise('..')
-library("automlr")
+
 devtools::load_all("..")
 
 devtools::test("..", filter = "aux")
-devtools::test("..", filter = "automlr_errors")  # makes warnings
+devtools::test("..", filter = "errors", reporter = "debug")  # makes warnings
 devtools::test("..", filter = "paramhandling")
 devtools::test("..", filter = "searchspacedefs")
 devtools::test("..", filter = "coltypes")
@@ -22,6 +22,8 @@ devtools::test("..", filter = "trafos")
 
 devtools::test("..", filter = "automlr_random")
 devtools::test("..", filter = "automlr_mbo")
+
+devtools::test("..", filter = "automlr_irace")
 
 system.time(devtools::test("..", filter = "timeout"), FALSE)
 

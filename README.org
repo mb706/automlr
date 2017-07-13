@@ -104,13 +104,13 @@ Currently the project is undergoing heavy development; while the spirit of the a
     - [X] nicer printing of searchspace
   - [-] tests
     - [ ] quick compatibility test with mlr
-    - [ ] differentiate expensive tests from fast tests
+    - [X] differentiate expensive tests from fast tests
     - [X] tests for preprocessing
     - [X] test timeouting and timeout wrapper
   - [X] more consistent S3-based searchspace definition
   - [X] preprocessing
     - [X] impute dummy column
-  - [ ] learner error imputation wrapper
+  - [X] learner error imputation wrapper
 - [ ] release 0.3
   - [ ] consistent randomness
     - [ ] test that execution with same seed gets same result

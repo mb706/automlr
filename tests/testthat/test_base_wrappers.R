@@ -367,7 +367,7 @@ test_that("preproc wrappers interact nicely with conversion / imputation wrapper
     np2 = list(scale.scale = FALSE, scale.center = TRUE),
     np1 = list(pca.scale = TRUE, pca.center = FALSE))
 
-  setMlrOption("debug.seed", 123)
+  mlr:::setMlrOption("debug.seed", 123)
 
   pvs = list(selected.learner = "MissingsFactorsNumericsLearner", automlr.missing.indicators = TRUE,
     automlr.impute = TRUE,

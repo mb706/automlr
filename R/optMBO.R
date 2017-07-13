@@ -42,25 +42,25 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("smoof", why = "optMBO", default.method = "load")
   # FIXME things that could be variable:
   #  infill control: focussearch, something else? how many points?
-  env$runtimeEnv = environment()
   
-  zeroWalltime = 0
-  zeroEvals = 0
+  env$zeroWalltime = 0
+  env$zeroEvals = 0
   
   # the following must be set here since mbo() creates the initial design,
   # which queries the budget an numcpus.
   numcpus = parallelGetOptions()$settings$cpus
   numcpus[is.na(numcpus)] = 1
   
-  budget = 0
+  env$budget = 0
   
-  hardTimeout = Inf  # for the init evaluations
+  env$hardTimeout = Inf  # for the init evaluations
   
   isOutOfBudget = function(opt.state) {
-    stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
+    stopcondition(env$budget, spentBudget(opt.state, env))
   }
   
   objectiveFun = function(x) {
+    origx = x
     if (mboSaveMode) {
       x = complicateParams(x, getSearchspace(learner))
     } else {
@@ -68,11 +68,11 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
     }
     l = setHyperPars(learner, par.vals = x)
 
-    hardTimeoutRemaining = hardTimeout - proc.time()[3]
+    hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
     
     if (verbosity.traceout(verbosity)) {
       cat("Evaluating function:\n")
-      outlist = removeMissingValues(x)
+      outlist = removeMissingValues(origx)
       for (n in names(outlist)) {
         catf("%s: %s; ", n, outlist[[n]])
       }
@@ -154,11 +154,11 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   environment(myMBO)$mboFinalize2 = identity
   env$opt.state = myMBO(objective, learner = mboLearner, control = control,
       show.info = verbosity.traceout(verbosity))
+  parent.env(env$opt.state$opt.path$env) = emptyenv()
   
-  zeroWalltime = as.numeric(env$opt.state$time.used, units = "secs")
-  zeroEvals = getOptPathLength(env$opt.state$opt.path)
+  env$zeroWalltime = as.numeric(env$opt.state$time.used, units = "secs")
+  env$zeroEvals = getOptPathLength(env$opt.state$opt.path)
   # clean up environment, it is used in objectiveFun().
-  rm(myMBO, prior, env)
 }
 
 
@@ -173,7 +173,6 @@ amresult.ammbo = function(env) {
 
 amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # initialize for spent budget computation
-  zero = env$runtimeEnv
   starttime = proc.time()[3]
   
   # FIXME: right now, the infill crit optimization does not respect the
@@ -181,9 +180,9 @@ amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # criterion of the mbo run so that only one iteration gets performed per
   # call, and additionally creating backups of the opt.state before each call.
   # I will choose the elegant (= quick) over the correct solution here though.
-  zero$hardTimeout = starttime + deadline
+  env$hardTimeout = starttime + deadline
   
-  zero$budget = stepbudget
+  env$budget = stepbudget
   
   runWithTimeout(withCallingHandlers(
           mlrMBO:::mboTemplate.OptState(env$opt.state),
@@ -192,12 +191,12 @@ amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
               invokeRestart("muffleWarning")
             }
           }), deadline, backend = "native")
-  spent = spentBudget(env$opt.state, zero)
+  spent = spentBudget(env$opt.state, env)
   if ("walltime" %in% names(spent)) {
     spent["walltime"] = proc.time()[3] - starttime  # b/c of possible timeout
   }
-  zero$zeroWalltime %+=% spent["walltime"]
-  zero$zeroEvals %+=% spent["evals"]
+  env$zeroWalltime %+=% spent["walltime"]
+  env$zeroEvals %+=% spent["evals"]
   spent
 }
 

@@ -212,8 +212,7 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
                                TRUE
                              } else {
                                as.character(unlist(disc4)[1])==TRUE &&
-                                   sum(unlist(disc4v) == "TRUE") > 2 &&
-                                   is.function(disc4x)
+                                   sum(unlist(disc4v) == "TRUE") > 2
                              })),
     # remember that functions in requirements do not work and probably will
     # never really work
@@ -230,8 +229,7 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
                                TRUE
                              else
                                as.character(unlist(disc4)[1])==TRUE &&
-                                   sum(unlist(disc4v) == "TRUE") > 2 &&
-                                   is.function(disc4x))),
+                                   sum(unlist(disc4v) == "TRUE") > 2)),
                  makeLogicalLearnerParam("testReqs", default = FALSE,
                      when = "predict", tunable = FALSE)),
     properties = c("twoclass", "numerics", "missings"))
@@ -369,7 +367,7 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
     SHORTRUN = TRUE
   }
   if (SHORTRUN) {
-    typicalBudget = list(walltime = 3, evals = 40)
+    typicalBudget = list(walltime = 10, evals = 40)
   } else {
     typicalBudget = list(walltime = 30, evals = 300)
   }
@@ -408,7 +406,7 @@ checkBackend = function(searchSpaceToTest, backendToTest, thorough = FALSE,
       starttime = Sys.time()
       oc(amobject <- automlr(theTask, searchspace = searchSpaceToTest,
         backend = backendObject, budget = budget, savefile = amfile,
-        verbosity = if (learnersMayFail) 0 else 4))
+        verbosity = if (learnersMayFail || backendToTest == "random") 0 else 6))
       runtime = as.numeric(difftime(Sys.time(), starttime, units = "secs"))
       # see if the file was modified, prevent rounding errors
       expect_gt(as.numeric(difftime(file.mtime(amobject$savefile),

@@ -119,6 +119,8 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
     learner$am.env$usedbudget["evals"] %+=% sum(notOOB)
     subsetOptPath(tuneresult$opt.path, notOOB)
+    
+    parent.env(tuneresult$opt.path$env) = emptyenv()
 
     if (is.null(env$opt.path)) {
       env$opt.path = tuneresult$opt.path
