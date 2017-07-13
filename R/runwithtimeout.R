@@ -38,17 +38,23 @@ setDefaultRWTBackend = function(backend) {
 #' @param throwError [\code{logical(1)}]\cr
 #' If \code{TRUE}, throw an error on timeout instead of just returning
 #' \code{FALSE}.
-#' @return [\code{list}]\cr
-#' a list with three items:\cr
-#' \code{$result} contains the result of the evaluated expression \code{expr}.
+#' @param backend [\code{character(1)}]\cr
+#' One of \dQuote{native}, \dQuote{fork}: which backend to use. If not given,
+#' the backend set by \code{\link{setDefaultRWTBackend}} is used. If this was
+#' not set, the default is \dQuote{native}.
+#' @return [\code{list}]
+#' a list with three items:
+#' \itemize{
+#'   \item[result] contains the result of the evaluated expression \code{expr}.
 #' If a timeout occurred and \code{throwError} is \code{FALSE}, this will be
-#' \code{NULL}.\cr
-#' \code{$timeout} if \code{throwError} is \code{FALSE}, this is \code{TRUE} if
-#' a timeout occurred, \code{FALSE} otherwise. If \code{throwError} is
-#' \code{TRUE}, this is always \code{TRUE}.\cr
-#' \code{$elapsed} contains the time spent evaluating \code{expr}. The value is
+#' \code{NULL}.
+#'   \item[timeout] if \code{throwError} is \code{FALSE}, this is \code{TRUE}
+#' if a timeout occurred, \code{FALSE} otherwise. If \code{throwError} is
+#' \code{TRUE}, this is always \code{TRUE}.
+#'   \item[elapsed] contains the time spent evaluating \code{expr}. The value is
 #' guaranteed to be lower or equal to \code{time} if the returned
 #' \code{$timeout} is \code{FALSE}, and is greater than \code{TIME} otherwise.
+#' }
 #' @export
 runWithTimeout = function(expr, time, throwError = FALSE, backend) {
 #  FIXME: is the following necessary?

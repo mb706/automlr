@@ -30,7 +30,7 @@ registered.backend = new.env()
 #'   by the user. Instead, the return value of \code{\link{registerBackend}}
 #'   must be used for that purpose.
 #' 
-#' @return [\code{function}]\cr
+#' @return [\code{function}]
 #'   The function that can be used to create a "BackendOptions" object that can
 #'   then be given as the \code{backend} parameter to \code{\link{automlr}}.
 #' 

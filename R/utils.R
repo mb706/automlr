@@ -397,7 +397,7 @@ getResampleIter = function() {
 
 setResampleUID = function() {
   frameno = min(c(getFrameNo('resample'), getFrameNo("resample.fun")))
-  uid = runif(1)
+  uid = stats::runif(1)
   assign('$UID$', uid, envir=sys.frame(frameno))
   uid
 }
@@ -455,6 +455,10 @@ myAssignInNamespace = function(what, value, ns) {
 #################################
 
 #' @title Retrieve a suggested search space of the given learner
+#' 
+#' @description
+#' Learners created with \code{\link{buildLearners}} have a \code{$searchspace}
+#' slot that can be accessed with this function.
 #' 
 #' @param learner [\code{Learner}]\cr
 #'   Learner
@@ -583,7 +587,8 @@ predictLearner.automlrWrappedLearner = function(.learner, .model, .newdata,
               on.learner.error = "stop",
               on.learner.warning = "warn",
               show.learner.output = TRUE)))
-  getPredictionResponse(predict(.model$learner.model, newdata = .newdata))
+  getPredictionResponse(stats::predict(.model$learner.model,
+          newdata = .newdata))
 }
 
 

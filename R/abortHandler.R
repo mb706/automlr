@@ -120,9 +120,9 @@ areInterruptsSuspended = function() {
 #'
 #' @param expr [\code{any}]\cr
 #'   The expression to evaluate
-#' @param onCtrlC [\code{any}]\cr
-#'   The value to return when Ctrl-C was pressed during evaluation of
-#'   \code{expr}.
+#' @param onInterrupt [\code{any}]\cr
+#'   The expression to evaluate and return when Ctrl-C was pressed during
+#'   evaluation of \code{expr}.
 #'
 #' @return [\code{any}]
 #' the result of \code{expr} if it evaluated successfully, \code{onInterrupt} if

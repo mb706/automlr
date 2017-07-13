@@ -183,7 +183,7 @@ print.AutoWrapper = function(x, ...) {
 #'   values as functions!
 #' @param dim [\code{integer(1)}]\cr
 #'   The number of dimensions of this variable.
-#' @param version[\code{character(1)}|\code{NULL}]\cr
+#' @param version [\code{character(1)}|\code{NULL}]\cr
 #'   Version of MLR to apply this parameter to. If not \code{NULL}, this must
 #'   be a \code{character} made up of a comparison operator (one of \dQuote{>},
 #'   \dQuote{<}, \dQuote{>=}, \dQuote{<=}, or \dQuote{==}) and an MLR version
@@ -513,7 +513,7 @@ createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
   # PARAM.x, p (number of features), n (number of rows)
   function(x, env) {
     if (is.language(pmin)) {
-      pmin = eval(pmin, envir = env, enclose = globalenv())
+      pmin = eval(pmin, envir = env, enclos = globalenv())
     }
     if (is.language(pmax)) {
       pmax = eval(pmax, envir = env, enclos = globalenv())

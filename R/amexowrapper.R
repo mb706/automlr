@@ -273,7 +273,7 @@ applyExpressionBoundTrafos = function(args, expressiontrafos, epsources,
   for (th in tohandle) {
     sources = epsources[[th]]
     lname = learners.by.params[[th]]
-    sl = setNames(args[paste(lname, sources, sep = ".")],
+    sl = stats::setNames(args[paste(lname, sources, sep = ".")],
         paste0("PARAM.", sources))
     args[[th]] = expressiontrafos[[th]](args[[th]], c(env0, sl))
   }

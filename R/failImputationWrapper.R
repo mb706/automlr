@@ -40,14 +40,14 @@ predictLearner.FailImputationWrapper = function(.learner, .model, .newdata,
   result = NULL
   if (!is.null(.model$learner.model$model)) {
     result = try(getPredictionResponse(
-            predict(.model$learner.model$model, newdata = .newdata)),
+            stats::predict(.model$learner.model$model, newdata = .newdata)),
         silent = TRUE)
     if (is.error(result) || all(is.na(result))) {
       result = NULL
     }
   }
   if (is.null(result)) {
-    getPredictionResponse(predict(.model$learner.model$trivialModel,
+    getPredictionResponse(stats::predict(.model$learner.model$trivialModel,
             newdata = .newdata))
   } else {
     result

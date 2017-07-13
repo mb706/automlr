@@ -1,5 +1,5 @@
 Package: automlr
-Title: automatic machine learning in R
+Title: Automatic Machine Learning in R
 Description: Package for interfacing mlr with algorithm configuration
     optimization libraries, giving functionality for optimizing across different
     ML algorithms.
@@ -12,7 +12,8 @@ Depends:
     R (>= 3.0.2),
     mlr (>= 2.8),
     ParamHelpers (>= 1.7),
-    utils
+    utils,
+    stats
 Imports:
     BBmisc (>= 1.9),
     checkmate (>= 1.7.1),
@@ -26,7 +27,6 @@ Suggests:
     FSelector,
     randomForestSRC,
     glmnet,
-    stats,
     lqa,
     stepPlr,
     MASS,
@@ -63,8 +63,7 @@ Suggests:
     e1071,
     deepnet,
     nnet,
-    neuralnet,
-    kohonen
+    neuralnet
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
@@ -88,7 +87,6 @@ Collate:
     'optIRace.R'
     'optMBO.R'
     'optRandom.R'
-    'preprocess.R'
     'runwithtimeout.R'
     'runwithtimeoutfork.R'
     'shims.R'
