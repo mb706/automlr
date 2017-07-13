@@ -3,4 +3,4 @@ library(checkmate)
 library(mlr)
 library(automlr)
 SHORTRUN = TRUE
-test_check("automlr")
+test_check("automlr", filter = "_base_")
