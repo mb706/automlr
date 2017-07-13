@@ -196,4 +196,35 @@ test_that("expression bounds with and without trafo", {
   zz = sapply((1:30)/100, function(x)
     getargs(blrn, list(testtrafo.int1 = x), subsetTask(pid.task, 1:10))$int1)
 
+
+  al = list(autolearner(lrn,
+    list(
+        sp("int1", "int", c(0, quote(n)), "exp",
+          req = quote(real1 < 0.5)),
+        sp("int1.AMLRFIX1", "int", c(quote(p), quote(p + n)),
+          req = quote(real1 >= 0.5), "exp"),
+        sp("real1", "real", c(0, 1)))))
+
+  blrn = buildLearners(al, pid.task, 6)
+
+  expect_true(isFeasible(getParamSet(blrn), list(testtrafo.int1.AMLRFIX1 = 0,
+    testtrafo.int1 = NA,
+    testtrafo.real1 = 0)))
+  expect_true(isFeasible(getParamSet(blrn), list(testtrafo.int1.AMLRFIX1 = NA,
+    testtrafo.int1 = 0,
+    testtrafo.real1 = 1)))
+
+  expect_equal(getargs(blrn, list(testtrafo.int1 = 0))$int1, 0)
+  expect_equal(getargs(blrn, list(testtrafo.int1.AMLRFIX1 = 0))$int1,
+    length(getTaskFeatureNames(pid.task)))
+  expect_equal(getargs(blrn, list(testtrafo.int1 = 1))$int1, getTaskSize(pid.task))
+  expect_equal(getargs(blrn, list(testtrafo.int1.AMLRFIX1 = 1),
+    subsetTask(pid.task, 1:10))$int1,
+    10 + length(getTaskFeatureNames(pid.task)))
+  expect_true(getargs(blrn, list(testtrafo.int1 = 0.5))$int1 < getTaskSize(pid.task))
+  expect_true(getargs(blrn, list(testtrafo.int1.AMLRFIX1 = 0.5))$int1
+    < getTaskSize(pid.task) + length(getTaskFeatureNames(pid.task)))
+  expect_true(getargs(blrn, list(testtrafo.int1.AMLRFIX1 = 0.5))$int1
+    > length(getTaskFeatureNames(pid.task)))
+
 })

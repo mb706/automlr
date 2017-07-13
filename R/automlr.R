@@ -208,7 +208,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
           backendprivatedata = setClasses(
               new.env(parent = emptyenv()),
               paste0("am", attr(backend, "automlr.backend"))),
-          seed = .Random.seed,
+          seed = getSeed(),
           creation.time = Sys.time(),
           finish.time = NULL,
           previous.versions = list(),

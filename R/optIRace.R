@@ -265,13 +265,9 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   env$usedbudget = c(walltime = 0, evals = 0)
   curtime = proc.time()[3]
   env$hardTimeout = deadline + curtime
-  # install the wrapper and make sure it gets removed as soon as we exit
-  # patch mlr on CRAN
-  originalTuneIrace = mlr:::tuneIrace
   
   on.exit(quickSuspendInterrupts({
             myAssignInNamespace("irace", env$iraceOriginal, "irace")
-#            myAssignInNamespace("tuneIrace", originalTuneIrace, "mlr")
           }))
 
   myAssignInNamespace("irace", env$iraceWrapper, ns = "irace")

@@ -26,7 +26,7 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
         collapse(unique(allParams[duplicated(allParams)])), lrnid)
   }
   
-  checkAmlrFix(sslist, lrn, verbosity)
+  checkAmlrFix(sslist, lrn)
   checkDummies(sslist, lrn)
 
   lrn = injectParams(sslist, lrn)
@@ -90,12 +90,7 @@ buildTuneSearchSpace = function(sslist, lrn, verbosity) {
 }
 
 
-checkAmlrFix = function(sslist, lrn, verbosity) {
-  if (verbosity.sswarnings(verbosity)) {
-    lwarn = function(...) warningf(...)
-  } else {
-    lwarn = function(...) {}
-  }
+checkAmlrFix = function(sslist, lrn) {
   lrnid = lrn$id
 
   canNotBeAMLRFIX = character(0)
@@ -209,7 +204,7 @@ makeParametersFeasible = function(sslist, lrn, verbosity) {
               param$name, lrnid)
         }
         if (param$type == "def" && identical(param$values, "##")) {
-          next
+          return(param)
         }
         if (!allfeasible(lp, param$values, origParamName, param$dim)) {
           # there is one 'special case': param$values might be names that
@@ -289,7 +284,7 @@ adjustSSDefaults = function(sslist, lrn, verbosity) {
   parvals = getHyperPars(lrn)
   lapply(sslist, function(param) {
         if (param$type == "def" && identical(param$values, "##")) {
-          next
+          return(param)
         }
         if (param$type %in% c("def", "fixdef")) {
           # check whether this is /actually/ the default

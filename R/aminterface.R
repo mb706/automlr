@@ -3,7 +3,7 @@
 
 aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, new.seed = FALSE,
-    max.walltime.overrun, verbosity, ...) {
+    max.walltime.overrun, verbosity) {
   if (!is.null(amstate$finish.time)) {
     oldamstate = amstate
     oldamstate$backendprivatedata = NULL
@@ -123,7 +123,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     if (!is.null(savefile)) {
       writefile(savefile, amstate, basename)
       # since writefile might use the rng:
-      .Random.seed = amstate$seed
+      setSeed(amstate$seed)
     }
   }
   amstate$prior = amgetprior(amstate$backendprivatedata)

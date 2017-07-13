@@ -185,7 +185,7 @@ amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   
   zero$budget = stepbudget
   
-  result = runWithTimeout(withCallingHandlers(
+  runWithTimeout(withCallingHandlers(
           mlrMBO:::mboTemplate.OptState(env$opt.state),
           warning = function(w) {
             if (any(grepl("Empty factor levels were dropped for columns", w))) {

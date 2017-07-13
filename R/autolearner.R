@@ -204,8 +204,8 @@ sp = function(name, type = "real", values = NULL, trafo = NULL, id = NULL,
     if (is.list(values)) {
         # filter out expressions
         expression.idx = vlapply(values, is.language)
-        expressions = values[expression.idx]
-        nonexp.values = unlist(values[!expression.idx], recursive = FALSE)
+        nonexp.values = c(numeric(0),
+            unlist(values[!expression.idx], recursive = FALSE))
         numexp = length(values) - length(nonexp.values)
         assert(numexp == sum(expression.idx))
     } else {

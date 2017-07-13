@@ -36,7 +36,6 @@ To run a small example to fit some learners on the mlr-provided ~pid.task~, exec
 #+BEGIN_SRC R
 library("mlr")
 library("automlr")
-configureMlr(on.learner.error = "warn", show.learner.output = FALSE)
 amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
 result = amfinish(amrun)
 print(result, verbose = TRUE)
@@ -57,7 +56,8 @@ The functions and data exported by automlr that will be of interest to the user:
     - the computational budget (~budget~)
     - a possible savefile (~savefile~) and the interval in which to save to a file (~save.interval~)
     - a measure for which to optimize, if not the task's default measure (~measure~)
-  - makeBackendconfRandom, makeBackendconfMbo, makeBackendconfIrace :: Make backend configuration objects to use instead of the backend strings (~"random"~ etc.)
+    - the verbosity level (~verbosity~) ranging from 0 to 6, 0 being the least verbose. Level 6 also stops the optimization process when a learner returns an error.
+  - makeBackendconfRandom, makeBackendconfMbo, makeBackendconfIrace :: Make backend configuration objects to use instead of the backend strings ("random" etc.)
   - amfinish :: Generates an ~AMResult~ object that contains information about the optimization result.
   - mlrLearners, mlrLearnersNoWrappers :: A collection of mlr learners with corresponding search space. ~mlrLearnersNoWrappers~ does not contain preprocessing wrappers.
   - mlrLightweight, mlrLightweightNoWrappers :: Similar to ~mlrLearners~ and ~mlrLearnersNoWrappers~, these are search spaces, but with the slowest learners removed. This decreases evaluation time and is also necessary for the "mbo" backend to work.

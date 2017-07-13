@@ -49,7 +49,7 @@
 #'     imputation of \dQuote{XXX}-typed data, if there is any choice.
 #'   \item automlr.preproc.XXX: Which  non-converting, non-imputing wrappers are
 #'     used for preprocessing, with values of the format
-#'     \code{outermostWrapper$wrapper...$wrapper$innermostwrapper}.
+#'     \code{outermostWrapper$wrapper..$wrapper$innermostwrapper}.
 #' }
 #'
 #' The following parameters can be used by wrappers and learners in their
@@ -232,7 +232,6 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
 # collect hyperparameters from 'staticParams', the given parameters, and the
 # 
 getEffectiveHyperPars = function(learner, staticParams, params) {
-  pnames = names(params)
   envir = insert(getHyperPars(learner), params)
   for (fp in staticParams) {
     if (is.null(fp$requires) || isTRUE(eval(fp$requires, envir = envir))) {
@@ -266,7 +265,6 @@ handleAmlrfix = function(params) {
 
 applyExpressionBoundTrafos = function(args, expressiontrafos, epsources,
     learners.by.params, task) {
-  pvs = handleAmlrfix(args)
   
   tohandle = intersect(names(expressiontrafos), names(args))
   env0 = list(n = getTaskSize(task), p = length(getTaskFeatureNames(task)))

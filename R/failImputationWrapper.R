@@ -31,7 +31,7 @@ trainLearner.FailImputationWrapper = function(.learner, .task, .subset,
   if (is.error(model) || isFailureModel(model)) {
     model = NULL
   }
-  result = list(model = model, trivialModel = trivialModel)
+  list(model = model, trivialModel = trivialModel)
 }
 
 #' @export

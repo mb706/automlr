@@ -104,7 +104,7 @@ print.AutomlrBackendConfig = function(x, ...) {
 #' @export
 argsToList = function() {
   defaults = formals(sys.function(-1))
-  defaults$`...` = NULL
+  defaults["..."] = NULL
   defaults = sapply(defaults, eval, envir = sys.frame(-1))
   assigns = as.list(eval.parent(quote(match.call())))
   assigns[[1]] = NULL
