@@ -31,6 +31,11 @@ Alternatively, to *only* install automlr (and its essential dependencies), do
 devtools::install_github("mlr-org/automlr")
 #+END_SRC
 
+It is highly recommended to install my fork of the ~e1071~ package, which fixes a bug that otherwise regularly leads to R crashing:
+#+BEGIN_SRC R
+devtools::install_github("mb706/e1071")
+#+END_SRC
+
 * Usage
 To run a small example to fit some learners on the mlr-provided ~pid.task~, execute
 #+BEGIN_SRC R
