@@ -221,7 +221,7 @@ noiseClassif = makeRLearnerClassif("noiseClassif", character(0),
                      requires = quote(int > 0 && mean(intv) > 0 &&
                              num - numv[1] < numv[2] + numv[3] &&
                              (log || logv[1] == logv[2] || logv[3]) &&
-                             disc1 %nin% unlist(disc1v) &&
+                             !disc1 %in% unlist(disc1v) &&
                              (disc2 || disc2v[[1]] || disc2v[[2]] ||
                                disc2v[[3]]) &&
                              disc3 * min(unlist(disc3v)) < 100 &&

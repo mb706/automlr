@@ -1,4 +1,5 @@
-runWithTimeoutBackend = "native"
+runWithTimeoutBackend = new.env(parent = emptyenv())
+runWithTimeoutBackend$backend = "native"
 
 #' @title Set the default runWithTimeout backend
 #' 
@@ -18,7 +19,7 @@ runWithTimeoutBackend = "native"
 #' @export
 setDefaultRWTBackend = function(backend) {
   assertChoice(backend, c("native", "fork"))
-  runWithTimeoutBackend <<- backend
+  runWithTimeoutBackend$backend = backend
 }
 
 #' @title Run a given expression with a given (walltime) timeout.
@@ -73,7 +74,7 @@ runWithTimeout = function(expr, time, throwError = FALSE, backend) {
   assertFlag(throwError)
 
   if (missing(backend)) {
-    backend = runWithTimeoutBackend
+    backend = runWithTimeoutBackend$backend
   } else {
     assertChoice(backend, c("native", "fork"))
   }

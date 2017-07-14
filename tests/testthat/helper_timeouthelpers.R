@@ -33,6 +33,9 @@ predictLearner.slowLearner = function(.learner, .model, .newdata, predictlag,
   factor(.model$factor.levels[[1]][1 + rbinom(nrow(.newdata), 1, rate)])
 }
 
+registerS3method("trainLearner", "slowLearner", trainLearner.slowLearner)
+registerS3method("predictLearner", "slowLearner", predictLearner.slowLearner)
+
 ######################## TODO: make getResampleIter smarter (recognize last 'resample' call and first 'train' / 'predict' call after that)
 
 

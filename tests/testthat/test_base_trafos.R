@@ -1,3 +1,4 @@
+context("trafos")
 
 lrn = makeRLearnerClassif("testtrafo", character(0),
   paramSetSugar(int1: integer[0, 1000], real1: numeric[0, 1000]), list(),
