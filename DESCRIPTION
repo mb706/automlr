@@ -22,6 +22,7 @@ Suggests:
     mlrMBO (>= 1.0),
     smoof (>= 1.3),
     irace (>= 1.05),
+    DiceKriging,
     fastICA,
     testthat,
     FSelector,
