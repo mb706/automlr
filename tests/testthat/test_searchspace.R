@@ -60,12 +60,13 @@ test_that("each searchspace item works", {
     "classif.LiblineaRL2SVC",
     "classif.LiblineaRMultiClassSVC",
     "classif.LiblineaRL1LogReg",
-
     NULL)
+
+
   for (lrn in mlrLearnersNoWrap) {
     print(lrn$learner)
-    if (lrn$learner %in% done) {
-      print("skipping")
+    if (!length(lrn$searchspace)) {
+      # skipping items with no searchspace
       next
     }
     set.seed(123)
@@ -79,10 +80,6 @@ test_that("each searchspace item works", {
 
   # classif.lqa: 'gamma' infeasible bounds 1, 10????
   # linDA: 'no parameters were passed'
-  # rrlda:
-# unable to load shared object #'/home/mb706/lmu/master/library/robustbase/libs/robustbase.so':
-#  libopenblas.so.0: cannot open shared object file: No such file or directory
-  #
   # quaDA, geoDA: "no parameters were passed"
   # lvq1: no params passed
   # naiveBayes: no params passed
