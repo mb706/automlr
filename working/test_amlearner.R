@@ -7,9 +7,10 @@ library("automlr")
 learneridx = argv %% length(mlrLearnersNoWrap) + 1
 
 
-automlr(pid.task,
+system.time(automlr(pid.task,
   budget = c(evals = 5), verbosity=3,
-  searchspace = list(mlrLearnersNoWrap[[learneridx]]), backend = "random")
+  searchspace = list(mlrLearnersNoWrap[[learneridx]]), backend = "random"),
+  FALSE)
 
 
 cat("Finished successfully\n")
