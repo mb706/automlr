@@ -28,7 +28,7 @@
 #'       depending on requirements.
 #'   }
 #' }
-#' 
+#'
 #' In the following, \dQuote{XXX} and \dQuote{YYY} will always be one of
 #' \dQuote{numerics}, \dQuote{ordereds}, \dQuote{factors}.
 #' The parameters that are introduced and exposed to the outside are:
@@ -82,18 +82,18 @@
 #'   The list of all learner names.
 #' @param modelTuneParsets [\code{list} of \code{ParamSet}]\cr
 #'   List of each learner's ParamSet, indexed by learner ID.
-#' 
+#'
 #' @return [\code{AMExoWrapper}]
 #' A \code{Learner} that incorporates the wrappers and learners suitable for mlr
 #' learners.
-#' 
+#'
 #' The slot \code{$searchspace} should be used as \code{ParamSet} to tune
 #' parameters over.
 makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
     canHandleX, allLearners, modelTuneParsets) {
 
   aux = buildWrapperSearchSpace(wrappers, missings, canHandleX, allLearners)
-  
+
   wrapperparnames = getParamIds(aux$wrapperps)
 
   completeSearchSpace = c(modelmultiplexer$searchspace, aux$wrapperps)
@@ -129,23 +129,23 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
   # and replacing them with direct setting of parameter values internally.
   # Easy to forget: parameters set for the modelmultiplexer via setHyperPars,
   # but not visible externally, also need to be treated like this.
-  
+
   aux = extractStaticParams(completeSearchSpace)
   staticParams = aux$staticParams
   substitutions = c(aux$substitutions, propertiesReplace,
       getHyperPars(modelmultiplexer))
   finalSubstitutions = aux$finalSubstitutions
   completeSearchSpace = aux$completeSearchSpace
-  
+
   # replace the singleton values inside the requirements of other parameters.
-  
+
   completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars,
       substitutions)
   completeSearchSpace$pars = substituteParamList(completeSearchSpace$pars,
       finalSubstitutions)
   staticParams = substituteParamList(staticParams, substitutions)
   staticParams = substituteParamList(staticParams, finalSubstitutions)
-  
+
   # dependency on parameters with expression bounds is forbidden.
   badreqs = names(expressiontrafos)
   checkBadreqs(completeSearchSpace$pars, badreqs)
@@ -155,17 +155,17 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
 #  # automlr.wrappersetup is handled separately.
 #  staticParams[extractSubList(staticParams, "id") %in%
 #          c("automlr.wrappersetup", shadowparams)] = NULL
-  
+
   completeSearchSpace = simplifyRequirements(completeSearchSpace, staticParams)
 
   # transform into "LearnerParam" types. This is mostly dumb relabeling, except
   # for one thing: The limits / values of the parameters with "trafo" have to be
   # reverse-transformed.
   learnerPars = makeLearnerPars(completeSearchSpace)
-  
+
   visibleHyperIndex = names(getHyperPars(modelmultiplexer)) %in%
       getParamIds(learnerPars)
-  
+
   properties = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
       if (taskdesc$has.missings) "missings")
   classlvlcount = min(3, length(taskdesc$class.levels))
@@ -187,7 +187,7 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
   learner$wrappers = extractSubList(wrappers, "cpo", simplify = FALSE)
   learner$shadowparams = shadowparams
   learner$wrapperparnames = wrapperparnames
-  
+
   learner$expressiontrafos = expressiontrafos
   learner$epsources = epsources
   learner$learners.by.params = learners.by.params
@@ -208,10 +208,20 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
 
   wrapperargs = args[names(args) %in% c(.learner$wrapperparnames,
           .learner$shadowparams)]
-  
+
   args = args[names(args) %nin% .learner$wrapperparnames]
 
   cpo = buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers)
+
+  # TODO: the "right" solution here is to have another
+  # 'applyExpressionBoundTrafos-Wrapper', but this will work for now
+
+  retrafo(.task) = NULL
+  inverter(.task) = NULL
+  .task = tagInvert(.task, FALSE)
+  .task = .task %>>% cpo
+
+  learner$retrafo = retrafo(.task)
 
   args = applyExpressionBoundTrafos(args, .learner$expressiontrafos,
       .learner$epsources, .learner$learners.by.params, .task)
@@ -224,13 +234,20 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   learner = setHyperPars(learner,
       par.vals = dropNamed(args, .learner$shadowparams))
 
-  .learner$learner = cpo %>>% learner  # respect automlrWrappedLearner interface
+  .learner$learner = learner  # respect automlrWrappedLearner interface
 
   NextMethod("trainLearner")
 }
 
+#' @export
+predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
+  .newdata = .newdata %>>% .model$learner.model$learner$retrafo
+
+  NextMethod("predictLearner")
+}
+
 # collect hyperparameters from 'staticParams', the given parameters, and the
-# 
+#
 getEffectiveHyperPars = function(learner, staticParams, params) {
   envir = insert(getHyperPars(learner), params)
   for (fp in staticParams) {
@@ -265,7 +282,7 @@ handleAmlrfix = function(params) {
 
 applyExpressionBoundTrafos = function(args, expressiontrafos, epsources,
     learners.by.params, task) {
-  
+
   tohandle = intersect(names(expressiontrafos), names(args))
   env0 = list(n = getTaskSize(task), p = length(getTaskFeatureNames(task)))
   for (th in tohandle) {
@@ -357,7 +374,7 @@ extractStaticParams = function(completeSearchSpace) {
           # given the requirement. However, if the requirement is not given, the
           # parameter space given value must be used.
           # SOLUTION: append a suffix that prevents cycling in on itself.
-          
+
           subst = substitute(if (isTRUE(req)) value else original,
               list(req = curpar$requires, value = fixvalue,
                   original = asQuoted(leaf)))
@@ -515,7 +532,7 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
     if (is.null(curpar$requires)) {
       next
     }
-    
+
     # take the environment that would usually be present, replace all values
     # with stop("EXPECTED STOP"), and check if the expected stop happened. Is it
     # possible to stop on variable reference? apparently not, so we have to go
@@ -560,7 +577,7 @@ simplifyRequirements = function(completeSearchSpace, staticParams) {
         completeSearchSpace$pars[[param]] = NULL
         danglingparams %c=% param
       }
-    } 
+    }
     if (is.error(tryResult)) {
       errormsg = attr(tryResult, "condition")$message
       if (!identical(errormsg, "AMLR VARREF STOP")) {

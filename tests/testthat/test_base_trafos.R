@@ -10,7 +10,7 @@ registerS3method("trainLearner", "testtrafo", trainLearner.testtrafo)
 
 getargs = function(learner, params, task = pid.task) {
   m = train(setHyperPars(learner, par.vals = params), task)
-  m$learner.model$learner.model$next.model$learner.model$next.model$learner.model
+  m$learner.model$learner.model$next.model$learner.model
 }
 
 test_that("exp and invexp trafo do not change learner paramset", {
@@ -227,5 +227,35 @@ test_that("expression bounds with and without trafo", {
     < getTaskSize(pid.task) + length(getTaskFeatureNames(pid.task)))
   expect_true(getargs(blrn, list(testtrafo.int1.AMLRFIX1 = 0.5))$int1
     > length(getTaskFeatureNames(pid.task)))
+
+})
+
+
+
+test_that("expression bounds with / after trafo", {
+
+  al = list(autolearner(lrn,
+    list(sp("int1", "int", c(1, quote(n))),
+      sp("real1", "real", c(1, quote(p))))),
+    autolearner(autoWrapper("cull", cpoSelect(index = 1:2, id = "cull"),
+      "numerics"), list(), "wrapper"))
+
+  blrn = buildLearners(al, pid.task, 6)
+
+
+  expect_equal(getargs(blrn, list(testtrafo.real1 = 0,
+    automlr.preproc.numerics = "$"))$real1, 1)
+
+  expect_equal(getargs(blrn, list(testtrafo.real1 = 1,
+    automlr.preproc.numerics = "$"))$real1, length(getTaskFeatureNames(pid.task)))
+
+  expect_equal(getargs(blrn, list(testtrafo.real1 = 0,
+    automlr.preproc.numerics = "cull"))$real1, 1)
+
+  expect_equal(getargs(blrn, list(testtrafo.real1 = 1,
+    automlr.preproc.numerics = "cull"))$real1, 2)
+
+
+
 
 })
