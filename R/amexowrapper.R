@@ -201,6 +201,8 @@ makeAMExoWrapper = function(modelmultiplexer, wrappers, taskdesc, missings,
 #' @export
 trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
     automlr.wrappersetup, ...) {
+  .task = subsetTask(.task, .subset)
+  .subset = NULL
   # train selected learner model and remove prefix from its param settings
   learner = .learner$learner
 
