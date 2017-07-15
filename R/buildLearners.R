@@ -165,7 +165,7 @@ checkParamIds = function(parsets, verbosity) {
   for (parid in names(idRef)) {
     if (length(idRef[[parid]]) == 1) {
       # next  # not implemented and therefore only annoying
-      if (verbosity.sswarnings(verbosity)) {
+      if (verbosity.sswarnings(verbosity) && FALSE) {  # suppress this for now
         warningf(paste("Parameter '%s' of learner '%s' is the only one with",
                 "parameter id '%s'."),
             idRef[[parid]][[1]]$id, idRef[[parid]][[1]]$amlr.lrnid, parid)

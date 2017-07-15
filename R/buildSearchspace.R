@@ -301,6 +301,11 @@ adjustSSDefaults = function(sslist, lrn, verbosity) {
                   param$name, lrnid)
             }
           }
+          if (is.integer(truedefault) && is.numeric(param$values) &&
+              length(truedefault) == length(param$values) &&
+              all(truedefault == param$values)) {
+            param$values = truedefault
+          }
           if (!identical(truedefault, param$values)) {
             lwarn(paste("Parameter '%s' for learner '%s' is of type 'default'",
                     "but its alleged default '%s'",
