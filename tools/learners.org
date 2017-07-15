@@ -579,7 +579,7 @@
 - gradient boosting using regression trees as base-learners
 **** Variable Parameters:
    - family :: AdaExp, Binomial, AUC: {mboost.family}
-   - Binomial.link :: logit, probit: link function {mboost.link} req: family == Binomial
+   - Binomial.link :: logit, probit: link function {mboost.link} req: family == "Binomial"
    - mstop :: int 1.. (1..100) exp: {boost.iter} number of boosting iterations
    - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - risk :: inbag, oobag: calculate risk for early stopping req: stopintern == TRUE
@@ -598,10 +598,10 @@
 **** Default Parameters:
    - custom.family.definition :: NULL
    - trace :: FALSE!: no tracing of progress
-   - nresample :: 9999: number of MC replications when using distribution test stat
    - maxdepth :: 0!: no restriction on tree size
 **** Changed (fixed) Parameters:
    - savesplitstats :: FALSE: save statistics about node splits
+   - nresample :: 500: number of MC replications when using distribution test stat
 *** classif.boosting
 - AdaBoost.M1 and SAMME using classification trees
 **** Variable Parameters:
@@ -614,7 +614,7 @@
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate}  req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
    - maxdepth :: int 1..14: maximum depth of any node {boost.maxdepth}
-   - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
+   - xval :: int 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
 **** Default Parameters:
    - maxcompete :: 4: only affects output
@@ -625,7 +625,6 @@
    - family :: gaussian, hinge: loss function
    - mstop :: int 1.. (1..100) exp: {boost.iter} number of boosting iterations
    - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
-   - twinboost :: TRUE, FALSE: twinboosting
    - Learner :: ls, sm, tree: learner to boost: lin model, smoothing spline, regr tree
    - df :: int 1.. (1..100) exp: smoothing splines deg of freedom req: Learner == 'sm'
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit} req: Learner == 'tree'
@@ -635,7 +634,7 @@
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle} req: Learner == 'tree' && automlr.has.missings == TRUE
    - maxdepth :: int 1..14: maximum depth of any node {boost.maxdepth} req: Learner == 'tree'
-   - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval} req: Learner == 'tree'
+   - xval :: int 1.. (1..30) exp: number of cross validation splits for trees {boost.xval} req: Learner == 'tree'
 **** Default Parameters:
    - f.init :: NULL!
    - xselect.init :: NULL!
@@ -643,6 +642,7 @@
    - trace :: FALSE!: no progress trace
    - numsample :: 50: 'potentially useful in the future implementation', so I guess not used?
    - maxcompete :: 4: only affects output
+   - twinboost :: FALSE!: no twinboosting, since that requires pre-selected features
 *** classif.C50
 - C5.0 decision trees
 **** Variable Parameters:
@@ -679,7 +679,7 @@
 *** classif.glmboost
 **** Variable Parameters:
    - family :: AdaExp, Binomial, AUC: {mboost.family}
-   - Binomial.link :: logit, probit: link function {mboost.link} req: family == Binomial
+   - Binomial.link :: logit, probit: link function {mboost.link} req: family == "Binomial"
    - mstop :: int 1.. (1..100) exp: {boost.iter} number of boosting iterations
    - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - risk :: inbag, oobag: calculate risk for early stopping req: stopintern == TRUE
@@ -697,7 +697,7 @@
    - risk :: inbag, oobag: calculate risk for early stopping req: stopintern == TRUE
    - risk.AMLRFIX1 :: none: req: stopintern == FALSE
    - family :: AdaExp, Binomial, AUC: {mboost.family}
-   - Binomial.link :: logit, probit: link function {mboost.link} req: family == Binomial
+   - Binomial.link :: logit, probit: link function {mboost.link} req: family == "Binomial"
    - stopintern :: TRUE, FALSE: early stopping if risk increases
    - baselearner :: bbs, bols, btree
    - dfbase :: int 2.. (2..6): degree of splines. req: baselearner == "bbs"
@@ -911,12 +911,13 @@
    - wi :: NULL: weights of classes
 ** Neural Nets
 *** classif.dbnDNN
+- TODO: deepnet package bug forbids depth below 3
+- hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4    
 **** Variable Parameters:
-   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..3 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
-   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
-   - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
+   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
    - activationfun :: sigm, tanh: {nn.afun} TODO: bug in 'deepnet': docu also says 'linear' is a possibility, but that is false.
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
@@ -970,12 +971,13 @@
 *** classif.neuralnet
 - neural nets using backpropagation
 - linear.output :: TRUE: this is a bug MLR<=2.8
+- TODO: deepnet bug forbids depth gt 3
+- hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
 **** Variable Parameters:
    - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
-   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
-   - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
+   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
    - algorithm :: backprop, rprop+, rprop-, sag, slr
    - rep :: int 1.. (1..16) exp: number of neural nets to fit simultaneously
    - learningrate.limit :: 0.. (.001..2) exp: len(2) req: algorithm != "backprop"
@@ -1024,12 +1026,13 @@
    - maxit :: 1e6: don't run out of iterations
    - trace :: FALSE: no output
 *** classif.mlp
+- TODO: deepnet bug forbids depth gt 3
+- size.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4    
 **** Variable Parameters:
    - numlayersidx :: 1..4 : {nn.nlayer} DUMMY 
    - size :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - size.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
-   - size.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
-   - size.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
+   - size.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
    - linOut :: TRUE, FALSE: activation function of output linear or logistic
    - maxit :: int 0.. (100..1000): number of iterations
 **** Default Parameters:
