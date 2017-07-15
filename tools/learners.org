@@ -111,12 +111,12 @@
    - penalty :: adaptive.lasso, ao, bridge, enet, fused.lasso, genet, icb, lasso, licb, oscar, penalreg, ridge, scad, weighted.fusion
    - lambda :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad")
    - gamma :: 1.0000000000001.. (1.0000000000001..10) exp: regularization exponent; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
-   - oscar.c :: 0.. (0.1..10) exp: relative weighting of L_1 and L_inf norm for 'oscar' penalty
+   - oscar.c :: 0.. (0.1..10) exp: relative weighting of L_1 and L_inf norm for 'oscar' penalty; req: penalty == "oscar"
    - alpha :: 0..1: regularization parameter; req: penalty == "genet"
    - a :: 2.. (2..100) exp: regularization parameter; req: penalty == "scad"
    - lambda1 :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
    - lambda2 :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
-   - method :: lqa.update2, ForwardBoost, GBlockBoost
+   - method :: lqa.update2, ForwardBoost: TODO: GBlockBoost is also possible, but seems to not work with many penalties.
 **** Default Parameters:
    - var.eps :: ##: tol when checking for 0 variance
    - max.steps :: 5000: maximum lqa algorithm steps
@@ -289,7 +289,7 @@
    - mincriterion :: 0..1 (0.5..0.9999) invexp: value of 1-p value that must be exceeded to implement split.
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {tree.maxsurrogate} req: automlr.has.missings == TRUE
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {tree.minsplit} req: stump == FALSE
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {tree.m} req: stump == FALSE
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {tree.m} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
    - maxdepth :: int 1.. (1..14): {tree.maxdepth} req: stump == FALSE
 **** Default Parameters:
@@ -303,7 +303,7 @@
    - U :: TRUE, FALSE: {tree.u} no pruning y/n
    - O :: TRUE, FALSE: no collapsing y/n
    - C :: 1e-10..0.9999999999: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
-   - M :: int 1..#n/2# exp: {tree.m} minimum instances per leaf
+   - M :: int 1..#floor(n/2)# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 2.. (2..30) exp: cv folds {tree.n} req: U == FALSE && R == TRUE
    - B :: TRUE, FALSE: {tree.b} only binary splits
@@ -319,7 +319,7 @@
 - WEKA PART decision list
 **** Variable Parameters:
    - C :: 1e-10..0.9999999999: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
-   - M :: int 1..#n/2# exp: {tree.m} minimum instances per leaf
+   - M :: int 1..#int(n/2)# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 2.. (2..30) exp: {tree.n} req: R == TRUE && U == FALSE
    - B :: TRUE, FALSE: {tree.b} only binary splits
@@ -331,7 +331,7 @@
 *** classif.nodeHarvest
 - "simple interpretable tree-like estimator for high-dimensional regression and classification"
 **** Variable Parameters:
-   - nodesize :: int 1..#n/2# exp: min samples per node
+   - nodesize :: int 1..#floor(n/2)# exp: min samples per node
    - nodes :: int 100..2000 exp: "nodes in initial large ensemble of nodes"
    - maxinter :: int 1.. (1..3): max order of interactions
    - mode :: mean, outbag
@@ -346,7 +346,7 @@
 - recursive partitioning and regression trees
 **** Variable Parameters:
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {tree.minsplit}
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {tree.m}
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {tree.m}
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split
    - usesurrogate :: 1, 2: how to use surrogate in splitting process req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to calculate surrogate req: automlr.has.missings == TRUE
@@ -360,7 +360,7 @@
 *** classif.evtree
 **** Variable Parameters:
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {tree.minsplit}
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {tree.m}
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {tree.m}
    - maxdepth :: int 1..14: maximum depth of any node {tree.maxdepth}
    - alpha :: 0.. (.0001..10) exp: regularization
    - ntrees :: int 2.. (10..1000) exp: tree population size
@@ -410,21 +410,22 @@
    - testtype :: Univariate, Bonferroni, MonteCarlo: 'Teststatistic' excluded since it is monotonic with univariate
    - mincriterion :: 0..1 (0.5..0.9999) invexp: value of 1-p value that must be exceeded to implement split.
    - minsplit :: int 1..#n# exp: min number of ob in a node to split req: stump == FALSE
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize} req: stump == FALSE
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. req: automlr.has.missings == TRUE
    - maxdepth :: int 1.. (1..14): {rf.nodedepth} req: stump == FALSE
 **** Default Parameters:
-   - nresample :: 9999: MonteCarlo resamples
    - savesplitstats :: FALSE!
    - trace :: FALSE!
+**** Changed (fixed) Parameters:
+   - nresample :: 500: MonteCarlo resamples
 *** classif.randomForest
 - Random forest (who could have guessed..)
 **** Variable Parameters:
    - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
-   - nodesize :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
+   - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
 **** Default Parameters:
    - classwt :: NULL!: prior of classes
    - cutoff :: NULL!: use majority vote
@@ -444,7 +445,7 @@
    - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
-   - nodesize :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
+   - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - flagReg :: 0, 1: Regularization no / yes
    - coefReg :: 0..1: regularization req: flagReg == 1
 **** Default Parameters:
@@ -467,7 +468,7 @@
 **** Variable Parameters:
    - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
-   - nodesize :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
+   - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - numRandomCuts :: int 1.. (1..32) exp: number of cuts tried
    - evenCuts :: TRUE, FALSE: cut randomly, or cut randomly only by interval 
    - subsetSizes :: int 1.. (1..#n#): {rf.subsetSizes} is basically rf.fraction * n
@@ -484,7 +485,7 @@
 **** Variable Parameters:
    - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
-   - nodesize :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
+   - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - nodedepth :: int 1.. (1..30): {rf.nodedepth}
    - splitrule :: gini, random: optimize gini impurity or do pure random splits
    - doRandomSplits :: TRUE, FALSE: DUMMY set nsplit != 0? req: splitrule != "random"
@@ -515,7 +516,7 @@
 **** Variable Parameters:
    - num.trees :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
-   - min.node.size :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
+   - min.node.size :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - replace :: TRUE, FALSE: {rf.replace} sampling w / wo replacement
    - sample.fraction :: 0..1: {rf.fraction}
    - respect.unordered.factors :: TRUE, FALSE: TODO actually it would be better to have 'ignore', 'order', 'partition'
@@ -559,7 +560,7 @@
    - model.coef :: TRUE, FALSE: use stageweights in boosting
    - bag.frac :: 0..1: bagging samples taken out of bag
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit}
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket}
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {boost.minbucket}
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp}
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate} req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
@@ -587,7 +588,7 @@
    - testtype :: Bonferroni, MonteCarlo, Univariate: Excluding Teststatistic since it is monotonic with Univariate
    - mincriterion :: 0..1 (0.5..0.9999) invexp: value of 1-p value that must be exceeded to implement split.
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit} req: stump == FALSE
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket} req: stump == FALSE
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {boost.minbucket} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
    - limitmtry :: TRUE, FALSE: DUMMY if false, mtry is 0, otherwise 3 to 20.
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
@@ -607,7 +608,7 @@
    - mfinal :: int 1.. (1..100) exp: number of boosting iterations {boost.iter}
    - coeflearn :: Breiman, Freund, Zhu: coefficient learning algorithm
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit}
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket}
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {boost.minbucket}
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp}
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate}  req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
@@ -627,7 +628,7 @@
    - Learner :: ls, sm, tree: learner to boost: lin model, smoothing spline, regr tree
    - df :: int 1.. (1..100) exp: smoothing splines deg of freedom req: Learner == 'sm'
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit} req: Learner == 'tree'
-   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket} req: Learner == 'tree'
+   - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {boost.minbucket} req: Learner == 'tree'
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp} req: Learner == 'tree'
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
@@ -665,7 +666,7 @@
    - distribution.AMLRFIX1 :: multinomial: req: automlr.targettype == "multiclass"
    - n.trees :: int 1.. (1..100) exp: {boost.iter} number of boosting iterations
    - interaction.depth :: int 1.. (1..3): max order of interactions
-   - n.minobsinnode :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket}
+   - n.minobsinnode :: int 1..#floor(n/2)# exp: min number of ob in leaf node {boost.minbucket}
    - shrinkage :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - bag.fraction :: 0..1: {boost.subsample}
 **** Default Parameters:
@@ -710,7 +711,7 @@
    - eta :: 0..1 (.0001..1) exp: learning rate req: booster %in% c("gbtree", "dart")
    - gamma :: 0.. (.0001..1) exp: minimum loss reduction required to make partition. req: booster %in% c("gbtree", "dart")
    - max_depth :: int 1..14: maximum depth of a tree. {boost.maxdepth} req: booster %in% c("gbtree", "dart")
-   - min_child_weight :: int 1..#n/2# exp: {boost.minbucket} exp: minimum sum of weight needed in a child. req: booster %in% c("gbtree", "dart")
+   - min_child_weight :: int 1..#floor(n/2)# exp: {boost.minbucket} exp: minimum sum of weight needed in a child. req: booster %in% c("gbtree", "dart")
    - subsample :: 0..1: {boost.subsample} subsample of training to use. req: booster %in% c("gbtree", "dart")
    - colsample_bytree :: 0..1: ratio of columns when constructing tree. req: booster %in% c("gbtree", "dart")
    - colsample_bylevel :: 0..1: ratio of columns when splitting tree nodes. req: booster %in% c("gbtree", "dart")
@@ -1052,7 +1053,7 @@
 *** classif.OneR
 - WEKA OneR
 **** Variable Parameters:
-   - B :: int 1..#n/2# exp: minimum bucket size
+   - B :: int 1..#floor(n/2)# exp: minimum bucket size
 **** Default Parameters:
    - output-debug-info :: FALSE
 *** classif.pamr
@@ -1074,7 +1075,7 @@
 *** classif.JRip
 **** Variable Parameters:
    - F :: int 1.. (2..30) exp: number of folds for pruning req: P == FALSE
-   - N :: int 2..#n/2# exp: minimum weight for split
+   - N :: int 2..#floor(n/2)# exp: minimum weight for split
    - O :: int 1.. (1..100) exp: number of opt runs
    - P :: TRUE, FALSE: disable pruning y/n
 **** Default Parameters:
