@@ -19,12 +19,13 @@
 - classif.penalized.fusedlasso: 'fused' is only for spatial relationship of covariates
 * classif
 ** glm
-*** classif.penalized.lasso
+*** classif.penalized
 **** Variable Parameters:
    - lambda1 :: 0.. (1e-4..10) exp: L1 penalty param {penal.l1}
+   - lambda2 :: 0.. (1e-4..10) exp: L2 penalty param {penal.l2}
    - standardize :: TRUE, FALSE: standardize to unit central L2 norm before penalization
 **** Default Parameters:
-   - trace :: FALSE!: no output
+   - fusedl :: FALSE!: no fused lasso
    - maxiter :: NULL: do not limit max number of iterations
    - steps :: 1: don't do multiple steps 
    - startgamma :: NULL: initial value
@@ -32,19 +33,7 @@
    - positive :: FALSE: no constraints on covariates to be +ve
    - unpenalized :: NULL: no unpenalized covariates
 **** Changed (fixed) Parameters:
-   - epsilon :: 1e-4: saner convergence criterion
-*** classif.penalized.ridge
-**** Variable Parameters:
-   - lambda2 :: 0.. (1e-4..10) exp: L2 penalty param {penal.l2}
-   - standardize :: TRUE, FALSE: standardize to unit central L2 norm before penalization
-**** Default Parameters:
-   - trace :: FALSE!: no output
-   - maxiter :: NULL: do not limit max number of iterations
-   - startgamma :: NULL: initial value
-   - startbeta :: NULL: initial value
-   - positive :: FALSE: no constraints on covariates to be +ve
-   - unpenalized :: NULL: no unpenalized covariates
-**** Changed (fixed) Parameters:
+   - trace :: FALSE: no output
    - epsilon :: 1e-4: saner convergence criterion
 *** classif.glmnet
 - fit model for a specific lambda; this is completely defeating the purpose of the glmnet algo, but this is how our optimization works.
@@ -74,20 +63,19 @@
    - exmx :: 250
    - prec :: 1e-10
    - mxit :: 100
-   - factory :: FALSE
 **** Changed (fixed) Parameters:
    - standardize :: FALSE: is done by preproc already
    - s :: 1: need to override makeLearner's default
+   - mnlam :: 1: minimum number of lambda values set to 1
 *** classif.cvglmnet
 **** Variable Parameters:
    - alpha :: 0..1: elastic mixing parameter
    - s :: lambda.1se, lambda.min: the lambda to select from (internal) cv
    - type.multinomial :: grouped, ungrouped: req: automlr.targettype == "multiclass"
-   - nfolds :: 1.. (3..30) exp: cv folds
+   - nfolds :: int 1.. (3..30) exp: cv folds
    - type.measure :: deviance, class, mse, mae: req: automlr.targettype == "multiclass"
    - type.measure.AMLRFIX1 :: deviance, class, auc, mse, mae: req: automlr.targettype != "multiclass"
 **** Default Parameters:
-   - exact :: FALSE
    - intercept :: TRUE: dont set intercpt to 0
    - thresh :: 1e-7: abort condition for grddesc
    - dfmax :: NULL: unbounded degs of freedom
@@ -106,23 +94,24 @@
    - exmx :: 250
    - prec :: 1e-10
    - mxit :: 100
-   - factory :: FALSE
 **** Changed (fixed) Parameters:
    - standardize :: FALSE: is done by preproc already
    - nlambda :: 1000: resolution of precomputed models
    - lambda.min.ratio :: .00001: factor 10 more than usual, to be thorough
+   - mnlam :: 1: minimum number of lambda values set to 1
 *** classif.binomial
 - Uses glm() for binomial classification
 **** Variable Parameters:
    - link :: logit, probit, cauchit, log, cloglog: link function
-**** Default Parameters:
-   - model :: TRUE: no idea what it does but doesn't hurt
+**** Changed (fixed) Parameters:
+   - model :: FALSE: no idea what it does but mlr sets it to FALSE
 *** classif.lqa
 - GLM fitted with LQA algorithm
 **** Variable Parameters:
    - penalty :: adaptive.lasso, ao, bridge, enet, fused.lasso, genet, icb, lasso, licb, oscar, penalreg, ridge, scad, weighted.fusion
    - lambda :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad")
-   - gamma :: 1..10 exp: regularization exponent; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
+   - gamma :: 1.0000000000001.. (1.0000000000001..10) exp: regularization exponent; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
+   - oscar.c :: 0.1..10 exp: relative weighting of L_1 and L_inf norm for 'oscar' penalty
    - alpha :: 0..1: regularization parameter; req: penalty == "genet"
    - c :: 0.. (.001..100) exp: regularization parameter; req: penalty == "oscar"
    - a :: 2.. (2..100) exp: regularization parameter; req: penalty == "scad"
@@ -140,7 +129,7 @@
 - Logistic regression, L2 penalty
 **** Variable Parameters:
    - lambda :: 0.. (1e-5..10) exp: regularization parameter
-   - free.cp :: TRUE, FALSE: use given CP or CP from type
+   - free.cp :: TRUE, FALSE: DUMMY use given CP or CP from type
    - cp :: 0.. (1..10): complexity parameter: req: free.cp == TRUE
    - cp.type :: bic, aic: req: free.cp == FALSE
 ** discriminant analysis
@@ -214,7 +203,7 @@
 *** classif.plsdaCaret
 - partial least squares discriminant analysis
 **** Variable Parameters:
-   - ncomp :: int 1.. (2..64) exp: number of components to include in the model
+   - ncomp :: int 1.. (2..#p#) exp: number of components to include in the model
    - probMethod :: softmax, Bayes
 **** Default Parameters:
    - method :: kernelpls: use the default estimation algorithm.
@@ -235,16 +224,6 @@
    - trace :: FALSE!
 **** Changed (fixed) Parameters:
    - keep.fitted :: FALSE: don't keep fitted values
-*** classif.hdrda
-- "HDRDA classifier from Ramey, Stein, and Young (2014)"
-**** Variable Parameters:
-   - lambda :: 0..1: pooling parameter
-   - gamma :: 0.. (0.001..0.3) exp: shrinkage parameter
-   - shrinkage_type :: ridge, convex: cov matrix shrinkage type
-**** Default Parameters:
-   - prior :: NULL
-   - tol :: 1e-6
-   - projected :: FALSE
 *** classif.quaDA
 - Another quadratic discriminant analysis
 **** Default Parameters:
@@ -310,10 +289,10 @@
    - testtype :: Bonferroni, MonteCarlo, Univariate: 'Teststatistic' would also exist but is monotonic trafo of Univariate
    - mincriterion :: 0..1 (0.5..0.9999) invexp: value of 1-p value that must be exceeded to implement split.
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {tree.maxsurrogate} req: automlr.has.missings == TRUE
-   - minsplit :: 1..#n# exp: min number of ob in a node to split {tree.minsplit} req: stump == FALSE
-   - minbucket :: 1..#n/2# exp: min number of ob in leaf node {tree.m} req: stump == FALSE
+   - minsplit :: int 1..#n# exp: min number of ob in a node to split {tree.minsplit} req: stump == FALSE
+   - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {tree.m} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
-   - maxdepth :: int 1.. (1..30): {tree.maxdepth} req: stump == FALSE
+   - maxdepth :: int 1.. (1..14): {tree.maxdepth} req: stump == FALSE
 **** Default Parameters:
    - nresample :: 9999: number of MC replications when using distribution test stat
    - mtry :: 0: use all features
@@ -324,7 +303,7 @@
 **** Variable Parameters:
    - U :: TRUE, FALSE: {tree.u} no pruning y/n
    - O :: TRUE, FALSE: no collapsing y/n
-   - C :: 0..1: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
+   - C :: 1e-10..0.9999999999: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
    - M :: int 1..#n/2# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 1.. (1..30) exp: cv folds {tree.n} req: U == FALSE && R == TRUE
@@ -340,7 +319,7 @@
 *** classif.PART
 - WEKA PART decision list
 **** Variable Parameters:
-   - C :: 0..1: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
+   - C :: 1e-10..0.9999999999: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
    - M :: int 1..#n/2# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 1.. (1..30) exp: {tree.n} req: R == TRUE && U == FALSE
@@ -373,7 +352,7 @@
    - usesurrogate :: 1, 2: how to use surrogate in splitting process req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to calculate surrogate req: automlr.has.missings == TRUE
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {tree.maxsurrogate} req: automlr.has.missings == TRUE
-   - maxdepth :: int 1..30: maximum depth of any node {tree.maxdepth}
+   - maxdepth :: int 1..14: maximum depth of any node {tree.maxdepth}
 **** Default Parameters:
    - maxcompete :: 4: only affects output
    - parms :: NULL: further parameters not given
@@ -383,9 +362,9 @@
 **** Variable Parameters:
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {tree.minsplit}
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {tree.m}
-   - maxdepth :: int 1..30: maximum depth of any node {tree.maxdepth}
+   - maxdepth :: int 1..14: maximum depth of any node {tree.maxdepth}
    - alpha :: 0.. (.0001..10) exp: regularization
-   - ntrees :: 2.. (10..1000) exp: tree population size
+   - ntrees :: int 2.. (10..1000) exp: tree population size
    - pmutatemajor :: 0..1: operator prob
    - pmutateminor :: 0..1: operator prob
    - pcrossover :: 0..1: operator prob
@@ -397,8 +376,8 @@
 *** classif.bartMachine
 - Bayesian Additive Regression Trees
 **** Variable Parameters:
-   - num_burn_in :: 0.. (10..1000) exp: number of trees to use as burn-in
-   - num_iterations_after_burn_in :: 2.. (10..4000) exp: number of MCMC samples
+   - num_burn_in :: int 0.. (10..1000) exp: number of trees to use as burn-in
+   - num_iterations_after_burn_in :: int 2.. (10..4000) exp: number of MCMC samples
    - num_trees :: int 1.. (25..2000) exp: number of trees to grow {rf.numtree}
    - alpha :: 0..1 (.5..0.99) invexp: nonterminal node probability: factor
    - beta :: 0.. (0..3): nonterminal node probability: neg exponent
@@ -435,7 +414,7 @@
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize} req: stump == FALSE
    - stump :: TRUE, FALSE: only one division
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. req: automlr.has.missings == TRUE
-   - maxdepth :: int 1.. (1..30): {rf.nodedepth} req: stump == FALSE
+   - maxdepth :: int 1.. (1..14): {rf.nodedepth} req: stump == FALSE
 **** Default Parameters:
    - nresample :: 9999: MonteCarlo resamples
    - savesplitstats :: FALSE!
@@ -468,7 +447,7 @@
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
    - nodesize :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
    - flagReg :: 0, 1: Regularization no / yes
-   - coefReg :: 0..1: regularization 
+   - coefReg :: 0..1: regularization req: flagReg == 1
 **** Default Parameters:
    - classwt :: NULL!: prior of classes
    - cutoff :: NULL!: use majority vote
@@ -478,7 +457,7 @@
    - importance :: FALSE!: don't assess importance
    - localImp :: FALSE!: no local importance assessment
    - proximity :: FALSE!
-   - oob.prox :: NULL
+   - oob.prox :: FALSE
    - norm.votes :: TRUE: final votes as fractions
    - do.trace :: FALSE!: no verbose output
    - keep.inbag :: FALSE!: don't remember bagged samples
@@ -498,7 +477,7 @@
    - subsetGroups :: NULL!: not for optimization
    - tasks :: NULL!: task feature not used
    - probOfTaskCuts :: NULL
-   - numRandomTaskCuts :: NULL
+   - numRandomTaskCuts :: 1
 **** Changed (fixed) Parameters:
    - na.action :: fuse: the only one that differs from preprocessing
 *** classif.randomForestSRC
@@ -514,7 +493,6 @@
    - nsplit :: int 1.. (1..64) exp: number of random splits req: doRandomSplits == TRUE && splitrule != "random"
    - bootstrap :: by.root, by.node: where to bootstrap. 'no bootstrap' is part of 'sampsize'
    - sampsize :: int 1.. (1..#n#): {rf.subsetSizes} is basically rf.fraction * n req: bootstrap == "by.root"
-   - replace :: TRUE, FALSE: {rf.replace} req: bootstrap == "by.root"
    - samptype :: swr: req: replace == TRUE && bootstrap == "by.root"
    - samptype.AMLRFIX1 :: swor: req: replace == FALSE && bootstrap == "by.root"
 **** Default Parameters:
@@ -536,7 +514,7 @@
 *** classif.ranger
 - guess what, another random forest (yay)
 **** Variable Parameters:
-   - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - num.trees :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - min.node.size :: int 1..#n/2# exp: min number of ob in leaf node {rf.nodesize}
    - replace :: TRUE, FALSE: {rf.replace} sampling w / wo replacement
@@ -587,8 +565,8 @@
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate} req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
-   - maxdepth :: 1..30: maximum depth of any node {boost.maxdepth}
-   - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
+   - maxdepth :: int 1..14: maximum depth of any node {boost.maxdepth}
+   - xval :: int 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
 **** Default Parameters:
    - bag.shift :: FALSE: only makes sense if bag.frac is small according to manual
    - delta :: 1e-10: tolerance for convergence
@@ -617,7 +595,7 @@
    - mtry :: int 1..#p#: number of sampled variables for random forests. req: limitmtry == TRUE
    - mtry.AMLRFIX1 :: 0: no random selection of features req: limitmtry == FALSE
 **** Default Parameters:
-   - custo.family.definition :: NULL
+   - custom.family.definition :: NULL
    - trace :: FALSE!: no tracing of progress
    - nresample :: 9999: number of MC replications when using distribution test stat
    - maxdepth :: 0!: no restriction on tree size
@@ -634,7 +612,7 @@
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp}
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate}  req: automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle}  req: automlr.has.missings == TRUE
-   - maxdepth :: 1..30: maximum depth of any node {boost.maxdepth}
+   - maxdepth :: int 1..14: maximum depth of any node {boost.maxdepth}
    - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval}
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: automlr.has.missings == TRUE
 **** Default Parameters:
@@ -648,14 +626,14 @@
    - nu :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - twinboost :: TRUE, FALSE: twinboosting
    - Learner :: ls, sm, tree: learner to boost: lin model, smoothing spline, regr tree
-   - df :: 1.. (1..100) exp: smoothing splines deg of freedom req: Learner == 'sm'
+   - df :: int 1.. (1..100) exp: smoothing splines deg of freedom req: Learner == 'sm'
    - minsplit :: int 1..#n# exp: min number of ob in a node to split {boost.minsplit} req: Learner == 'tree'
    - minbucket :: int 1..#n/2# exp: min number of ob in leaf node {boost.minbucket} req: Learner == 'tree'
    - cp :: 0..1 (1e-4..0.5) exp: minimal improvement of complexity parameter per split {boost.cp} req: Learner == 'tree'
    - usesurrogate :: 1, 2: how to use surrogate in splitting process {boost.usesurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
    - maxsurrogate :: int 0.. (1..5): number of surrogate splits to evaluate. {boost.maxsurrogate} req: Learner == 'tree' && automlr.has.missings == TRUE
    - surrogatestyle :: 0, 1: how to choose surrogates {boost.surrogatestyle} req: Learner == 'tree' && automlr.has.missings == TRUE
-   - maxdepth :: 1..30: maximum depth of any node {boost.maxdepth} req: Learner == 'tree'
+   - maxdepth :: int 1..14: maximum depth of any node {boost.maxdepth} req: Learner == 'tree'
    - xval :: 1.. (1..30) exp: number of cross validation splits for trees {boost.xval} req: Learner == 'tree'
 **** Default Parameters:
    - f.init :: NULL!
@@ -708,7 +686,7 @@
    - stopintern :: TRUE, FALSE: early stopping if risk increases
 **** Default Parameters:
    - trace :: FALSE!
-   - custo.family.definition :: NULL
+   - custom.family.definition :: NULL
 **** Changed (fixed) Parameters:
    - center :: FALSE: preprocessing job
 *** classif.gamboost
@@ -724,15 +702,15 @@
    - dfbase :: int 2.. (2..6): degree of splines. req: baselearner == "bbs"
 **** Default Parameters:
    - trace :: FALSE!
-   - custo.family.definition :: NULL
+   - custom.family.definition :: NULL
    - offset :: NULL: no offset
 *** classif.xgboost
-- extreme gradient boosting
+- Extreme Gradient Boosting
 **** Variable Parameters:
    - booster :: gbtree, gblinear, dart: which booster to use
    - eta :: 0..1 (.0001..1) exp: learning rate req: booster %in% c("gbtree", "dart")
    - gamma :: 0.. (.0001..1) exp: minimum loss reduction required to make partition. req: booster %in% c("gbtree", "dart")
-   - max_depth :: int 1..30: maximum depth of a tree. {boost.maxdepth} req: booster %in% c("gbtree", "dart")
+   - max_depth :: int 1..14: maximum depth of a tree. {boost.maxdepth} req: booster %in% c("gbtree", "dart")
    - min_child_weight :: int 1..#n/2# exp: {boost.minbucket} exp: minimum sum of weight needed in a child. req: booster %in% c("gbtree", "dart")
    - subsample :: 0..1: {boost.subsample} subsample of training to use. req: booster %in% c("gbtree", "dart")
    - colsample_bytree :: 0..1: ratio of columns when constructing tree. req: booster %in% c("gbtree", "dart")
@@ -748,7 +726,6 @@
    - rate_drop :: 0..1: fraction of trees to drop req: booster == "dart"
    - skip_drop :: 0..1: probability of skipping dropout req: booster == "dart"
 **** Default Parameters:
-   - silent :: 0: some output
    - eval_metric :: error: use default
    - max_delta_step :: 0: don't limit step delta
    - missing :: NULL
@@ -756,6 +733,10 @@
    - maximize :: NULL: does not matter since early.stop.round is NULL.
    - early_stopping_rounds :: NULL: we don't want to use the early stopping feature
    - feval :: NULL: no custom evaluation function
+   - watchlist :: NULL: for printing
+   - monotone_constraints :: 0: no constraints
+   - tweedie_variance_power :: 1.5: idk
+   - callbacks :: ##: default is 'list()'
 **** Changed (fixed) Parameters:
    - verbose :: 1: stay almost silent -- setting this to 0 gives error!
    - objective :: NULL: choose correct one
@@ -813,7 +794,7 @@
    - hidden :: int 1.. (1..200) exp: number of hidden units
    - learningrate :: 0.. (0.0001..1) exp
    - stepmax :: int 1.. (1..10000) exp: neural net maximum number of steps
-   - c :: int 0..#n/PARAM.m#: upper bound for samples / subset is (n/m) + c.
+   - c :: int 0..#floor(n/PARAM.m)#: upper bound for samples / subset is (n/m) + c.
 **** Default Parameters:
    - seed :: NULL: random seed
    - valid.x :: NULL
@@ -891,7 +872,7 @@
 **** Variable Parameters:
    - cost :: 0.. (0.001..10) exp: inverse of regularisation constant {svm.c}
 **** Default Parameters:
-   - epsilon :: 0.01: tolerance
+   - epsilon :: 0.1: tolerance
    - bias :: TRUE: use bias term
    - verbose :: FALSE!: no output
    - cross :: 0!: no crossvalidation
@@ -902,7 +883,7 @@
    - cost :: 0.. (0.001..10) exp: inverse of regularisation constant {svm.c}
    - type :: 1, 2: LiblineaR type
 **** Default Parameters:
-   - epsilon :: 0.01: tolerance
+   - epsilon :: NULL: tolerance
    - bias :: TRUE: use bias term
    - verbose :: FALSE!: no output
    - cross :: 0!: no crossvalidation
@@ -912,7 +893,7 @@
 **** Variable Parameters:
    - cost :: 0.. (0.001..10) exp: inverse of regularisation constant {svm.c}
 **** Default Parameters:
-   - epsilon :: 0.01: tolerance
+   - epsilon :: 0.1: tolerance
    - bias :: TRUE: use bias term
    - verbose :: FALSE!: no output
    - cross :: 0!: no crossvalidation
@@ -930,12 +911,12 @@
 ** Neural Nets
 *** classif.dbnDNN
 **** Variable Parameters:
-   - numlayersidx :: 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
    - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
    - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
-   - activationfun :: sigm, linear, tanh: {nn.afun}
+   - activationfun :: sigm, tanh: {nn.afun} TODO: bug in 'deepnet': docu also says 'linear' is a possibility, but that is false.
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
    - learningrate_scale :: 0.. (0..0.99) invexp: {nn.lrs}
@@ -948,12 +929,12 @@
 *** classif.nnTrain
 - choo choo, motherfucker
 **** Variable Parameters:
-   - numlayersidx :: 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
    - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
    - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
-   - activationfun :: sigm, linear, tanh: {nn.afun}
+   - activationfun :: sigm, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
    - learningrate_scale :: 0.. (0..0.99) invexp: {nn.lrs}
@@ -969,12 +950,12 @@
 *** classif.saeDNN
 - deep neural net initialized by stacked autoencoder
 **** Variable Parameters:
-   - numlayersidx :: 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
    - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
    - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
-   - activationfun :: sigm, linear, tanh: {nn.afun}
+   - activationfun :: sigm, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
    - learningrate_scale :: 0.. (0..0.99) invexp: {nn.lrs}
@@ -988,7 +969,7 @@
 - neural nets using backpropagation
 - linear.output :: TRUE: this is a bug MLR<=2.8
 **** Variable Parameters:
-   - numlayersidx :: 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
    - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
@@ -1019,8 +1000,8 @@
 **** Default Parameters:
    - rang :: 0.7: initial random weights. This is too data dependent, so we rely on preprocessing if necessary
    - Hess :: FALSE!: return hessian
-   - abstoll :: 0.0001
-   - reltoll :: 1e-8
+   - abstol :: 0.0001
+   - reltol :: 1e-8
 **** Changed (fixed) Parameters:
    - maxit :: 1e6: don't run out of iterations
    - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely
@@ -1093,7 +1074,7 @@
    - threshold :: 0: don't precompute
 *** classif.JRip
 **** Variable Parameters:
-   - F :: int 1.. (1..30) exp: number of folds for pruning req: P == FALSE
+   - F :: int 1.. (2..30) exp: number of folds for pruning req: P == FALSE
    - N :: int 2..#n/2# exp: minimum weight for split
    - O :: int 1.. (1..100) exp: number of opt runs
    - P :: TRUE, FALSE: disable pruning y/n
@@ -1104,7 +1085,7 @@
    - output-debug-info :: FALSE
 *** classif.earth
 **** Variable Parameters:
-   - Binomial.link :: logit, probit: link function
+   - link :: logit, probit: link function
    - degree :: int 1.. (1..4): max degree of interactions
    - penalty :: 1..5: penalty per knot; special values would be -1 (no pen) or 0 (only term pen).
    - penalize.newvar :: TRUE, FALSE: DUMMY whether newvar.penalty is nonzero
@@ -1116,7 +1097,7 @@
    - nfold :: int 1.. (1..30) exp: number of cv folds when using cv pruning req: pmethod == "cv"
    - ncross :: int 1..1000 (1..10) exp: number of cross validations req: pmethod == "cv" && nfold > 1
    - stratify :: TRUE, FALSE: stratify cv req: pmethod == "cv" && nfold > 1
-   - adjust.endspan :: 0..10 (0.5..8) exp: adjust endspan with this value
+   - Adjust.endspan :: 0..10 (0.5..8) exp: adjust endspan with this value
 **** Default Parameters:
    - maxit :: 25: maximal no of IWLS iters
    - trace :: 0!: no output
@@ -1144,6 +1125,6 @@
    - order :: int 0.. (0..6): integer, req: kernel == "besseldot"
 **** Default Parameters:
    - tol :: .001: termination criterion
+   - scaled :: TRUE: TODO: this is a bug in kernlab. We actually don't want to scale
 **** Changed (fixed) Parameters:
    - fit :: FALSE: don't include computed values
-   - scaled :: FALSE: don't scale
