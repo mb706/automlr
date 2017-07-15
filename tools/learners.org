@@ -489,10 +489,11 @@
    - nodedepth :: int 1.. (1..30): {rf.nodedepth}
    - splitrule :: gini, random: optimize gini impurity or do pure random splits
    - doRandomSplits :: TRUE, FALSE: DUMMY set nsplit != 0? req: splitrule != "random"
-   - nsplit.AMLRFIX1 :: 0: req: doRandomSplits == FALSE && splitrule != "random"
-   - nsplit :: int 1.. (1..64) exp: number of random splits req: doRandomSplits == TRUE && splitrule != "random"
+   - nsplit.AMLRFIX1 :: 0: req: splitrule != "random" && doRandomSplits == FALSE
+   - nsplit :: int 1.. (1..64) exp: number of random splits req: splitrule != "random" && doRandomSplits == TRUE
    - bootstrap :: by.root, by.node: where to bootstrap. 'no bootstrap' is part of 'sampsize'
    - sampsize :: int 1.. (1..#n#): {rf.subsetSizes} is basically rf.fraction * n req: bootstrap == "by.root"
+   - replace :: TRUE, FALSE: DUMMY {rf.replace} sampling w / wo replacement
    - samptype :: swr: req: replace == TRUE && bootstrap == "by.root"
    - samptype.AMLRFIX1 :: swor: req: replace == FALSE && bootstrap == "by.root"
 **** Default Parameters:
@@ -500,7 +501,7 @@
    - importance :: FALSE!: do not compute importance
    - na.action :: na.impute!: different from preproc imputation (since only using inbag data)
    - nimpute :: 1!: too small effect I guess
-   - proximity :: FALE!: don't compute proximity
+   - proximity :: ##: don't compute proximity
    - xvar.wt :: NULL
    - forest :: TRUE!
    - var.used :: FALSE!
@@ -747,8 +748,7 @@
 - http://jmlr.org/proceedings/papers/v32/hsieha14.pdf
 **** Variable Parameters:
    - k :: int 1.. (2..20) exp: number of sub-problems divided
-   - kernel :: 1, 2, 3: kernel type
-   - max.levels :: int 1..#log(min(n, 1000)*min(1, 5/PARAM.k)) / log(PARAM.k)#: maximum number of levels. It is both limited by k^ML <= n && ceiling(5n/k^ML)>=k.
+   - max.levels :: int 1..#floor(log(min(n, 1000)*min(1, 5/PARAM.k)) / log(PARAM.k))#: maximum number of levels. It is both limited by k^ML <= n && ceiling(5n/k^ML)>=k.
    - cluster.method :: kmeans, kernkmeans: {svm.cluster} clustering algorithm
 **** Default Parameters:
    - pre.scale :: FALSE: preproc does this.
@@ -758,6 +758,7 @@
    - valid.metric :: NULL
    - cluster.fun :: NULL
    - cluster.predict :: NULL
+   - kernel :: 3!: kernel type TODO: there are also 1 and 2, but they are very slow.
    - early :: 0: would have the range 0..max.levels: use early prediction. This is too complicated for now (depends on too much); the range of max.levels itself already depends on k.
    - final.training :: FALSE: "usually not needed".
 **** Changed (fixed) Parameters:
@@ -766,7 +767,7 @@
 *** classif.clusterSVM
 - Clustered Support Vector Machine
 **** Variable Parameters:
-   - centers :: int 1..#n# (2..#n#) exp: number of centers in clustering
+   - centers :: int 1..#n# (2..#max(floor(n/10), 3)#) exp: number of centers in clustering
    - lambda :: 0.. (0.001..10) exp: weight of global l2 norm {svm.lambda}
    - type :: 1, 2, 3, 5: LiblineaR type argument.
    - cost :: 0.. (0.001..10) exp: inverse of regularisation constant {svm.c}
@@ -789,7 +790,7 @@
 - "Mixture SVMs with gater function"
 - described in "A Parallel Mixture of SVMs for Very Large Scale Problems"
 **** Variable Parameters:
-   - m :: int 2.. (2..50) exp: number of experts as in the paper
+   - m :: int 2.. (2..10) exp: number of experts as in the paper
    - max.iter :: int 1.. (1..10) exp: number of iterations
    - hidden :: int 1.. (1..200) exp: number of hidden units
    - learningrate :: 0.. (0.0001..1) exp
@@ -845,9 +846,9 @@
    - cost :: 0.. (.001..10) exp: {svm.c} constraint violation cost. req: type == "C-classification"
    - nu :: 0..1: {svm.nu} req: type == "nu-classification"
    - kernel :: linear, polynomial, radial, sigmoid: kernel type
-   - degree :: int 1.. (1..6): {svm.degree} [this is classif.ksvm's 'degree' parameter] req: kernel == "polynomial"
+   - degree :: int 1.. (1..5): {svm.degree} [this is classif.ksvm's 'degree' parameter] req: kernel == "polynomial"
    - coef0 :: .. (-3..3): {svm.offset} this is classif.ksvm's 'offset' parameter req: kernel == "polynomial" || kernel == "sigmoid"
-   - gamma :: 0.. (.001..100) exp: {svm.scale} this is classif.ksvm's 'scale' parameter req: kernel != "linear"
+   - gamma :: 0.. (.001..10) exp: {svm.scale} this is classif.ksvm's 'scale' parameter req: kernel != "linear"
    - shrinking :: TRUE, FALSE: {svm.shrink} use shrinking heuristic
 **** Default Parameters:
    - class.weights :: NULL: use 1 weights
@@ -927,13 +928,13 @@
    - output :: sigm, linear, softmax: {nn.output}
    - cd :: int 1.. (1..100) exp: boltzmann machine init rounds
 *** classif.nnTrain
-- choo choo, motherfucker
+- TODO: deepnet package bug forbids depth below 3
+- hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
 **** Variable Parameters:
-   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..3 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
-   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
-   - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
+   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
    - activationfun :: sigm, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
@@ -949,12 +950,13 @@
    - max.number.of.layers :: NULL: limits the hidden layers
 *** classif.saeDNN
 - deep neural net initialized by stacked autoencoder
+- TODO: deepnet package bug forbids depth below 3
+- hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
 **** Variable Parameters:
-   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..3 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
-   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(4) {nn.h4} req: numlayersidx==3
-   - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
+   - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
    - activationfun :: sigm, tanh: {nn.afun}
    - learningrate :: 0.. (0.01..2) exp: {nn.lrate}
    - momentum :: 0.. (0..1): {nn.momentum}
@@ -988,8 +990,8 @@
    - exclude :: NULL: don't exclude
    - constant.weights :: NULL: no constant weights
    - likelihood :: FALSE!: no further calculation
-   - stepmax :: 1e5: normal limit for step exhaustion abort
 **** Changed (fixed) Parameters:
+   - stepmax :: 1e4: fewer steps; gotta go fast!
    - threshold :: .001: stoping criterion
 *** classif.nnet
 - Single-hidden-layer neural network with multinomial log-linear models and possible skip-layer connections
