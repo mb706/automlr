@@ -111,9 +111,8 @@
    - penalty :: adaptive.lasso, ao, bridge, enet, fused.lasso, genet, icb, lasso, licb, oscar, penalreg, ridge, scad, weighted.fusion
    - lambda :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("adaptive.lasso", "ao", "bridge", "genet", "lasso", "oscar", "penalreg", "ridge", "scad")
    - gamma :: 1.0000000000001.. (1.0000000000001..10) exp: regularization exponent; req: penalty %in% c("ao", "bridge", "genet", "weighted.fusion")
-   - oscar.c :: 0.1..10 exp: relative weighting of L_1 and L_inf norm for 'oscar' penalty
+   - oscar.c :: 0.. (0.1..10) exp: relative weighting of L_1 and L_inf norm for 'oscar' penalty
    - alpha :: 0..1: regularization parameter; req: penalty == "genet"
-   - c :: 0.. (.001..100) exp: regularization parameter; req: penalty == "oscar"
    - a :: 2.. (2..100) exp: regularization parameter; req: penalty == "scad"
    - lambda1 :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
    - lambda2 :: 0.. (.001..100) exp: regularization parameter; req: penalty %in% c("enet", "fused.lasso", "icb", "licb", "weighted.fusion")
@@ -306,7 +305,7 @@
    - C :: 1e-10..0.9999999999: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
    - M :: int 1..#n/2# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
-   - N :: int 1.. (1..30) exp: cv folds {tree.n} req: U == FALSE && R == TRUE
+   - N :: int 2.. (2..30) exp: cv folds {tree.n} req: U == FALSE && R == TRUE
    - B :: TRUE, FALSE: {tree.b} only binary splits
    - S :: TRUE, FALSE: no subtree raising y/n req: U == FALSE
    - J :: TRUE, FALSE: {tree.j} MDL correction for info gain on numeric attributes
@@ -322,7 +321,7 @@
    - C :: 1e-10..0.9999999999: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
    - M :: int 1..#n/2# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
-   - N :: int 1.. (1..30) exp: {tree.n} req: R == TRUE && U == FALSE
+   - N :: int 2.. (2..30) exp: {tree.n} req: R == TRUE && U == FALSE
    - B :: TRUE, FALSE: {tree.b} only binary splits
    - U :: TRUE, FALSE: {tree.u} no pruning y/n
    - J :: TRUE, FALSE: {tree.j} do not use MDL correction
