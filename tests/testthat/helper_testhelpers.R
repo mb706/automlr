@@ -268,7 +268,7 @@ checkLearnerBehaviour = function(learner, task, params, ...) {
 
 checkLearnerData = function(learner, params, data, testdata) {
   capture.output(m <- train(setHyperPars(learner, par.vals = params), data))
-  datacmp = m$learner.model$learner.model$next.model$learner.model$next.model$learner.model$data
+  datacmp = m$learner.model$learner.model$next.model$learner.model$data
   testdata = unname(sort(sapply(testdata, collapse)))
   datacmp = unname(sort(sapply(datacmp, collapse)))
   expect_set_equal(testdata, datacmp)
