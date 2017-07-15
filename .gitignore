@@ -24,3 +24,4 @@ tmp.R
 R/mlrLearners.R
 .pydevproject
 __pycache__
+*.log
