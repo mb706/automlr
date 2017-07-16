@@ -179,7 +179,7 @@
    - K :: int 1.. (30..3000) exp: steps until temp == 0; req: simAnn == TRUE && schedule == 2
    - alpha :: 1.. (1..4): power of temp reduction; req: simAnn == TRUE && schedule == 2
    - zero.temp :: 0.. (.001..0.1) exp: temp at which to set temperature to 0 req: simAnn == TRUE && schedule == 1
-   - halflife :: 0.. (5..200) exp: steps that reduce temperature to 1/2. req: simAnn == TRUE && schedule == 1
+   - halflife :: 0.. (0.5..20) exp: steps that reduce temperature to 1/2. req: simAnn == TRUE && schedule == 1
    - T.start :: 0.. (.01..10) exp: starting temp; req: simAnn == TRUE
    - schedule :: 1, 2: req: simAnn == TRUE
    - trafo :: TRUE, FALSE: use transformed variables
@@ -363,7 +363,7 @@
    - minbucket :: int 1..#floor(n/2)# exp: min number of ob in leaf node {tree.m}
    - maxdepth :: int 1..14: maximum depth of any node {tree.maxdepth}
    - alpha :: 0.. (.0001..10) exp: regularization
-   - ntrees :: int 2.. (10..1000) exp: tree population size
+   - ntrees :: int 2.. (2..100) exp: tree population size
    - pmutatemajor :: 0..1: operator prob
    - pmutateminor :: 0..1: operator prob
    - pcrossover :: 0..1: operator prob
@@ -377,7 +377,7 @@
 **** Variable Parameters:
    - num_burn_in :: int 0.. (10..1000) exp: number of trees to use as burn-in
    - num_iterations_after_burn_in :: int 2.. (10..4000) exp: number of MCMC samples
-   - num_trees :: int 1.. (25..2000) exp: number of trees to grow {rf.numtree}
+   - num_trees :: int 1.. (25..500) exp: number of trees to grow {rf.numtree}
    - alpha :: 0..1 (.5..0.99) invexp: nonterminal node probability: factor
    - beta :: 0.. (0..3): nonterminal node probability: neg exponent
    - k :: 1..4: distribution parameter
@@ -402,7 +402,7 @@
 *** classif.cforest
 - Random forest and bagging ensemble
 **** Variable Parameters:
-   - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - ntree :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
    - fraction :: 0..1: {rf.fraction} req: replace==FALSE
@@ -422,7 +422,7 @@
 *** classif.randomForest
 - Random forest (who could have guessed..)
 **** Variable Parameters:
-   - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - ntree :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
    - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
@@ -442,7 +442,7 @@
    - keep.inbag :: FALSE!: don't remember bagged samples
 *** classif.RRF
 **** Variable Parameters:
-   - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - ntree :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - replace :: TRUE, FALSE: {rf.replace} sampling of observations without replacement?
    - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
@@ -466,7 +466,7 @@
 *** classif.extraTrees
 - "Classification and regression based on an ensemble of decision trees"
 **** Variable Parameters:
-   - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - ntree :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - numRandomCuts :: int 1.. (1..32) exp: number of cuts tried
@@ -483,7 +483,7 @@
 *** classif.randomForestSRC
 - Random forest for survival, regression, classification
 **** Variable Parameters:
-   - ntree :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - ntree :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - nodedepth :: int 1.. (1..30): {rf.nodedepth}
@@ -515,7 +515,7 @@
 *** classif.ranger
 - guess what, another random forest (yay)
 **** Variable Parameters:
-   - num.trees :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - num.trees :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - min.node.size :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
    - replace :: TRUE, FALSE: {rf.replace} sampling w / wo replacement
@@ -537,7 +537,7 @@
 - random ferns
 **** Variable Parameters:
    - depth :: int 1..16 (1..10): depth of ferns. actually up to 16 is possible but puts lots of strain on memory & time
-   - ferns :: int 1.. (25..2000) exp: {rf.numtree} number of ferns to grow
+   - ferns :: int 1.. (25..500) exp: {rf.numtree} number of ferns to grow
 **** Default Parameters:
    - importance :: FALSE!: don't calculate importance
    - reportErrorEvery :: 0!: not verbose
@@ -547,7 +547,7 @@
 - random forest + pca
 **** Variable Parameters:
    - K :: int 1..#p# exp: number of variables per subset. number of subsets is inverse of this
-   - L :: int 1.. (25..2000) exp: {rf.numtree} number of trees to grow
+   - L :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
 ** Boosting
 *** classif.ada
 - Described in "Additive Logistic Regression: A Statistical View of Boosting" (Friedman 2000).
@@ -1007,7 +1007,7 @@
    - abstol :: 0.0001
    - reltol :: 1e-8
 **** Changed (fixed) Parameters:
-   - maxit :: 1e6: don't run out of iterations
+   - maxit :: 5000: limit number of iters
    - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely
    - trace :: FALSE: no output
 *** classif.multinom
@@ -1017,8 +1017,8 @@
 **** Default Parameters:
    - rang :: 0.7: initial random weights. This is too data dependent, so we rely on preprocessing if necessary
    - Hess :: FALSE!: return hessian
-   - abstoll :: 0.0001
-   - reltoll :: 1e-8
+   - abstol :: 0.0001
+   - reltol :: 1e-8
    - summ :: 0: don't sum and change weights
    - censored :: FALSE!: (interpretation of input format)
    - model :: FALSE
@@ -1098,7 +1098,7 @@
    - newvar.penalty.AMLRFIX1 :: 0: req: penalize.newvar == FALSE
    - fast.k :: int 1.. (1..100) exp: number of variables to consider in one step
    - fast.beta :: int .. (0..1): idk
-   - pmethod :: backward, none, exhaustive, forward, segrep, cv
+   - pmethod :: backward, none, exhaustive, forward, seqrep, cv
    - nfold :: int 1.. (1..30) exp: number of cv folds when using cv pruning req: pmethod == "cv"
    - ncross :: int 1..1000 (1..10) exp: number of cross validations req: pmethod == "cv" && nfold > 1
    - stratify :: TRUE, FALSE: stratify cv req: pmethod == "cv" && nfold > 1
