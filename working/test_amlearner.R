@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 argv = as.numeric(commandArgs(trailingOnly = TRUE)[1])
-
+library("methods")
 library("automlr")
 
 learneridx = argv %% length(mlrLearnersNoWrap) + 1
