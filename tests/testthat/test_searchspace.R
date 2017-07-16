@@ -5,74 +5,22 @@ context("searchspace")
 
 test_that("each searchspace item works", {
 
-  done = c("classif.penalized", "classif.glmnet",
-    "classif.cvglmnet", "classif.binomial",
-    "classif.lqa",
-    "classif.plr",
-    "classif.lda",
-    "classif.qda",
-    "classif.linDA",
-    "classif.sparseLDA",
-    "classif.rrlda",
-    "classif.rda",
-    "classif.sda",
-    "classif.plsdaCaret",
-    "classif.mda",
-    "classif.quaDA",
-    "classif.geoDA",
-    "classif.kknn",
-    "classif.knn",
-    "classif.rknn",
-    "classif.fnn",
-    "classif.IBk",
-    "classif.ctree",
-    "classif.J48",
-    "classif.PART",
-    "classif.nodeHarvest",
-    "classif.rpart",
-    "classif.bartMachine",
-    "classif.cforest",
-    "classif.randomForest",
-    "classif.RRF",
-    "classif.extraTrees",
-    "classif.randomForestSRC",
-    "classif.ranger",
-    "classif.rFerns",
-    "classif.rotationForest",
-    "classif.blackboost",
-    "classif.boosting",
-    "classif.bst",
-    "classif.C50",
-    "classif.gbm",
-    "classif.glmboost",
-    "classif.gamboost",
-    "classif.dcSVM",
-    "classif.clusterSVM",
-    "classif.gaterSVM",
-    "classif.ksvm",
-    "classif.evtree",
-    "classif.ada",
-    "classif.xgboost",
-    "classif.lssvm",
-    "classif.svm",
-    "classif.LiblineaRL1L2SVC",
-    "classif.LiblineaRL2L1SVC",
-    "classif.LiblineaRL2SVC",
-    "classif.LiblineaRMultiClassSVC",
-    "classif.LiblineaRL1LogReg",
-    NULL)
+
+  tsk = subsetTask(pid.task, 1:50)
 
 
-  for (lrn in mlrLearnersNoWrap) {
+  for (lrn in mlrLightweightNoWrap) {
     print(lrn$learner)
     if (!length(lrn$searchspace)) {
       # skipping items with no searchspace
       next
     }
     set.seed(123)
-    try(utils::capture.output(res <- automlr(pid.task,
-      budget = c(evals = 1), verbosity=3,
-      searchspace = list(lrn), backend = "random")))
+    try(automlr(tsk,
+      budget = c(evals = 1), verbosity=6,
+      searchspace = list(lrn), backend = "random")
+      , FALSE)
+
   }
 
 
