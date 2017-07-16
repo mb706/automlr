@@ -486,7 +486,7 @@
    - ntree :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
    - mtry :: int 1..#p# exp: number of sampled variables. {rf.features}
    - nodesize :: int 1..#floor(n/2)# exp: min number of ob in leaf node {rf.nodesize}
-   - nodedepth :: int 1.. (1..30): {rf.nodedepth}
+   - nodedepth :: int 1.. (1..14): {rf.nodedepth}
    - splitrule :: gini, random: optimize gini impurity or do pure random splits
    - doRandomSplits :: TRUE, FALSE: DUMMY set nsplit != 0? req: splitrule != "random"
    - nsplit.AMLRFIX1 :: 0: req: splitrule != "random" && doRandomSplits == FALSE
@@ -667,7 +667,7 @@
    - distribution.AMLRFIX1 :: multinomial: req: automlr.targettype == "multiclass"
    - n.trees :: int 1.. (1..100) exp: {boost.iter} number of boosting iterations
    - interaction.depth :: int 1.. (1..3): max order of interactions
-   - n.minobsinnode :: int 1..#floor(n/2)# exp: min number of ob in leaf node {boost.minbucket}
+   - n.minobsinnode :: int 1..#floor(PARAM.bag.fraction * n/2)# exp: min number of ob in leaf node {boost.minbucket}
    - shrinkage :: 0..1 (.001..1) exp: {boost.nu} shrinkage parameter
    - bag.fraction :: 0..1: {boost.subsample}
 **** Default Parameters:
@@ -811,7 +811,7 @@
    - C :: 0.. (.001..10) exp: {svm.c} constraint violation cost. req: type %in% c("C-svc", "C-bsvc", "spoc-svc", "kbb-svc")
    - nu :: 0..1: {svm.nu} req: type == "nu-svc"
    - sigma :: 0.. (.001..100) exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
-   - degree :: int 1.. (1..6): {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
+   - degree :: int 1.. (1..5): {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
    - scale :: 0.. (.001..100) exp: {svm.scale} req: kernel %in% c("polydot", "tanhdot")
    - offset :: .. (-3..3): {svm.offset} req: kernel %in% c("polydot", "tanhdot")
    - order :: int 0.. (0..6): {svm.order} integer, req: kernel == "besseldot"
@@ -831,7 +831,7 @@
    - tau :: 0.. (0.001..10) exp: regularization parameter {svm.lambda}
    - reduced :: TRUE, FALSE: solve full problem vs. reduced problem using csi
    - sigma :: 0.. (.001..100) exp: inverse kernel width; req: kernel %in% c("rbfdot", "anovadot", "besseldot", "laplacedot")
-   - degree :: int 1.. (1..6): {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
+   - degree :: int 1.. (1..5): {svm.degree} req: kernel %in% c("polydot", "anovadot", "besseldot")
    - scale :: 0.. (.001..100) exp: {svm.scale} req: kernel %in% c("polydot", "tanhdot")
    - offset :: .. (-3..3): {svm.offset} req: kernel %in% c("polydot", "tanhdot")
    - order :: int 0.. (0..6): {svm.order} integer, req: kernel == "besseldot"
@@ -974,7 +974,7 @@
 - TODO: deepnet bug forbids depth gt 3
 - hidden.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4
 **** Variable Parameters:
-   - numlayersidx :: int 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..3 : {nn.nlayer} DUMMY 
    - hidden :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - hidden.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
    - hidden.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
@@ -1029,7 +1029,7 @@
 - TODO: deepnet bug forbids depth gt 3
 - size.AMLRFIX3 :: int 1.. (3..100) exp: len(8) {nn.h8} req: numlayersidx==4    
 **** Variable Parameters:
-   - numlayersidx :: 1..4 : {nn.nlayer} DUMMY 
+   - numlayersidx :: int 1..3 : {nn.nlayer} DUMMY 
    - size :: int 1.. (3..100) exp: len(1) {nn.h1} req: numlayersidx==1
    - size.AMLRFIX1 :: int 1.. (3..100) exp: len(2) {nn.h2} req: numlayersidx==2
    - size.AMLRFIX2 :: int 1.. (3..100) exp: len(3) {nn.h4} req: numlayersidx==3
