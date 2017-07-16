@@ -1,14 +1,14 @@
 
 #' @title Create an mlr learner that limits the runtime of a train/predict
 #'   cycle.
-#' 
+#'
 #' @description
 #' When max.learner.time, given to automlr, is overrun, we want to give an
 #' error.
 #' If the first resampling was an error, the other resamplings should also give
 #' errors without starting the run. Otherwise they should themselves run (with
-#' the correct timeout). 
-#' 
+#' the correct timeout).
+#'
 #' @param learner [\code{Learner}]\cr
 #'   The learner to be wrapped.
 #' @param time [\code{numeric(1)}]\cr
@@ -19,7 +19,7 @@
 #'   resampling, given that (1) the evaluation happens inside \code{resample}
 #'   and (2) the resampling will go through more than one iteration and (3) the
 #'   the resampling is not being parallelized.
-#' 
+#'
 #' @return [\code{TimeconstraintWrapper}]
 #' A \code{Learner} that runs only for the given time and will then return
 #' either an error or a dummy learner.
@@ -31,10 +31,10 @@ makeTimeconstraintWrapper = function(learner, time, timeFirstIter = NULL) {
   if (!is.null(timeFirstIter)) {
     assertNumeric(timeFirstIter, lower = time, any.missing = FALSE, len = 1)
   }
-  
+
   wrapper = wrapLearner("TimeconstraintWrapper", "tcw", "TimeconstraintWrapper",
       learner = learner)
-  
+
   wrapper$env = new.env(parent = emptyenv())
 
   wrapper$time = time
@@ -68,7 +68,7 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
       runinfo$specialFirstIter = TRUE
       .learner$env$resampleUID = setResampleUID()
     } else {
-      if (.learner$env$resampleUID != getResampleUID()) {
+      if (!identical(.learner$env$resampleUID, getResampleUID())) {
         # we are not parallelized and are in the >1st iteration. therefore,
         # if env is untouched, some error happened.
         stop("TimeconstraintWrapper communication by environment failed.")
@@ -80,14 +80,14 @@ trainLearner.TimeconstraintWrapper = function(.learner, .task, .subset,
       }
     }
   }
-  
+
   .learner$env$firstResampleError = FALSE
 
   exec.time = system.time(result <- runWithTimeout(NextMethod("trainLearner"),
           runinfo$time, FALSE), gcFirst = FALSE)
 
   runinfo$traintime = exec.time[3]
-  
+
   if (result$timeout || runinfo$traintime > runinfo$time + 0.5) {
     # we allow ourselves 0.5 seconds buffer or bad things might happen.
     if (runinfo$specialFirstIter) {
@@ -108,13 +108,13 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
   runinfo = .model$learner.model$runinfo
   # we go here if the training run finished without timeout
   remainingTime = max(runinfo$time - runinfo$traintime, 1)
-  
+
 
   exec.time = system.time(result <- runWithTimeout(NextMethod("predictLearner"),
           remainingTime, FALSE), gcFirst = FALSE)
   predicttime = exec.time[3]
   totalTime = predicttime + runinfo$traintime
-  
+
   if (result$timeout && runinfo$specialFirstIter) {
     .learner$env$firstResampleError = TRUE
   }
@@ -122,9 +122,9 @@ predictLearner.TimeconstraintWrapper = function(.learner, .model, .newdata,
   if (result$timeout ||
       (runinfo$specialFirstIter && totalTime > .learner$time)) {
     # on the first 'special' run, we might be below the timeFirstIter timeout
-    # value, but still above the regular timeout value. In that case, we 
+    # value, but still above the regular timeout value. In that case, we
     # treat the run as if it did produce a timeout on a subsequent resampling
-    # iteration and do the dummy prediction. 
+    # iteration and do the dummy prediction.
     stop("TimeoutWrapper Timeout")
   }
   result$result

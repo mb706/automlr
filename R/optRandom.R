@@ -167,7 +167,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
     return(oobErr)
   }
   # its kind of amazing that NextMethod works like this.
-  rwt = runWithTimeout(NextMethod("trainLearner"), hardTimeoutRemaining)
+  rwt = runWithTimeout(NextMethod("trainLearner"), hardTimeoutRemaining, backend = "native")
   
   if (rwt$timeout) {
     return(timeoutErr)
