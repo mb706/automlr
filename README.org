@@ -31,9 +31,10 @@ Alternatively, to *only* install automlr (and its essential dependencies), do
 devtools::install_github("mlr-org/automlr")
 #+END_SRC
 
-It is highly recommended to install my fork of the ~e1071~ package, which fixes a bug that otherwise regularly leads to R crashing:
+It is highly recommended to install my fork of the ~e1071~ and ~kernlab~ packages, which fix bugs that otherwise regularly lead to R crashing or hanging:
 #+BEGIN_SRC R
 devtools::install_github("mb706/e1071")
+devtools::install_github("mb706/kernlab")
 #+END_SRC
 
 * Usage
@@ -71,7 +72,16 @@ The functions and data exported by automlr that will be of interest to the user:
   - autoWrapper :: define an mlr wrapper to use in a search space
   - sp :: for defining parameters that are given to ~autolearner~
 See their respective R documentation for more information and additional arguments.
-
+* Troubleshooting
+** Segfaults
+Unfortunately some learners, especially ones that use native code, may crash the whole R session. Also, apparently a recent linux kernel release [[https://github.com/s-u/rJava/issues/110][caused problems with rJava packages]]. If you see segfaults happening, try the following:
+- Run ~export _JAVA_OPTIONS="-Xss2560k -Xmx2g";~ before running R; alternatively, run ~options(java.parameters = c("-Xss2560k", "-Xmx2g"))~ at the beginning of your R session. This may help *even if the crash happens in a non-java learner*.
+- Use ~setDefaultRWTBackend("fork")~. This causes all learners to be run in a separate process. See the issue concerning the "fork" backend, however.
+- Run ~automlr~ with a small value for ~save.interval~ and have a process in place to resurrect R after a segfault with the savefile.
+** Timeout Overrun
+The default "native" backend of interrupting learners that run over time is not able to stop learners that take a long time in native (C/Fortran) code routines. Use ~setDefaultRWTBackend("fork")~ to kill slow learners effectively, at the cost of some performance. However, see the following issue.
+** setDefaultRWTBackend("fork") causes hangs
+This happens if you use ~automlr~ when the "fork" backend when you have already loaded a package that uses java. Restart your R session and prevent java-using packages from being loaded, e.g. by 
 * Project status
 Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
 
