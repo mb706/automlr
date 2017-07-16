@@ -1,10 +1,10 @@
 
 #' @title random backend configuration
-#' 
+#'
 #' @description
 #' Create an \code{AutomlrBackendConfig} object that can be fed to
 #' \code{\link{automlr}} to perform optimization with the "random" backend.
-#' 
+#'
 #' @param max.iters.per.round [\code{integer(1)}]\cr
 #'   Number of iterations to perform between timeout checks. Do not set too
 #'   small; you probably don't want to change this.
@@ -84,7 +84,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   # predictLearner were not propagated.
   am.env$untouched = TRUE
   learner$am.env = am.env
-  
+
   # the output function for tuneParams depends on the verbosity option.
   if (verbosity.traceout(verbosity)) {
     if (verbosity.memtraceout(verbosity)) {
@@ -96,13 +96,13 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
   } else {
     log.fun = logFunQuiet
   }
-  
+
   while (!checkoutofbudget(learner$am.env)) {
     # chop up "evals" budget into small bunches so we can stop if and when
     # time runs out
     iterations = env$max.iters.per.round
     if ("walltime" %in% names(stepbudget)) {
-      iterations = min(iterations, stepbudget["walltime"])
+      iterations = max(min(iterations, floor(stepbudget["walltime"] / 20)), 5)
     }
     if ("evals" %in% names(stepbudget)) {
       iterations = min(stepbudget["evals"] - learner$am$usedbudget["evals"],
@@ -119,7 +119,7 @@ amoptimize.amrandom = function(env, stepbudget, verbosity, deadline) {
     notOOB = (is.na(errorsvect)) | (errorsvect != out.of.budget.string)
     learner$am.env$usedbudget["evals"] %+=% sum(notOOB)
     subsetOptPath(tuneresult$opt.path, notOOB)
-    
+
     parent.env(tuneresult$opt.path$env) = emptyenv()
 
     if (is.null(env$opt.path)) {
@@ -141,7 +141,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   env = .learner$am.env
   hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
 
-  
+
   # We want to test whether the first run of a resampling was over budget.
   # We can sometimes but not always communicate between runs of the same
   # resampling. Therefore we always need to check which iteration we are *AND*
@@ -157,7 +157,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
     checkBudget = TRUE
   } else {
     # env$untouched is only TRUE on the non-first iteration when communication
-    # between invocation failed. 
+    # between invocation failed.
     checkBudget = env$untouched
   }
 
@@ -168,7 +168,7 @@ trainLearner.amrandomWrapped = function(.learner, ...) {
   }
   # its kind of amazing that NextMethod works like this.
   rwt = runWithTimeout(NextMethod("trainLearner"), hardTimeoutRemaining, backend = "native")
-  
+
   if (rwt$timeout) {
     return(timeoutErr)
   }
@@ -251,7 +251,7 @@ as.character.timeoutError = function(x, ...) {
 }
 
 # update walltime and check whether the learner attached environment `env` is
-# out of budget. 
+# out of budget.
 checkoutofbudget = function(env) {
   if (!env$outofbudget) {
     env$usedbudget["walltime"] = as.numeric(difftime(Sys.time(), env$starttime,
