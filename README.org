@@ -81,7 +81,7 @@ Unfortunately some learners, especially ones that use native code, may crash the
 ** Timeout Overrun
 The default "native" backend of interrupting learners that run over time is not able to stop learners that take a long time in native (C/Fortran) code routines. Use ~setDefaultRWTBackend("fork")~ to kill slow learners effectively, at the cost of some performance. However, see the following issue.
 ** setDefaultRWTBackend("fork") causes hangs
-This happens if you use ~automlr~ when the "fork" backend when you have already loaded a package that uses java. Restart your R session and prevent java-using packages from being loaded, e.g. by 
+This happens if you use ~automlr~ with the "fork" backend and a learner uses java. Currently, there is no way of using the fork backend with java based learners. Use the ~mlrLightweightNoJava~ searchspace to exclude all java based learners.
 * Project status
 Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
 

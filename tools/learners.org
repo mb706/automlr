@@ -293,9 +293,9 @@
    - stump :: TRUE, FALSE: only one division
    - maxdepth :: int 1.. (1..14): {tree.maxdepth} req: stump == FALSE
 **** Default Parameters:
-   - nresample :: 9999: number of MC replications when using distribution test stat
    - mtry :: 0: use all features
 **** Changed (fixed) Parameters:
+   - nresample :: 500: number of MC replications when using distribution test stat
    - savesplitstats :: FALSE: save statistics about node splits
 *** classif.J48
 - WEKA C4.5 decision tree
@@ -1023,7 +1023,7 @@
    - censored :: FALSE!: (interpretation of input format)
    - model :: FALSE
 **** Changed (fixed) Parameters:
-   - maxit :: 1e6: don't run out of iterations
+   - maxit :: 1e3: don't run out of iterations
    - trace :: FALSE: no output
 *** classif.mlp
 - TODO: deepnet bug forbids depth gt 3

@@ -13,6 +13,7 @@ mlr.predictLearner.ModelMultiplexer = NULL
   mlrWrappers <<- mlrWrappers.gen()
   mlrLearners <<- mlrLearners.gen()
   mlrLightweight <<- mlrLightweight.gen()
+  mlrLightweightNoJava <<- mlrLightweightNoJava.gen()
 
   mlr.predictLearner.ModelMultiplexer <<- mlr:::predictLearner.ModelMultiplexer
 

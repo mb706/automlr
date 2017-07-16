@@ -99,10 +99,18 @@ if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
       setdiff(slowLrn, names(mlrLearnersNoWrap)))
 }
 
-# classif.ctree takes a long time also when testtype == MonteCarlo
-# classif.multinom also (?)
+javaLrn = c(
+    "classif.extraTrees",
+    "classif.IBk",
+    "classif.J48",
+    "classif.JRip",
+    "classif.bartMachine",
+    NULL)
 
-# classif.randomForestSRC seems to be a memory hog
+if (!all(javaLrn %in% names(mlrLearnersNoWrap))) {
+  stop("slowLrn references unknown learner(s) %s",
+      setdiff(javaLrn, names(mlrLearnersNoWrap)))
+}
 
 #' @title
 #' A list of fast learners with corresponding \code{par.set}s that can be
@@ -124,6 +132,22 @@ mlrLightweightNoWrap = mlrLearnersNoWrap[names(mlrLearnersNoWrap) %nin% slowLrn]
 #' earched over.
 #'
 #' @description
+#' This is a list similar to \code{\link{mlrLightweightNoWrap}}, but it also
+#' excludes java based learners. This makes it possible to use the
+#' \dQuote{fork} backend for timeouts.
+#'
+#' @name mlrLightweightNoWrapNoJava
+#' @family searchspace
+#' @docType data
+#' @export
+mlrLightweightNoWrapNoJava = mlrLearnersNoWrap[names(mlrLearnersNoWrap) %nin%
+  c(slowLrn, javaLrn)]
+
+#' @title
+#' A list of fast learners with corresponding \code{par.set}s that can be
+#' earched over.
+#'
+#' @description
 #' This is a list similar to \code{\link{mlrLearners}}, only it excludes
 #' the slowest learners. This decreases average evaluation time significantly
 #' and also makes the search space small enough for the \code{mbo} backend.
@@ -136,3 +160,21 @@ mlrLightweight = list()
 
 mlrLightweight.gen = function() c(mlrLightweightNoWrap, mlrWrappers)
 
+#' @title
+#' A list of fast learners with corresponding \code{par.set}s that can be
+#' earched over.
+#'
+#' @description
+#' This is a list similar to \code{\link{mlrLightweight}}, but it also
+#' excludes java based learners. This makes it possible to use the
+#' \dQuote{fork} backend for timeouts.
+#'
+#' @name mlrLightweightNoJava
+#' @family searchspace
+#' @docType data
+#' @export
+mlrLightweightNoJava = list()
+
+mlrLightweightNoJava.gen = function() {
+  c(mlrLightweightNoWrapNoJava, mlrWrappers)
+}
