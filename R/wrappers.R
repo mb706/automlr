@@ -5,7 +5,7 @@ getSupportedFilterMethods = function(suggestions) {
   allFilters = lapply(listFilterMethods(FALSE), as.character)
   allPkgs = rownames(installed.packages())
   presentFilters = allFilters$id[allFilters$package %in% c("", allPkgs)]
-  
+
   absentFilters = setdiff(suggestions, presentFilters)
   if (length(absentFilters) > 0) {
     absentPkgs = unique(allFilters$package[allFilters$id %in% absentFilters])
@@ -19,12 +19,12 @@ getSupportedFilterMethods = function(suggestions) {
 #' @title
 #' A list of wrappers with corresponding \code{par.set}s that can be searched
 #' over.
-#' 
+#'
 #' @description
 #' This is a list of wrappers that can be used as part of a searchspace.
 #' Currently this only includes a preprocessing wrapper, but may in future also
 #' include some meta-methods.
-#' 
+#'
 #' @name mlrWrappers
 #' @family searchspace
 #' @docType data
@@ -73,11 +73,11 @@ mlrWrappers.gen = function() makeNamedAlList()
 #' @title
 #' A list of learners with corresponding \code{par.set}s that can be searched
 #' over.
-#' 
+#'
 #' @description
 #' This is the complete search space as suggested by the automlr package. It
 #' includes learners and wrappers.
-#' 
+#'
 #' @name mlrLearners
 #' @family searchspace
 #' @docType data
@@ -88,9 +88,12 @@ mlrLearners.gen = function() c(mlrLearnersNoWrap, mlrWrappers)
 
 # the following is a bit handwavy. I ran these learners in randomsearch and
 # looked which learners took, on average, "kinda long".
-slowLrn = c('classif.lda', 'classif.mda', 'classif.rrlda',
-    'classif.dcSVM', 'classif.rda', 'classif.bartMachine', 'classif.boosting',
-    'classif.nodeHarvest', 'classif.randomForestSRC')
+slowLrn = c(
+    "classif.nodeHarvest",  # currently broken in new R versions
+    "classif.neuralnet",
+    "classif.bartMachine",  # JVM seems broken.
+    NULL)
+
 if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
   stop("slowLrn references unknown learner(s) %s",
       setdiff(slowLrn, names(mlrLearnersNoWrap)))
@@ -102,14 +105,14 @@ if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
 # classif.randomForestSRC seems to be a memory hog
 
 #' @title
-#' A list of fast learners with corresponding \code{par.set}s that can be 
+#' A list of fast learners with corresponding \code{par.set}s that can be
 #' earched over.
-#' 
+#'
 #' @description
 #' This is a list similar to \code{\link{mlrLearnersNoWrap}}, only it excludes
 #' the slowest learners. This decreases average evaluation time significantly
 #' and also makes the search space small enough for the \code{mbo} backend.
-#' 
+#'
 #' @name mlrLightweightNoWrap
 #' @family searchspace
 #' @docType data
@@ -117,14 +120,14 @@ if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
 mlrLightweightNoWrap = mlrLearnersNoWrap[names(mlrLearnersNoWrap) %nin% slowLrn]
 
 #' @title
-#' A list of fast learners with corresponding \code{par.set}s that can be 
+#' A list of fast learners with corresponding \code{par.set}s that can be
 #' earched over.
-#' 
+#'
 #' @description
 #' This is a list similar to \code{\link{mlrLearners}}, only it excludes
 #' the slowest learners. This decreases average evaluation time significantly
 #' and also makes the search space small enough for the \code{mbo} backend.
-#' 
+#'
 #' @name mlrLightweight
 #' @family searchspace
 #' @docType data
