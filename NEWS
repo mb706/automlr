@@ -1,2 +1,8 @@
-* automlr 0.1
+* automlr 0.2.1
+- Bugfix
+* automlr 0.2.0
+- Much better wrapper handling
+- Parameter bounds depending on data characteristics
+- Learner timeout
+* automlr 0.1.0
 - Initial "public" release on GitHub
