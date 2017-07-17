@@ -1,4 +1,6 @@
 
+#' @include mlrLearners.R
+
 mboSaveMode = TRUE
 
 #' @title mbo backend configuration
@@ -154,13 +156,19 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   # clean up environment, it is used in objectiveFun().
 }
 
+reverselearnercats = unlist(lapply(names(learnercats), function(x) {
+  namedList(learnercats[[x]], x)
+}), FALSE)
+
 SLSplit = function(data) {
   sl = data$selected.learner
   rest = dropNamed(data, "selected.learner")
   newdat = do.call(data.frame, sapply(learnercats, function(lvl) {
     factor(sl, levels = lvl)
   }, simplify = FALSE))
-  cbind(newdat, rest)
+  slc = data.frame(selected.learner.cat = unlist(
+    reverselearnercats[as.character(sl)], use.names = FALSE))
+  cbind(slc, selected = newdat, rest)
 }
 
 

@@ -1,5 +1,6 @@
 * automlr 0.2.1
-- Bugfix
+- Bugfixes
+- Removed 53 learner limit for mbo
 * automlr 0.2.0
 - Much better wrapper handling
 - Parameter bounds depending on data characteristics
