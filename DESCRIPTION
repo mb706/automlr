@@ -63,7 +63,15 @@ Suggests:
     e1071,
     deepnet,
     nnet,
-    neuralnet
+    neuralnet,
+    earth,
+    pamr,
+    RSNNS,
+    C50,
+    bst,
+    RRF,
+    evtree,
+    penalized
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
