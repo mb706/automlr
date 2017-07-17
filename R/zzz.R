@@ -20,8 +20,16 @@ mlr.predictLearner.ModelMultiplexer = NULL
   timeoutMessage <<- determineTimeoutMessage()
 
 
-  # TODO: this is necessary for some linux kernels to prevent segfaults.
+  # this is necessary for some linux kernels to prevent segfaults.
+  # if the JVM is already running, it is too late, however, and we just hope
+  # the user knows what he's doing.
   options(java.parameters = c("-Xss2560k", "-Xmx2g"))
 
+  # there is a limit on how many DLLs can be loaded; make sure mlrMBO
+  # is loaded before the others; same with irace
+  requirePackages("mlrMBO", why = "optMBO", default.method = "load", stop = FALSE,
+    suppress.warnings = TRUE)
+  requirePackages("irace", why = "optMBO", default.method = "load", stop = FALSE,
+    suppress.warnings = TRUE)
 
 }
