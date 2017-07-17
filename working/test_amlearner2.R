@@ -7,8 +7,8 @@ library("automlr")
 
 
 system.time(automlr(pid.task,
-  budget = c(walltime = 3600), verbosity=5, save.interval = 600,
-  savefile = "./", max.learner.time = 600,
+  budget = c(walltime = 3600 * 7), verbosity=5, save.interval = 600,
+  savefile = "./", max.learner.time = 1200,
   searchspace = mlrLightweightNoWrap, backend = "random"),
   FALSE)
 
