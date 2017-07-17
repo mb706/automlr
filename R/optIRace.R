@@ -1,10 +1,10 @@
 
 #' @title irace backend configuration
-#' 
+#'
 #' @description
 #' Create an \code{AutomlrBackendConfig} object that can be fed to
 #' \code{\link{automlr}} to perform optimization with the "irace" backend.
-#' 
+#'
 #' @param nbIterations [\code{integer(1)}]\cr
 #'   Thinning of sampling distribution happens as if irace expected to run for
 #'   \code{nbIterations} generations.
@@ -40,15 +40,15 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   env$task = task
   env$measure = measure
   env$rdesc = makeResampleDesc("Holdout")
-  
+
   dimParams = getParamNr(getSearchspace(learner), TRUE)
-  
+
   # the 'default', but I'm not taking chances
   minNbSurvival = as.integer(2 + log2(dimParams))
   mu = 5L
   firstTest = 5L
   eachTest = 1L
-  
+
   # expPerIter: how many experiments (evaluations) to perform during one
   # iteration. If this value is too small, irace aborts prematurely. (This var
   # will be called 'currentBudget' in irace)
@@ -57,14 +57,14 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   #
   # 'mu' is really max(mu, firstTest)
   # 'numInstances': the number of instances each configuration was evaluated on
-  # 
+  #
   # savedBudget <- numElites * numInstances
   # 'savedBudget' because it counts the values which are already known
   # n <- max(mu + eachTest * min(5, iter),
   #          numInstances + elitistNewInstances [rounded up to next eachTest])
   # (n is the number of evaluations per instance to expect.
   #  grows as numInstances + 1)
-  # 
+  #
   # nbConfigurations <- floor((expPerIter + savedBudget) / n)
   # ( around numElites ~ minNbSurvival plus a little)
   # (used to be called nbCandidates)
@@ -76,7 +76,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   # (nbConfigurations - numElites) * mu +
   #     numElites * min(elitistNewInstances, mu)
   #   must be <= expPerIter
-  # nbNewConfigurations <- nbConfigurations - numElites 
+  # nbNewConfigurations <- nbConfigurations - numElites
 
   # So reasoning backward:
   # nbNewConfigurations should be opt$newpopulation
@@ -92,17 +92,17 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
     indexIter = iraceResults$state$indexIteration
     eni = iraceResults$scenario$elitistNewInstances
     targetInst = nrow(iraceResults$experiments) + eni
-    
+
     iraceN = max(firstTest + eachTest * min(5, indexIter),
         ceiling((targetInst / eachTest) * eachTest))
     expPerIter = (opt$newpopulation + minNbSurvival) * iraceN + 1L
-    
+
     effMu = max(mu, firstTest)
     expPerIter = max(expPerIter, (opt$newpopulation + minNbSurvival) * effMu)
   }
   #expPerIter = as.integer((opt$newpopulation + minNbSurvival + 1) *
   #        (max(firstTest, mu) + 5))
-  
+
   # could also be adapted: elitistLimit (def 2), elitistNewInstances (def 1)
 
   env$ctrl = makeTuneControlIrace(
@@ -110,7 +110,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
                     # Irace's time constraint works by first estimating the
                     # average solution time and then estimates the remaining
                     # budget (number of evals) by dividing maxTime by
-                    # average runtime. 
+                    # average runtime.
       softRestartThreshold = 1e-3,  # when to soft restart b/c vals too similar
       minNbSurvival = minNbSurvival,
       mu = mu,
@@ -129,7 +129,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
       impute.val = generateRealisticImputeVal(measure, learner, task),
       n.instances = 100,
       log.fun = logFunQuiet)  # make our life easy for now
-  
+
   # we do the following to imitade mlr::tuneParams()
   env$opt.path = mlr:::makeOptPathDFFromMeasures(getSearchspace(env$learner),
       list(env$measure), include.extra = env$ctrl$tune.threshold)
@@ -142,7 +142,7 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   # hard time limit, to be enforced even when progress may be lost. This will be
   # set by amoptimize.amirace
   env$hardTimeout = 0
-  
+
   # we use some dark magic to run irace with our custom budget
   iraceWrapper = function(scenario, parameters, ...) {
     if (exists("iraceResults", envir = env)) {
@@ -208,12 +208,12 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
 
       scenario$nbExperimentsPerIteration = expPerIter(iraceResults)
       iraceResults$scenario$nbExperimentsPerIteration = expPerIter(iraceResults)
-      
+
       # remainingBudget must be positive on first iteration, and negative on
       # second.
       iraceResults$state$remainingBudget = 1
       save(iraceResults, file = scenario$recoveryFile)
-      
+
       # perform iraceFunction as a kind of transaction: If it is aborted due to
       # timeout, we return the old env$res and reinstate the old env$opt.path.
       optPathBackup = deepcopy(env$opt.path)
@@ -233,9 +233,9 @@ amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
           iraceResults$state$experimentsUsedSoFar - evals.zero
       env$usedbudget["walltime"] =
           as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
-      
+
       env$iraceResults = iraceResults
-      
+
       if (stopcondition(env$stepbudget, env$usedbudget)) {
         # since we are guaranteed to have finished one iteration, this is never
         # empty *I hope*
@@ -265,7 +265,7 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   env$usedbudget = c(walltime = 0, evals = 0)
   curtime = proc.time()[3]
   env$hardTimeout = deadline + curtime
-  
+
   on.exit(quickSuspendInterrupts({
             myAssignInNamespace("irace", env$iraceOriginal, "irace")
           }))
@@ -281,7 +281,9 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
             as.chars = TRUE),
         digits = .Machine$integer.max)
   }
-  
+  ctrl = env$ctrl
+  ctrl$extra.args$show.irace.output = verbosity.traceout(verbosity)
+
   tryCatch({
       env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
           list(env$measure), getSearchspace(env$learner), env$ctrl,
@@ -296,7 +298,7 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   # FIXME: why was this here? It interferes with my 'rollback' mechanism in
   # iraceWrapper
   # env$opt.path = env$tuneresult$opt.path
-  
+
   # the following avoids endless restarts when hardTimeout is hit.
   env$usedbudget["walltime"] = proc.time()[3] - curtime
   env$usedbudget
