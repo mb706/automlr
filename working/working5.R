@@ -19,6 +19,10 @@ devtools::test("..", filter = "wrappers")
 devtools::test("..", filter = "taskbuilding")
 devtools::test("..", filter = "trafos")
 
+smalltests = c("aux", "errors", "paramhandling", "searchspacedefs", "coltypes",
+  "requirements", "wrappers", "trafos")
+
+sapply(smalltests, devtools::test, pkg = "..")
 
 devtools::test("..", filter = "automlr_random")
 devtools::test("..", filter = "automlr_mbo")

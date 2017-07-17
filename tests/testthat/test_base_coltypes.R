@@ -512,6 +512,17 @@ test_that("targettype pseudoparameter is set as expected", {
 
   l = blt(list(nlr), NumericsTask)
 
-  checkLearnerBehaviour(l, NumericsTask, list(int1 = 1), list())
+  checkLearnerBehaviour(l, NumericsTask, list(), "NumericsLearner",
+    list(int1 = 1), list())
+
+  tdat = getTaskData(NumericsTask)
+  tdat$fac.1 = factor(c("a", "b", "c", "b"))
+  NTask2 = makeClassifTask("NumericsTask2", tdat, "fac.1")
+
+  l = blt(list(nlr), NTask2)
+
+  checkLearnerBehaviour(l, NTask2, list(), "NumericsLearner",
+    list(int1 = 0), list())
+
 
 })
