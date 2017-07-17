@@ -2,7 +2,7 @@
 * Introduction
 *automlr* is an R-package for *automatically* configuring *mlr* machine learning algorithms so that they perform well. It is designed for simplicity of use and able to run with minimal user intervention.
 
-~automlr~ is currently under development. You can see the current status in the 'develop' branch, but that branch may or may not be functional.
+~automlr~ is currently under development. You can see the current status in the [[https://github.com/mlr-org/automlr/tree/develop]['develop' branch]], but that branch may or may not be functional.
 
 * What does ~automlr~ offer?
 ~automlr~ complements ~mlr~ to make optimization over multiple learners and their respective hyperparameters possible. It offers:
