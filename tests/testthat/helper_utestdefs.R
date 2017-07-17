@@ -55,7 +55,7 @@ MissingsNumericsFactorsTask = createTestClassifTask("MissingsNumericsFactorsTask
 MissingsNumericsOrderedTask = createTestClassifTask("MissingsNumericsOrderedTask", 200, nNumeric = 3, nOrdered = 3, missings = TRUE)
 
 NumericsLearner = autolearner(
-    testLearner("NumericsLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass")),
+    testLearner("NumericsLearner", makeParamSet(predefParams$int1), c("numerics", "twoclass", "multiclass")),
     list(sp("int1", "int", c(0, 10))))
 
 FactorsLearner = autolearner(

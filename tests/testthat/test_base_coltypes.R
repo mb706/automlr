@@ -499,3 +499,19 @@ pvs = list(selected.learner = "AllLearner",
 
 
 })
+
+
+test_that("targettype pseudoparameter is set as expected", {
+
+  nlr = NumericsLearner
+  nlr$searchspace = list(
+      sp("int1", "int", c(0, 0),
+        req = quote(automlr.targettype == "multiclass")),
+      sp("int1.AMLRFIX1", "int", c(1, 1),
+        req = quote(automlr.targettype == "twoclass")))
+
+  l = blt(list(nlr), NumericsTask)
+
+  checkLearnerBehaviour(l, NumericsTask, list(int1 = 1), list())
+
+})

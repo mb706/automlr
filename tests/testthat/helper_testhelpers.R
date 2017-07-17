@@ -240,7 +240,7 @@ blt = function(learners, task) {
 isFeasibleNoneMissing = function(par, x) {
   nalist = rep(NA, length(par$pars))
   names(nalist) = getParamIds(par)
-  isFeasible(par, insert(nalist, x))
+  isFeasible(par, as.list(insert(nalist, x)))
 }
 
 isFeasibleMissingPossible = function(ps, x) {
