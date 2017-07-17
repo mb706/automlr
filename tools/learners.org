@@ -1007,7 +1007,7 @@
    - abstol :: 0.0001
    - reltol :: 1e-8
 **** Changed (fixed) Parameters:
-   - maxit :: 5000: limit number of iters
+   - maxit :: 500: limit number of iters
    - MaxNWts :: 100000: maximum number of weights. Maybe change this to abort slow runs prematurely
    - trace :: FALSE: no output
 *** classif.multinom
