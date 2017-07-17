@@ -36,6 +36,9 @@ amgetprior = function(env) {
 #' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
+#' @param opt [\code{AutomlrBackendConfig}]\cr
+#'   Options given for the backend. This is a list returned by a function that
+#'   was registered for the backend using \code{\link{registerBackend}}.
 #' @param prior [any]\cr
 #'   The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner [\code{Learner}]\cr
@@ -44,9 +47,11 @@ amgetprior = function(env) {
 #'   The task to optimize the \code{Learner} over.
 #' @param measure [\code{Measure}]\cr
 #'   The measure to optimize.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Output options.
 #' 
 #' @return \code{NULL}
-amsetup= function(env, prior, learner, task, measure) {
+amsetup= function(env, opt, prior, learner, task, measure, verbosity) {
   UseMethod("amsetup")
 }
 
@@ -60,12 +65,18 @@ amsetup= function(env, prior, learner, task, measure) {
 #'   The private data of this backend.
 #' @param stepbudget [\code{numeric}]\cr
 #'   The budget for this optimization step with one or several of the entries
-#'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
-#'   \code{\link{automlr}} for details.
+#'   \code{walltime} and \code{evals}. See \code{\link{automlr}} for details.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Output options.
+#' @param deadline [\code{numeric(1)}]\cr
+#'   The number of seconds of runtime that this call should not exceed. While
+#'   the time budget gives a soft limit and tries to finish calculations that
+#'   have started by the time the budget is spent, this is a hard limit which
+#'   should be kept as closely as possible, even if it means throwing away data.
 #' 
 #' @return [\code{numeric(4)}]
 #' The budget spent during this invocation.
-amoptimize = function(env, stepbudget) {
+amoptimize = function(env, stepbudget, verbosity, deadline) {
   UseMethod("amoptimize")
 }
 

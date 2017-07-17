@@ -1,5 +1,33 @@
 
+mboSaveMode = TRUE
 
+#' @title mbo backend configuration
+#' 
+#' @description
+#' Create an \code{AutomlrBackendConfig} object that can be fed to
+#' \code{\link{automlr}} to perform optimization with the "mbo" backend.
+#' 
+#' @param focussearch.restarts [\code{integer(1)}]\cr
+#'   number of restarts to perform in focussearch surrogate model optimizer
+#' @param focussearch.maxit [\code{integer(1)}]\cr
+#'   number of iterations for one focussearch round
+#' @param focussearch.points [\code{integer(1)}]\cr
+#'   number of points to sample in focussearch.
+#' @param mbo.save.mode [\code{logical(1)}]\cr
+#'   Simplify search space for mbo backend. You should probably not change the
+#'   default.
+#' @param resampling [\code{ResampleDesc}]\cr
+#'   resampling to evaluate model performance.
+#' @export
+makeBackendconfMbo = registerBackend("mbo",
+    function(focussearch.restarts = 1, focussearch.maxit = 5,
+        focussearch.points = 1000, mbo.save.mode = TRUE, resampling = hout) {
+      assertCount(focussearch.restarts)
+      assertCount(focussearch.maxit)
+      assertCount(focussearch.points)
+      assertClass(resampling, "ResampleDesc")
+      argsToList()
+    })
 
 amaddprior.ammbo = function(env, prior) {
   NULL
@@ -9,42 +37,55 @@ amgetprior.ammbo = function(env) {
   NULL
 }
 
-amsetup.ammbo = function(env, prior, learner, task, measure) {
+amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("mlrMBO", why = "optMBO", default.method = "load")
-  # fix the dumb mlrMBO bug
-  mlrMBO:::.onAttach()
   requirePackages("smoof", why = "optMBO", default.method = "load")
   # FIXME things that could be variable:
-  #  resampling: holdout, cv, or something adaptive?
   #  infill control: focussearch, something else? how many points?
-  env$runtimeEnv = environment()
   
-  zeroWalltime = 0
-  zeroModeltime = 0
-  zeroEvals = 0
+  env$zeroWalltime = 0
+  env$zeroEvals = 0
   
   # the following must be set here since mbo() creates the initial design,
   # which queries the budget an numcpus.
   numcpus = parallelGetOptions()$settings$cpus
   numcpus[is.na(numcpus)] = 1
   
-  budget = 0
+  env$budget = 0
+  
+  env$hardTimeout = Inf  # for the init evaluations
   
   isOutOfBudget = function(opt.state) {
-    stopcondition(budget, spentBudget(opt.state, parent.env(environment())))
+    stopcondition(env$budget, spentBudget(opt.state, env))
   }
   
   objectiveFun = function(x) {
+    origx = x
     if (mboSaveMode) {
-      x = complicateParams(x, learner$searchspace)
+      x = complicateParams(x, getSearchspace(learner))
     } else {
       x = removeMissingValues(x)
     }
     l = setHyperPars(learner, par.vals = x)
-    resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr
+
+    hardTimeoutRemaining = env$hardTimeout - proc.time()[3]
+    
+    if (verbosity.traceout(verbosity)) {
+      cat("Evaluating function:\n")
+      outlist = removeMissingValues(origx)
+      for (n in names(outlist)) {
+        catf("%s: %s; ", n, outlist[[n]])
+      }
+      cat("\n")
+    }
+
+    rwt = runWithTimeout(
+        resample(l, task, resDesc, list(measure), show.info = FALSE)$aggr,
+        hardTimeoutRemaining, throwError = TRUE)
+    rwt$result
   }
   
-  usedParset = learner$searchspace
+  usedParset = getSearchspace(learner)
   if (mboSaveMode) {
     usedParset = simplifyParams(usedParset)
   }
@@ -59,7 +100,7 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
     }
   }
   
-  resDesc = makeResampleDesc("Holdout")
+  resDesc = opt$resampling
   objective = smoof::makeSingleObjectiveFunction(
       name = "automlr learner optimization",
       id = "automlr.objective",
@@ -75,11 +116,11 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   
   control = mlrMBO::makeMBOControl(impute.y.fun = imputefun)
   control = mlrMBO::setMBOControlInfill(control, opt = "focussearch",
-      opt.focussearch.points = mbo.focussearch.points,
-      opt.focussearch.maxit = mbo.focussearch.maxit,
-      opt.restarts = mbo.focussearch.restarts)
+      opt.focussearch.points = opt$focussearch.points,
+      opt.focussearch.maxit = opt$focussearch.maxit,
+      opt.restarts = opt$focussearch.restarts)
   control = mlrMBO::setMBOControlTermination(control, iters = NULL,
-      more.stop.conds = list(function(opt.state) {
+      more.termination.conds = list(function(opt.state) {
             if (isOutOfBudget(opt.state)) {
               list(term = TRUE, message = "automlr term", code = "iter")
             } else {
@@ -89,19 +130,35 @@ amsetup.ammbo = function(env, prior, learner, task, measure) {
   
   
   
-  mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control)
+  mboLearner = mlrMBO:::checkLearner(NULL, usedParset, control, objective)
   mboLearner$config = list(on.learner.error = "stop",
-      on.learner.warning = "warn", show.learner.output = TRUE)
-  mboLearner = makePreprocWrapperAm(mboLearner, ppa.impute.factor = "distinct",
-      ppa.impute.numeric = "median")
+      on.learner.warning = "warn",
+      show.learner.output = verbosity.traceout(verbosity))
+  if (any(c("factors", "ordered") %in% getLearnerProperties(mboLearner))) {
+    mboLearner = cpoFixFactors() %>>%
+        cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
+        cpoImputeConstant("MISSING", affect.type = c("ordered", "factor"),
+            make.dummy.cols = FALSE) %>>%
+        cpoDropConstants() %>>%
+        mboLearner
+  } else {
+    mboLearner = cpoFixFactors() %>>%
+        cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
+        cpoDummyEncode(TRUE) %>>%
+        cpoDropConstants() %>>%
+        mboLearner
+  }
   
   myMBO = mlrMBO::mbo
   environment(myMBO) = new.env(parent = asNamespace("mlrMBO"))
   environment(myMBO)$mboFinalize2 = identity
   env$opt.state = myMBO(objective, learner = mboLearner, control = control,
-      show.info = TRUE)
+      show.info = verbosity.traceout(verbosity))
+  parent.env(env$opt.state$opt.path$env) = emptyenv()
+  
+  env$zeroWalltime = as.numeric(env$opt.state$time.used, units = "secs")
+  env$zeroEvals = getOptPathLength(env$opt.state$opt.path)
   # clean up environment, it is used in objectiveFun().
-  rm(myMBO, prior, env)
 }
 
 
@@ -114,173 +171,42 @@ amresult.ammbo = function(env) {
       result = mboResult)
 }
 
-amoptimize.ammbo = function(env, stepbudget) {
+amoptimize.ammbo = function(env, stepbudget, verbosity, deadline) {
   # initialize for spent budget computation
-  zero = env$runtimeEnv
-  zero$numcpus = parallelGetOptions()$settings$cpus
-  zero$numcpus[is.na(zero$numcpus)] = 1
-  zero$budget = stepbudget
+  starttime = proc.time()[3]
   
-  env$opt.state = mlrMBO:::mboTemplate.OptState(env$opt.state)
+  # FIXME: right now, the infill crit optimization does not respect the
+  # deadline. It is possible to change this, by changing the termination
+  # criterion of the mbo run so that only one iteration gets performed per
+  # call, and additionally creating backups of the opt.state before each call.
+  # I will choose the elegant (= quick) over the correct solution here though.
+  env$hardTimeout = starttime + deadline
   
-  spent = spentBudget(env$opt.state, zero)
-  zero$zeroWalltime %+=% spent["walltime"]
-  zero$zeroModeltime %+=% spent["modeltime"]
-  zero$zeroEvals %+=% spent["evals"]
+  env$budget = stepbudget
   
+  runWithTimeout(withCallingHandlers(
+          mlrMBO:::mboTemplate.OptState(env$opt.state),
+          warning = function(w) {
+            if (any(grepl("Empty factor levels were dropped for columns", w))) {
+              invokeRestart("muffleWarning")
+            }
+          }), deadline, backend = "native")
+  spent = spentBudget(env$opt.state, env)
+  if ("walltime" %in% names(spent)) {
+    spent["walltime"] = proc.time()[3] - starttime  # b/c of possible timeout
+  }
+  env$zeroWalltime %+=% spent["walltime"]
+  env$zeroEvals %+=% spent["evals"]
   spent
 }
 
 spentBudget = function(opt.state, zero) {
   spent = numeric(0)
   totalWallTime = as.numeric(opt.state$time.used, units = "secs")
-  totalModelTime = sum(getOptPathExecTimes(opt.state$opt.path))
   spent["walltime"] = totalWallTime - zero$zeroWalltime
-  spent["cputime"] = spent["walltime"] * zero$numcpus
-  spent["modeltime"] = totalModelTime - zero$zeroModeltime
   spent["evals"] = getOptPathLength(opt.state$opt.path) - zero$zeroEvals
   spent
 }
 
-# convert discrete to discrete-string parameters
-# also convert logical to discrete parameters
-untypeParams = function(parset) {
-  parset$pars = lapply(parset$pars, function(par) {
-        if (!is.null(par$values)) {
-          par$values = as.list(names(par$values))
-          names(par$values) = par$values
-          par$type = switch(par$type,
-              logical = "discrete",
-              logicalvector = "discretevector",
-              par$type)
-        }
-        par
-      })
-  parset
-}
 
-# convert vector parameters to multiple nonvector parameters
-unvectorParams = function(parset) {
-  parset$pars = unlist(recursive = FALSE, lapply(parset$pars, function(par) {
-            if (!ParamHelpers:::isVector(par)) {
-              return(list(par))
-            }
-            lapply(seq_len(par$len), function(i) {
-                  parcpy = par
-                  parcpy$len = 1L
-                  parcpy$id = paste0(parcpy$id, i)
-                  if (!is.null(parcpy$lower)) {
-                    parcpy$lower = parcpy$lower[i]
-                  }
-                  if (!is.null(parcpy$upper)) {
-                    parcpy$upper = parcpy$upper[i]
-                  }
-                  parcpy$type = switch(parcpy$type,
-                      integervector = "integer",
-                      numericvector = "numeric",
-                      discretevector = "discrete",
-                      stopf("Unsupported parameter type '%s'", parcpy$type))
-                  parcpy
-                })
-          }))
-  parset
-}
-
-simplifyParams = function(parset) {
-  parset = mboRequirements(parset)
-  parset = untypeParams(parset)
-  parset = unvectorParams(parset)
-  parset
-}
-
-# undo the 'simplifyParams' operation
-complicateParams = function(params, origparset) {
-  simpleTypeOrig = untypeParams(origparset)
-  
-  types = getParamTypes(simpleTypeOrig, df.cols = TRUE)
-  for (parin in seq_along(params)) {
-    params[[parin]] = switch(types[parin],
-        integer = as.integer,
-        numeric = as.numeric,
-        factor = as.character,
-        stop("complicateParam got bad type"))(params[[parin]])
-  }
-  
-  params = as.data.frame(params, stringsAsFactors = FALSE)
-  params = dfRowsToList(params, simpleTypeOrig)[[1]]
-  
-  params = removeMissingValues(params)
-  
-  ret = lapply(names(params), function(parname) {
-        vals = origparset$pars[[parname]]$values
-        type = origparset$pars[[parname]]$type
-        par = params[[parname]]
-        if (is.null(vals)) {
-          # don't change anything
-          return(par)
-        }
-        switch(type,
-            logicalvector = unlist(vals[unlist(par)]),
-            logical = vals[[par]],
-            discretevector = lapply(par, function(x) vals[[x]]),
-            discrete = vals[[par]])
-      })
-  names(ret) = names(params)
-  ret
-}
-
-# adapt requirements to parameter simplification we are doing above.
-mboRequirements = function(searchspace) {
-  replacements = list()
-  for (param in searchspace$pars) {
-    type = param$type
-    if (type %in% c("numeric", "integer") ||
-        (type == "discrete" &&
-          all(sapply(param$values, test_character, any.missing = FALSE)))) {
-      # int, num and character nonvector were not affected
-      next
-    }
-    replaceStr = "c(%s)"
-    if (ParamHelpers:::isVector(param)) {
-      if (!test_integer(param$len, len = 1, lower = 1, any.missing = FALSE)) {
-        stopf("Parameter '%s' is a vector param with undefined length'",
-            param$id)
-      }
-      replaceStr = sprintf(replaceStr,
-          paste0(param$id, seq_len(param$len), collapse = ", "))
-    } else {
-      replaceStr = sprintf(replaceStr, param$id)
-    }
-    replaceQuote = asQuoted(replaceStr)
-    if (isDiscrete(param)) {
-      objectText = capture.output(dput(param$values))
-      fullObject = try(asQuoted(collapse(objectText, sep = "\n")),
-          silent = TRUE)
-      if (is.error(fullObject)) {
-        fullObject = substitute(stop(sprintf(
-                    "Parameter %s cannot be used in requirements.", pname)),
-            list(pname = param$id))
-      }
-      insert =  list(fullObject = fullObject, index = replaceQuote)
-      template = switch(type,
-          # we index into fullObject to get a list
-          discretevector = quote(fullObject[index]),
-          # unlike for 'discretevector', we want to get a vector out of this.
-          logicalvector =  quote(unlist(fullObject[index])),
-          # index is a single element, and we want to get a single element.
-          quote(fullObject[[index]]))
-      replaceQuote = do.call(substitute, list(template, insert))
-    }
-    replacements[[param$id]] = replaceQuote
-  }
-  for (param in names(searchspace$pars)) {
-    req = searchspace$pars[[param]]$requires
-    if (is.null(req)) {
-      next
-    }
-    newreq = replaceRequires(req, replacements)
-    searchspace$pars[[param]]$requires = deExpression(newreq)
-  }
-  searchspace
-}
 

@@ -1,185 +1,179 @@
 #!/usr/bin/env python
-
 # coding: utf-8
-
-# In[39]:
-
-import itertools
+from collections import OrderedDict
 import re
-
-
-# In[40]:
 
 outfile = "../R/mlrLearners.R"
 infile = "learners.org"
 prefixfile = "learners.prefix"
 
 
-# In[41]:
+def splitList(slist, pattern):
+    """Split a list of strings into list of lists of strings, divided at regex 'pattern'"""
+    matchindices = [i for i in range(len(slist)) if re.match(pattern, slist[i])]
+    matchindices.append(len(slist))
+    start = matchindices.pop(0)
+    result = OrderedDict()
+    for i in matchindices:
+        assert slist[start] not in result
+        result[slist[start]] = slist[(start + 1):i]
+        start = i
+    return result
 
-def reduceDescription(stringlist, info, debug=False):
-#    print(info)
-    varis = []
-    fixis = []
-    defis = []
-    state = "pre"
-    dstring = ""
-    for line in stringlist:
-        if not line:
-            continue
-#        print(line)
-        if state == "exiting":  # should have exited already
-            raise Error("should have exited. %s" % (info,))
-        if debug:
-            dstring = line.strip(' -').split("::")[1].strip()
-            if dstring.find("MANUAL") < 0:  # if not manual, can strip some meta info
-                dstring = dstring.split(":", maxsplit=1)[1]
-                dstring = re.sub(r"\{[^}]*\}", "", dstring)
-                dstring = '  # ' + re.sub(r"[^a-zA-Z]req:[^:]*", "", dstring).strip()
-            else:
-                dbstring = ""
-        if line == "**** Variable Parameters:":
-            assert(not varis)
-            state = "variable"
-        elif line == "**** Default Parameters:":
-            assert(not defis)
-            state = "default"
-        elif line == "**** Changed (fixed) Parameters:":
-            assert(not fixis)
-            state = "fixed"
-        elif line.startswith("**** "):
-            print("got unknown context line %s, continuing" % (line,))
-        if line.startswith("**** "):
-            continue
-        if line.startswith("** "):
-            state = "exiting"
-            continue
-        if state == "pre":
-            if line.startswith('   -'):
-                raise Error("found indentation in pre context")
-            else:
-                continue
-        assert(line.startswith('   -'))
-        if state == "variable":
-            varis.append(parsevari(line) + dstring)
-        elif state == "fixed":
-            fixis.append(parsefixi(line) + dstring)
-        elif state == "default":
-            defis.append(parsedefi(line) + dstring)
+
+def parseVersion(meta):
+    m = re.search(r"VERSION\{([^}]*)\}", meta)
+    if m:
+        return 'version = "%s"' % (m.group(1),)
+    return None
+
+
+def parseSpecial(meta):
+    isDummy = "DUMMY" in meta
+    isInject = "INJECT" in meta
+    if isDummy and isInject:
+        raise Exception("Meta %s contained DUMMY and INJECT both." % (meta,))
+    if isDummy:
+        return 'special = "dummy"'
+    elif isInject:
+        return 'special = "inject"'
+    else:
+        return None
+
+
+def parseRequires(meta):
+    m = re.search(r"req: *(.*)$", meta)
+    if m:
+        return 'req = quote(%s)' % (m.group(1),)
+    return None
+
+
+def parseId(meta):
+    m = re.search(r"(?<!VERSION){([^}]*)\}", meta)
+    if m:
+        return 'id = "%s"' % (m.group(1),)
+    return None
+
+
+def parseLen(meta):
+    m = re.search(r"len\(([^)]*)\)", meta)
+    if m:
+        return 'dim = %d' % (int(m.group(1)),)
+    return None
+
+
+def parseRange(varrange, formulae, deftype):
+    assert deftype in ["var", "fix", "def"]
+    varrange = varrange.strip()
+
+    trafostring = None
+
+    nummatch = r"(?P<int>int)? *(?P<x>[-+0-9]*\.?[0-9][-+0-9e]*|#)?\.\.(?P<y>[-+0-9]*\.?[0-9][-+0-9e]*|#)? *"
+    nummatch += r"(\( *(?P<x0>[-+0-9]*\.?[0-9][-+0-9e]*|#)\.\.(?P<y0>[-+0-9]*\.?[0-9][-+0-9e]*|#) *\))? *"
+    nummatch += r"(?P<trafo>(inv)?exp)?"
+    mnum = re.search(nummatch, varrange)
+    if mnum:
+        # numeric range
+        assert deftype == "var"
+        dic = mnum.groupdict()
+        vartype = "int" if dic["int"] else "real"
+        for entry in ["x", "y", "x0", "y0"]:
+            if dic[entry] == "#":
+                dic[entry] = "quote(%s)" % (formulae.pop(0),)
+            elif dic[entry] is not None:
+                # check we actually have numbers
+                try:
+                    if vartype == "int":
+                        int(dic[entry])
+                    else:
+                        float(dic[entry])
+                except ValueError:
+                    raise Exception("Range %s contained bad numbers" % (varrange,))
+        if dic["x0"] is not None:
+            dic["x"] = dic["x0"]
+            dic["y"] = dic["y0"]
+        assert dic["x"] is not None
+        assert dic["y"] is not None
+        rangestring = "c(%s, %s)" % (dic["x"], dic["y"])
+        if dic["trafo"]:
+            trafostring = '"%s"' % (dic["trafo"],)
+    elif deftype == "var":
+        assert "#" not in varrange
+        assert not formulae
+        values = [x.strip() for x in varrange.split(",")]
+        assert len(values) > 0
+        assert all(re.match(r"^[-+a-zA-Z._0-9]*$", x) for x in values)
+        if set(values) == set(["TRUE", "FALSE"]):
+            vartype = "bool"
+            rangestring = None
         else:
-            print("out of state: '%s' in %s" % (line, info))
-    return (varis, defis, fixis)
-
-
-# In[42]:
-
-def parsevari(line):
-    sides = line.strip(" -").split("::")
-    assert(len(sides) == 2)
-    name = sides[0].strip()
-    info = sides[1].strip()
-    if info.find("MANUAL") >= 0:
-        inner = re.search("MANUAL\{[^}]*\}", info)
-        if inner:
-            return inner.group()[6:].strip("{}")
+            vartype = "cat"
+            if not all(re.match(r"^[-+]?[0-9.][-+e0-9.]*$", x) for x in values):
+                values = ['"%s"' % (x,) for x in values]
+            rangestring = "c(%s)" % (", ".join(values),)
+    else:
+        assert "," not in varrange
+        vartype = deftype
+        if varrange == "#":
+            assert formulae == [""]
+            assert deftype == "def"
+            rangestring = '"##"'
         else:
-            return '## sp(%s, ...) # %s' % tuple(sides)
-    idmatch = re.search(r"\{[^}]*\}", info)
-    if idmatch:
-        idstring = ', id = "%s"' % (idmatch.group().strip("{}"),)
-    else:
-        idstring = ""
-    if info.find("DUMMY") >= 0:
-        dummystring = ', special = "dummy"'
-        assert(info.find("INJECT") == -1)
-    elif info.find("INJECT") >= 0:
-        dummystring = ', special = "inject"'
-    else:
-        dummystring = ""
-    reqposition = info.find("req:")
-    if reqposition >= 0:
-        reqstring = info[reqposition + 4:]
-        reqstring = ", req = quote(%s)" % reqstring.strip()
-    else:
-        reqstring = ""
-    lenmatch = re.search(r"len\([0-9]+\)", info)
-    if lenmatch:
-        lenstring = ', dim = %s' % (lenmatch.group().strip("len()"),)
-    else:
-        lenstring = ""
-    if info.split(":")[0].find("..") >= 0:  # range
-        intness = info.split(":")[0].find("int") >= 0
-        info = info.strip("int ")
-        rng = info.split(" ")[0].strip(" ,:").split("..")
-        isexp = len(info.split(" ")) > 1 and info.split(" ")[1].find("exp") >= 0
-        return 'sp("%s", "%s", c(%s, %s)%s%s%s%s%s)' % (name,
-                                                    "int" if intness else "real",
-                                                    rng[0], rng[1], ', "exp"' if isexp else '',
-                                                    idstring, dummystring, reqstring, lenstring)
-    values = [x.strip() for x in info.split(":")[0].split(",")]
-    if len(values) == 2 and "TRUE" in values and "FALSE" in values:
-        return 'sp("%s", "bool"%s%s%s%s)' % (name, idstring, dummystring, reqstring, lenstring)
-    if not all(re.match(r"^[0-9.][-+e0-9.]*$", x) for x in values):
-        values = ['"%s"' % (x,) for x in values]
-    return 'sp("%s", "cat", c(%s)%s%s%s%s)' % (name, ", ".join(values),
-                                             idstring, dummystring, reqstring, lenstring)
+            assert "#" not in varrange
+            assert not formulae
+            if varrange[-1] == "!":
+                varrange = varrange[:-1]
+                assert deftype == "def"
+                vartype = "fixdef"
+            assert "!" not in varrange
+            if varrange != "TRUE" and varrange != "FALSE" and varrange != "NULL" and \
+               not re.match(r"^[-+]?[0-9.][-+e0-9.]*", varrange):
+                varrange = '"%s"' % (varrange,)
+            rangestring = varrange
+    vartype = '"%s"' % (vartype,)
+    return (vartype, rangestring, trafostring)
 
 
-# In[43]:
+def parseVarLine(line, deftype):
+    try:
+        splits = line.split("#")
+        line = "#".join(splits[::2])
+        formulae = splits[1::2]
+        matchstring = r"   - (?P<varname>[-a-zA-Z._0-9]+) :: (?P<range>[^:]*)(: (?P<meta>[^#]*))?$"
+        m = re.match(matchstring, line)
+        if not m:
+            raise Exception("Line %s didn't match." % (line,))
+        varname = '"%s"' % (m.groupdict()["varname"],)
+        varrange = m.groupdict()["range"]
+        varmeta = m.groupdict()["meta"]
+        if varmeta is None:
+            varmeta = ""
+        vartype, varrange, vartrafo = parseRange(varrange, formulae, deftype)
 
-def parsefixi(line):
-    return parseone(line, "fix")
-def parsedefi(line):
-    return parseone(line, "def")
+        inserts = [varname, vartype, varrange, vartrafo, parseId(varmeta), parseSpecial(varmeta),
+                   parseRequires(varmeta), parseLen(varmeta), parseVersion(varmeta)]
 
-
-# In[44]:
-
-def parseone(line, tp):
-    sides = line.strip(" -").split("::")
-    assert(len(sides) == 2)
-    name = sides[0].strip()
-    info = sides[1].strip()
-    if info.find("MANUAL") >= 0:
-        inner = re.search("MANUAL\{[^}]*\}", info)
-        if inner:
-            return inner.group()[6:].strip("{}")
-        else:
-            return '## sp(%s, ...) # %s' % tuple(sides)
-    assert(info.find('req:') == -1)
-    if info.find("DUMMY") >= 0:
-        dummystring = ', special = "dummy"'
-        assert(info.find("INJECT") == -1)
-    elif info.find("INJECT") >= 0:
-        dummystring = ', special = "inject"'
-    else:
-        dummystring = ""
-    assert(info.find('ONNA') == -1)
-    assert(not re.search(r"\{[^}]*\}",info))
-    val = re.findall(r"[-+_a-zA-Z0-9.]+", info)[0]
-    if not(val == "TRUE" or val == "FALSE" or val == "NULL"):
-        if not re.match(r"^[0-9.][-+e0-9.]*", val):
-            val = '"%s"' % val
-    return 'sp("%s", "%s", %s%s)' % (name, tp, val, dummystring)
+        return 'sp(%s)' % (", ".join(ins for ins in inserts if ins is not None),)
+    except Exception:
+        print("Line %s generated error" % (line,))
+        raise
 
 
-# In[45]:
-
-def rdi(i):
-    return reduceDescription(clisted[i], cheadings[i])
-
-
-# In[46]:
-
-def makeDS(content):
-    return "            " + ",\n            ".join(content)
-def completeOutput(includeManual):
-    manuals = []
-    nonmanuals = []
-    for cl, ch in zip(clisted, cheadings):
-        varis, defis, fixis = reduceDescription(cl, ch)
-        hasmanual = any(x.startswith("##") for x in itertools.chain(varis, defis, fixis))
-        completeString = '    autolearner("%s"' % ch
+def completeOutput(learners):
+    def makeDS(content):
+        return "            " + ",\n            ".join(content)
+    defstrings = []
+    for lname, lstrings in learners.items():
+        lname = lname.strip("* ")
+        lsplit = splitList(lstrings, r"\*\*\*\* ")
+        varidx = '**** Variable Parameters:'
+        fixidx = '**** Changed (fixed) Parameters:'
+        defidx = '**** Default Parameters:'
+        assert set(lsplit).issubset(set([varidx, fixidx, defidx]))
+        varis = [parseVarLine(l, "var") for l in lsplit[varidx]] if varidx in lsplit else None
+        fixis = [parseVarLine(l, "fix") for l in lsplit[fixidx]] if fixidx in lsplit else None
+        defis = [parseVarLine(l, "def") for l in lsplit[defidx]] if defidx in lsplit else None
+        completeString = '    autolearner("%s"' % (lname,)
         css = []
         if varis:
             css.append("# ** vp\n" + makeDS(varis))
@@ -191,87 +185,29 @@ def completeOutput(includeManual):
         if cscomplete:
             completeString += ",\n        list(\n" + cscomplete + ")"
         completeString += ")"
-        if hasmanual:
-            manuals.append(completeString)
-        else:
-            nonmanuals.append(completeString)
-    retstring = "mlrLearnersNoWrap = makeNamedAlList(\n"
-    if not includeManual:
-        manuals = []
-    if manuals:
-        retstring += "##### some adjustment required:\n" + ",\n".join(manuals)
-    if manuals and nonmanuals:
-        retstring += "\n"
-    if nonmanuals:
-        retstring += "##### automatically generated:\n" + ",\n".join(nonmanuals)
+        defstrings.append(completeString)
+    retstring = "mlrLearnersNoWrap = makeNamedAlList(\n##### automatically generated:\n"
+    retstring += ",\n".join(defstrings)
     retstring += ")"
     return retstring
-        
 
 
-# In[47]:
-
-c = list(x.strip('\n') for x in open(infile))
-for i, line in enumerate(c):
-    if line.startswith("* classif"):
-        begin = i + 1
-    if line.startswith("* regr"):
-        end = i
-content = c[begin:end]
-clisted = [list(x[1]) for x in itertools.groupby(content, lambda x: x.startswith('*** ')) if not x[0]]
-del clisted[0]
-cheadings = [x.strip("* ") for x in content if x.startswith('*** ')]
+def makeLearners(cat):
+    learners = OrderedDict()
+    for subcat in splitList(cat, r"\*\* .*").values():
+        newlearners = splitList(subcat, r"\*\*\* .*")
+        for k, v in newlearners.items():
+            assert k not in learners
+            learners[k] = v
+    return learners
 
 
-# In[48]:
+filetext = list(x.strip('\n') for x in open(infile))
 
-f = open(outfile, "w")
-for l in open(prefixfile):
-    f.write(l)
-f.write(completeOutput(False))
+cat = splitList(filetext, r"\* .*")["* classif"]
 
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
-
-# In[ ]:
-
-
-
+if __name__ == "__main__":
+    with open(outfile, "w") as f:
+        for l in open(prefixfile):
+            f.write(l)
+        f.write(completeOutput(makeLearners(cat)))

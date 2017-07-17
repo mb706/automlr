@@ -1,4 +1,28 @@
 
+#' @title irace backend configuration
+#'
+#' @description
+#' Create an \code{AutomlrBackendConfig} object that can be fed to
+#' \code{\link{automlr}} to perform optimization with the "irace" backend.
+#'
+#' @param nbIterations [\code{integer(1)}]\cr
+#'   Thinning of sampling distribution happens as if irace expected to run for
+#'   \code{nbIterations} generations.
+#' @param newpopulation [\code{integer(1)}]\cr
+#'   Size of the population, \emph{additinal to} the \code{2 + log2(dimParams)}
+#'   elite size.
+#' @param resampling [\code{ResampleDesc}]\cr
+#'   resampling to evaluate model performance.
+#' @export
+makeBackendconfIrace = registerBackend("irace",
+    function(nbIterations = 10, newpopulation = 10,
+        resampling = hout) {
+      assertCount(nbIterations)
+      assertCount(newpopulation)
+      assertClass(resampling, "ResampleDesc")
+      argsToList()
+    })
+
 amaddprior.amirace = function(env, prior) {
   NULL
 }
@@ -7,31 +31,92 @@ amgetprior.amirace = function(env) {
   NULL
 }
 
-amsetup.amirace = function(env, prior, learner, task, measure) {
+noResTimeout = "Premature timeout: No result in irace."
+
+amsetup.amirace = function(env, opt, prior, learner, task, measure, verbosity) {
   requirePackages("irace", why = "optIrace", default.method = "load")
+  #try(attachNamespace("irace"), silent = TRUE)
   env$learner = learner
   env$task = task
   env$measure = measure
   env$rdesc = makeResampleDesc("Holdout")
-  
-  dimParams = getParamNr(learner$searchspace, TRUE)
-  
+
+  dimParams = getParamNr(getSearchspace(learner), TRUE)
+
   # the 'default', but I'm not taking chances
   minNbSurvival = as.integer(2 + log2(dimParams))
   mu = 5L
   firstTest = 5L
-  expPerIter = as.integer((irace.newpopulation + minNbSurvival + 1) *
-          (max(firstTest, mu) + 5))
+  eachTest = 1L
+
+  # expPerIter: how many experiments (evaluations) to perform during one
+  # iteration. If this value is too small, irace aborts prematurely. (This var
+  # will be called 'currentBudget' in irace)
+  # irace calculates the number of additional configurations to create in each
+  # iteration from this.
+  #
+  # 'mu' is really max(mu, firstTest)
+  # 'numInstances': the number of instances each configuration was evaluated on
+  #
+  # savedBudget <- numElites * numInstances
+  # 'savedBudget' because it counts the values which are already known
+  # n <- max(mu + eachTest * min(5, iter),
+  #          numInstances + elitistNewInstances [rounded up to next eachTest])
+  # (n is the number of evaluations per instance to expect.
+  #  grows as numInstances + 1)
+  #
+  # nbConfigurations <- floor((expPerIter + savedBudget) / n)
+  # ( around numElites ~ minNbSurvival plus a little)
+  # (used to be called nbCandidates)
+  #
+  # nbConfigurations must be > minSurvival (happens automatically if enough
+  #                                         elites survive)
+  #                          > numElites (this should automatically be true?)
+  #
+  # (nbConfigurations - numElites) * mu +
+  #     numElites * min(elitistNewInstances, mu)
+  #   must be <= expPerIter
+  # nbNewConfigurations <- nbConfigurations - numElites
+
+  # So reasoning backward:
+  # nbNewConfigurations should be opt$newpopulation
+  # -> nbConfiguration should be opt$newpopulation + minNbSurvival
+  # --> expPerIter must be
+  #     >= opt$newpopulation * mu + minNbSurvival * min(elitistNewInstances, mu)
+  #        since opt$newpopulation is calculated by subtracting the number of
+  #        elite configs (which can be smaller than minNbSurvival), this is
+  #     <= (opt$newpopulation + minNbSurvival) * mu
+  # -> expPerIter should be (opt$newpopulation + minNbSurvival) * n + 1
+  #     (ignoring savedBudget)
+  expPerIter = function(iraceResults) {
+    indexIter = iraceResults$state$indexIteration
+    eni = iraceResults$scenario$elitistNewInstances
+    targetInst = nrow(iraceResults$experiments) + eni
+
+    iraceN = max(firstTest + eachTest * min(5, indexIter),
+        ceiling((targetInst / eachTest) * eachTest))
+    expPerIter = (opt$newpopulation + minNbSurvival) * iraceN + 1L
+
+    effMu = max(mu, firstTest)
+    expPerIter = max(expPerIter, (opt$newpopulation + minNbSurvival) * effMu)
+  }
+  #expPerIter = as.integer((opt$newpopulation + minNbSurvival + 1) *
+  #        (max(firstTest, mu) + 5))
+
+  # could also be adapted: elitistLimit (def 2), elitistNewInstances (def 1)
 
   env$ctrl = makeTuneControlIrace(
-      timeBudget = 0,
-      timeEstimate = 0,
+      maxTime = 0,  # If we were to use irace's time constraint
+                    # Irace's time constraint works by first estimating the
+                    # average solution time and then estimates the remaining
+                    # budget (number of evals) by dividing maxTime by
+                    # average runtime.
+      softRestartThreshold = 1e-3,  # when to soft restart b/c vals too similar
       minNbSurvival = minNbSurvival,
       mu = mu,
-      nbCandidates = 0L,
       softRestart = TRUE,
       firstTest = firstTest,
-      eachTest = 1L,
+      eachTest = eachTest,
       testType = "friedman",
       confidence = 0.95,
       # We need to enter the main loop even though remainingBudget is 0:
@@ -39,14 +124,14 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
       # some seed matrix is generated in the beginning, so maxExperiments limits
       # the number of experiments possible with this object absolutely.
       maxExperiments = 100000L,
-      nbExperimentsPerIteration = expPerIter,
+      nbExperimentsPerIteration = -1,  # needs to be filled in ad hoc
+      nbConfigurations = minNbSurvival + opt$newpopulation,
       impute.val = generateRealisticImputeVal(measure, learner, task),
       n.instances = 100,
-      show.irace.output = TRUE,
       log.fun = logFunQuiet)  # make our life easy for now
-  
+
   # we do the following to imitade mlr::tuneParams()
-  env$opt.path = mlr:::makeOptPathDFFromMeasures(env$learner$searchspace,
+  env$opt.path = mlr:::makeOptPathDFFromMeasures(getSearchspace(env$learner),
       list(env$measure), include.extra = env$ctrl$tune.threshold)
 
   # the following generates the wrapper around irace::irace that checks our
@@ -54,87 +139,107 @@ amsetup.amirace = function(env, prior, learner, task, measure) {
   iraceFunction = irace::irace
   env$iraceOriginal = iraceFunction
 
-  # breaking more rules than a maths teacher with anger management problems:
-  environment(iraceFunction) = new.env(parent = asNamespace("irace"))
-  environment(iraceFunction)$recoverFromFile = iraceRecoverFromFileFix
+  # hard time limit, to be enforced even when progress may be lost. This will be
+  # set by amoptimize.amirace
+  env$hardTimeout = 0
 
-  # this is assuming we don't use the irace package's parallel functionality.
-  numcpus = parallelGetOptions()$settings$cpus
-  numcpus[is.na(numcpus)] = 1
   # we use some dark magic to run irace with our custom budget
-  iraceWrapper = function(tunerConfig, parameters, ...) {
-    modeltime.zero = sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE)
-    if (exists("tunerResults", envir = env)) {
+  iraceWrapper = function(scenario, parameters, ...) {
+    if (exists("iraceResults", envir = env)) {
       # 'env' is the backendprivatedata env.
-      # if tunerResults is in the environment then we are continuing, so we load
+      # if iraceResults is in the environment then we are continuing, so we load
       # the optimization state into the recover file
-      tunerResults = env$tunerResults
+      iraceResults = env$iraceResults
       # use the newly generated file
-      tunerResults$tunerConfig$logFile = tunerConfig$logFile
+      iraceResults$scenario$logFile = scenario$logFile
       # take this round's hookRun, not the one from file.
-      tunerResults$tunerConfig$hookRun = tunerConfig$hookRun
+      iraceResults$scenario$targetRunnerParallel =
+          scenario$targetRunnerParallel
       # everything else stays the same from last round
-      tunerConfig = tunerResults$tunerConfig
+      scenario = iraceResults$scenario
       # don't carry the heavyweight hookRun function's environment to the
-      # savefile. cf iraceRecoverFromFileFix()
-      tunerResults$tunerConfig$hookRun = NULL
-      evals.zero = tunerResults$state$experimentsUsedSoFar
+      # savefile.
+      iraceResults$scenario$targetRunnerParallel = NULL
+      evals.zero = iraceResults$state$experimentsUsedSoFar
     } else {
       # this is the first round.
-      assert(tunerConfig$maxExperiments == 100000)
-      assert(tunerConfig$timeBudget == 0)
-      assert(tunerConfig$timeEstimate == 0)
-      assert(tunerConfig$nbIterations == -1)
-      tunerConfig$recoveryFile = NULL
+      assert(scenario$maxExperiments == 100000)
+      assert(scenario$maxTime == 0)
+      assert(scenario$nbIterations == -1)
+      scenario$recoveryFile = NULL
 
-      # we start but immediately stop because maxExperiments == 0
-      iraceFunction(tunerConfig, parameters, ...)
+      # we start but deliberately stop immediately because nbIterations < 0
+      iraceFunction(scenario, parameters, ...)
 
       # .... and load the state file to play with it
-      load(tunerConfig$logFile)
+      load(scenario$logFile)
       # since the hookRun's environment gets broken up by saving and restoring
-      tunerResults$tunerConfig$hookRun = tunerConfig$hookRun
-      # the above assignment is for us to keep the hookRun in our tunerConfig
-      tunerConfig = tunerResults$tunerConfig
+      # (this seems to be unnecessary since irace 2.0, strictly speaking, but
+      # the scenario = iraceResults$scenario step is much cleaner like this)
+      iraceResults$scenario$targetRunnerParallel =
+          scenario$targetRunnerParallel
+      # the above assignment is for us to keep the hookRun in our scenario
+      scenario = iraceResults$scenario
       # this is a heavyweight object which would get saved every iteration, even
       # though we also give it as argument
-      tunerResults$tunerConfig$hookRun = NULL
+      iraceResults$scenario$targetRunnerParallel = NULL
 
       # influences how discrete probability weights are scaled
-      tunerResults$state$nbIterations = irace.nbIterations
-      tunerResults$tunerConfig$nbIterations = 0
+      # this will be set to min(indexIteration, nbIterations), so only affects
+      # the first few rounds.
+      # After opt$nbIterations iters, it will behave as if in the final
+      # iteration.
+      iraceResults$state$nbIterations = opt$nbIterations
+      # the following guarantees that irace only ever goes through one iteration
+      iraceResults$scenario$nbIterations = 0
       # in theory this is loaded from the recovery file, but you never know
-      tunerConfig$nbIterations = 0
+      scenario$nbIterations = 0
+      # timeUsed and maxTime are ignored now
       # timeUsedSoFar: arbitrary positive number
-      tunerResults$state$timeUsedSoFar = 1
+      # iraceResults$state$timeUsed = 1
       # timeBudget: arbitrary positive number smaller than timeUsedSoFar
       # --> we abort after one loop
-      tunerResults$state$timeBudget = 0.5
+      # iraceResults$state$maxTime = 0.5
       evals.zero = 0
     }
 
-    tunerConfig$recoveryFile = tunerConfig$logFile
+    scenario$recoveryFile = paste0(scenario$logFile, ".recovery")
     while (TRUE) {
-      tunerResults$state$remainingBudget = 1  # arbitrary positive number
-      save(tunerResults, file = tunerConfig$logFile)
-      
-      res = iraceFunction(tunerConfig, parameters, ...)
-      
-      load(tunerConfig$logFile)
+
+      scenario$nbExperimentsPerIteration = expPerIter(iraceResults)
+      iraceResults$scenario$nbExperimentsPerIteration = expPerIter(iraceResults)
+
+      # remainingBudget must be positive on first iteration, and negative on
+      # second.
+      iraceResults$state$remainingBudget = 1
+      save(iraceResults, file = scenario$recoveryFile)
+
+      # perform iraceFunction as a kind of transaction: If it is aborted due to
+      # timeout, we return the old env$res and reinstate the old env$opt.path.
+      optPathBackup = deepcopy(env$opt.path)
+      res = runWithTimeout(iraceFunction(scenario, parameters, ...),
+          env$hardTimeout - proc.time()[3],
+          backend = "native")
+      if (res$timeout) {
+        env$opt.path = optPathBackup
+        if (!exists("res", envir = env)) {
+          stop(noResTimeout)
+        }
+        return(env$res)
+      }
+      env$res = res$result
+      load(scenario$logFile)
       env$usedbudget["evals"] =
-          tunerResults$state$experimentsUsedSoFar - evals.zero
-      env$usedbudget["modeltime"] =
-          sum(getOptPathExecTimes(env$opt.path), na.rm = TRUE) - modeltime.zero
+          iraceResults$state$experimentsUsedSoFar - evals.zero
       env$usedbudget["walltime"] =
           as.numeric(difftime(Sys.time(), env$starttime, units = "secs"))
-      env$usedbudget["cputime"] = env$usedbudget["walltime"] * numcpus
-      
-      env$tunerResults = tunerResults
-      
+
+      env$iraceResults = iraceResults
+
       if (stopcondition(env$stepbudget, env$usedbudget)) {
         # since we are guaranteed to have finished one iteration, this is never
         # empty *I hope*
-        return(res)
+        return(env$res)
       }
     }
   }
@@ -154,22 +259,20 @@ amresult.amirace = function(env) {
 }
 
 # now this is where the fun happens
-amoptimize.amirace = function(env, stepbudget) {
+amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
   env$starttime = Sys.time()
   env$stepbudget = stepbudget
-  env$usedbudget = c(walltime = 0, cputime = 0, modeltime = 0, evals = 0)
-  # install the wrapper and make sure it gets removed as soon as we exit
-  on.exit(assignInNamespace("irace", env$iraceOriginal, ns = "irace"),
-      add = TRUE)
-  assignInNamespace("irace", env$iraceWrapper, ns = "irace")
-  
-  # patch mlr on CRAN
-  originalTuneIrace = mlr:::tuneIrace
-  on.exit(assignInNamespace("tuneIrace", originalTuneIrace, ns = "mlr"),
-      add = TRUE)
-  assignInNamespace("tuneIrace", workingTuneIrace, ns = "mlr")
-  
-  
+  env$usedbudget = c(walltime = 0, evals = 0)
+  curtime = proc.time()[3]
+  env$hardTimeout = deadline + curtime
+
+  on.exit(quickSuspendInterrupts({
+            myAssignInNamespace("irace", env$iraceOriginal, "irace")
+          }))
+
+  myAssignInNamespace("irace", env$iraceWrapper, ns = "irace")
+#  myAssignInNamespace("tuneIrace", workingTuneIrace, ns = "mlr")
+
   myTuneIrace = mlr:::tuneIrace
   environment(myTuneIrace) = new.env(parent = asNamespace("mlr"))
   environment(myTuneIrace)$convertParamSetToIrace = function(par.set) {
@@ -178,197 +281,26 @@ amoptimize.amirace = function(env, stepbudget) {
             as.chars = TRUE),
         digits = .Machine$integer.max)
   }
-  
-  env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
-      list(env$measure), env$learner$searchspace, env$ctrl, env$opt.path, TRUE)
-  env$opt.path = env$tuneresult$opt.path
+  ctrl = env$ctrl
+  ctrl$extra.args$show.irace.output = verbosity.traceout(verbosity)
+
+  tryCatch({
+      env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
+          list(env$measure), getSearchspace(env$learner), env$ctrl,
+          env$opt.path, verbosity.traceout(verbosity), resample)
+    }, error = function(e) {
+      if (conditionMessage(e) == noResTimeout) {
+        # NOOP
+      } else {
+        stop(e)
+      }
+    })
+  # FIXME: why was this here? It interferes with my 'rollback' mechanism in
+  # iraceWrapper
+  # env$opt.path = env$tuneresult$opt.path
+
+  # the following avoids endless restarts when hardTimeout is hit.
+  env$usedbudget["walltime"] = proc.time()[3] - curtime
   env$usedbudget
-}
-
-# irace treats everything that is not a number as a string, which breaks our
-# requirements. Here we repair these requirements by turning <logical> into
-# (<logical> == TRUE) and <discrete> into discreteValuesList[<discrete>].
-# We also treat vectors.
-iraceRequirements = function(searchspace) {
-  replacements = list()
-  for (param in searchspace$pars) {
-    type = param$type
-    if (type == "discrete" &&
-        all(sapply(param$values, test_character, any.missing = FALSE))) {
-      # irace handles character discrete vectors well, so go right through
-      next
-    }
-    replaceStr = switch(type,
-        numeric = "%s",
-        numericvector = "c(%s)",
-        integer = "as.integer(%s)",
-        integervector = "as.integer(c(%s))",
-        logical = "(%s == 'TRUE')",
-        logicalvector = "(c(%s) == 'TRUE')",
-        discrete = "%s",
-        discretevector = "c(%s)",
-        stopf("Unsupported type '%s' of parameter '%s'.", type, param$id))
-    if (ParamHelpers:::isVector(param)) {
-      if (!test_numeric(param$len, len = 1, lower = 1, any.missing = FALSE)) {
-        stopf("Parameter '%s' is a vector param with undefined length'",
-            param$id)
-      }
-      replaceStr = sprintf(replaceStr,
-          paste0(param$id, seq_len(param$len), collapse = ", "))
-    } else {
-      replaceStr = sprintf(replaceStr, param$id)
-    }
-    replaceQuote = asQuoted(replaceStr)
-
-    if (type %in% c("discrete", "discretevector")) {
-      assertList(param$values, names = "named")
-      objectText = capture.output(dput(param$values))
-      fullObject = try(asQuoted(collapse(objectText, sep = "")), silent = TRUE)
-      if (!is.error(fullObject)) {
-        
-        
-      }
-      if (is.error(fullObject) || length(all.vars(fullObject)) > 0) {
-        # irace does not like '\n' in their requirements.
-        # but it DOES accept 'eval(parse("\\n"))'
-        # this also fixes the problem that parameters in lists of functions show
-        # up on 'all.vars' even though they shouldn't, for irace's sake.
-        objectText = collapse(objectText, sep = "\n")
-        fullObject = asQuoted(paste0("eval(parse(text = ",
-                capture.output(dput(objectText)), "))"))
-      }
-      if (type == "discrete") {
-        replaceQuote = substitute(fullObject[[index]],
-            list(fullObject = fullObject, index = replaceQuote))
-      } else { # discretevector
-        replaceQuote = substitute(fullObject[index],
-            list(fullObject = fullObject, index = replaceQuote))
-      }
-    }
-    replacements[[param$id]] = replaceQuote
-  }
-  for (param in names(searchspace$pars)) {
-    req = searchspace$pars[[param]]$requires
-    if (is.null(req)) {
-      next
-    }
-    newreq = replaceRequires(req, replacements)
-    searchspace$pars[[param]]$requires = deExpression(newreq)
-  }
-  searchspace
-}
-
-# this works since irace 1.05
-iraceRecoverFromFileFix = function(file)  {
-  # we don't want to overwrite our tunerConfig$hookRun with the saved one.
-  eval.parent(substitute({
-        load(file)
-        for (name in names(tunerResults$state)) {
-          pos = if (name == ".Random.seed") .GlobalEnv else -1
-          assign(name, tunerResults$state[[name]], pos)
-        }
-        hookRunTemp = tunerConfig$hookRun
-        for (name in c("parameters", "allCandidates", "tunerConfig")) {
-          assign(name, tunerResults[[name]])
-        }
-        tunerConfig$hookRun = hookRunTemp
-        options(.race.debug.level = tunerConfig$debugLevel)
-        options(.irace.debug.level = tunerConfig$debugLevel)
-      }))
-}
-
-
-# The following function is a slightly modified version of the
-# tuneIrace function in the mlr project (https://github.com/mlr-org/mlr).
-#
-# This file was distributed with a BSD 2 clause license as follows.
-#
-# Copyright (c) 2013-2016, Bernd Bischl
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-#     Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-# 
-#     Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in
-#     the documentation and/or other materials provided with the
-#     distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-workingTuneIrace = function(learner, task, resampling, measures, par.set, control, opt.path, show.info) {
-  requirePackages("irace", why = "tuneIrace", default.method = "load")
-  hookRun = function(experiment, config = list()) {
-    rin = experiment$instance
-    plen = getParamNr(par.set, devectorize = TRUE)
-    x = experiment$candidate
-    # FIXME: this is a bug in irace, where for 1 param only a scalar is returned
-    # BB reported this already, maybe we can remove this later
-    if (plen == 1L)
-      x = makeDataFrame(1L, 1L, init = x, col.names = getParamIds(par.set))
-    
-    # now convert to list, we also need to convert col types, irace sometimes uses not what we need
-    # - logicals are stored as as strings
-    x = dfRowToList(x, par.set, 1L, enforce.col.types = TRUE)
-    
-    tunerFitnFun(x, learner = learner, task = task, resampling = rin, measures = measures,
-              par.set = par.set, ctrl = control, opt.path = opt.path, show.info = show.info,
-              convertx = identity, remove.nas = TRUE)
-  }
-  
-  n.instances = control$extra.args$n.instances
-  control$extra.args$n.instances = NULL
-  show.irace.output = control$extra.args$show.irace.output
-  control$extra.args$show.irace.output = NULL
-  instances = lapply(seq_len(n.instances), function(i) makeResampleInstance(resampling, task = task))
-  if (is.null(control$extra.args$digits)) {
-    control$extra.args$digits = .Machine$integer.max
-  } else {
-    control$extra.args$digits = asInt(control$extra.args$digits)
-  }
-  
-  parameters = convertParamSetToIrace(par.set)
-  log.file = tempfile()
-  tuner.config = c(list(hookRun = hookRun, instances = instances, logFile = log.file),
-          control$extra.args)
-  g = if (show.irace.output) identity else utils::capture.output
-  g(or <- irace::irace(tunerConfig = tuner.config, parameters = parameters))
-  unlink(log.file)
-  if (nrow(or) == 0L)
-    stop("irace produced no result, possibly the budget was set too low?")
-  # get best candidate
-  x1 = as.list(irace::removeCandidatesMetaData(or[1L,]))
-  # we need chars, not factors / logicals, so we can match 'x'
-  d = convertDfCols(as.data.frame(opt.path), logicals.as.factor = TRUE)
-  d = convertDfCols(d, factors.as.char = TRUE)
-  par.names = names(x1)
-  # get all lines in opt.path which correspond to x and average their perf values
-  j = vlapply(seq_row(d), function(i) isTRUE(all.equal(removeMissingValues(as.list(d[i, par.names, drop = FALSE])),
-                      removeMissingValues(x1))))
-  if (!any(j))
-    stop("No matching rows for final elite candidate found in opt.path! This cannot be!")
-  y = colMeans(d[j, opt.path$y.names, drop = FALSE])
-  # take first index of mating lines to get recommended x
-  e = getOptPathEl(opt.path, which.first(j))
-  x = trafoValue(par.set, e$x)
-  x = removeMissingValues(x)
-  if (control$tune.threshold)
-    # now get thresholds and average them
-    threshold = getThresholdFromOptPath(opt.path, which(j))
-  else
-    threshold = NULL
-  makeTuneResult(learner, control, x, y, threshold, opt.path)
 }
 

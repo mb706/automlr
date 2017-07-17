@@ -1,8 +1,8 @@
 #' @title Automatically choose a model with parameters to fit.
-#' 
+#'
 #' @description
 #' This is the main entry point of automlr.
-#' 
+#'
 #' @param task [\code{Task} | \code{AMState} | \code{character(1)}]\cr
 #'   Either: The mlr \code{Task} object to fit a model on. Or: An \code{AMState}
 #'   object, or a \code{character(1)} containing the file name of an \code{.rds}
@@ -16,8 +16,6 @@
 #'   A named list or named vector with one or several of the entries
 #'   \describe{
 #'     \item{\code{walltime}}{time since invocation}
-#'     \item{\code{cputime}}{total cpu time of optimization process}
-#'     \item{\code{modeltime}}{time spent executing model fits}
 #'     \item{\code{evals}}{number of model fit evaluations}
 #'   }
 #'   (Time is always given in seconds.)\cr
@@ -62,7 +60,7 @@
 #'   supplied again; this is to prevent accidental file overwrites. If the first
 #'   argument is a character, \code{savefile} defaults to \code{amstate} and
 #'   therefore offers to seamlessly continue optimization runs.
-#' @param backend [\code{character(1)}]\cr
+#' @param backend [\code{character(1)}|\code{BackendOptions}]\cr
 #'   Refers to the back end used for optimization. Currently implemented and
 #'   provided by automlr are \code{"random"}, \code{"irace"} and \code{"mbo"}.
 #'   To list all backends, run \code{\link{lsambackends}}.
@@ -78,14 +76,39 @@
 #'   (insofar as execution time does not influence behaviour).\cr
 #'   \emph{Warning}: This is not yet tested and likely does not work with
 #'   \code{Learner}s that use external RNGs.
-#' @param verbose [\code{logical(1)}]\cr
-#'   Give detailed warnings and messages that would otherwise be suppressed.
+#' @param max.walltime.overrun [\code{numeric(1)}]\cr
+#'   Defines a time in seconds for the automlr runtime beyond the
+#'   \code{walltime} budget after which a learner function will be killed.
+#'   Since the walltime (and other) budget is only checked in certain stages of
+#'   the evaluation, this can sometimes lead to run times far greater than the
+#'   walltime budget. Setting \code{max.walltime.overrun} to a finite value will
+#'   agressively kill learner runs, potentially throwing away intermediate
+#'   progress already made. There may still be a few seconds overhead runtime,
+#'   especially when the learner code runs into a C function that can not be
+#'   interrupted.
+#' @param max.learner.time [\code{numeric(1)}]\cr
+#'   Maximum time, in seconds, that one combined \code{train()}-\code{predict()}
+#'   evaluation of a learner may take after which it is aborted. Note that for
+#'   performance measurements that use multiple evaluations, e.g.
+#'   crossvalidation, a single datapoint takes a multiple of
+#'   \code{max.learner.time} seconds.
+#' @param verbosity [\code{integer(1)}]\cr
+#'   Level of warning and info messages which to show.
+#'   \describe{
+#'     \item{0}{Default: Only give essential warning messages and errors.}
+#'     \item{>=1}{Output info about evaluated points.}
+#'     \item{>=2}{Detailed warning messages about search space.}
+#'     \item{>=3}{Detailed warning messages from learners.}
+#'     \item{>=4}{Output from all learners.}
+#'     \item{>=5}{Output memory usage stats.}
+#'     \item{>=6}{Stop on learner error.}
+#'   }
 #' @param ... No further arguments should be given.
-#' 
+#'
 #' @return [\code{AMState}]
 #' Object containing the result as well as info about the run. Use
 #' \code{\link{amfinish}} to extract the results.
-#' 
+#'
 #' Object members:
 #' \describe{
 #'   \item{task [\code{Task}]}{The task being trained for.}
@@ -109,22 +132,22 @@
 #'   \item{seed [\code{numeric}]}{The value of \code{.Random.seed} which to use
 #'     for continuation.}
 #'  }
-#'     
-#' 
+#'
+#'
 #' @examples
 #' \dontrun{
 #' library(mlr)
 #' # almost minimal invocation. Will save progress to './iris.rds'.
 #' automlr(iris.task, budget = c(evals = 1000), backend = "random",
 #'   savefile = "iris")
-#' > SOME RESULT YOU GUYS
-#' 
+#' > SOME RESULT
+#'
 #' # optimize for another 1000 evaluations, loading the 'iris.rds' savefile
 #' # automatically and saving back to it during evaluation.
 #' automlr("iris", budget = c(evals = 2000))
 #' > MORE RESULTS
 #' }
-#' 
+#'
 #' @include mlrLearners.R lsambackends.R defaults.R
 #' @export
 automlr = function(task, ...) {
@@ -132,12 +155,15 @@ automlr = function(task, ...) {
 }
 
 #' @title Create an \code{AMState} object and run automlr.
-#' 
+#'
 #' @rdname automlr
 #' @export
 automlr.Task = function(task, measure = NULL, budget = 0,
     searchspace = mlrLearners, prior = NULL, savefile = NULL,
-    save.interval = default.save.interval, backend, verbose = FALSE, ...) {
+    save.interval = default.save.interval, backend,
+    max.walltime.overrun = if ("walltime" %in% names(budget))
+      budget['walltime'] * 0.1 + 600 else 3600, max.learner.time = Inf,
+    verbosity = 0, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
   if (is.null(measure)) {
@@ -145,6 +171,16 @@ automlr.Task = function(task, measure = NULL, budget = 0,
   } else {
     assertClass(measure, "Measure")
   }
+  if (testString(backend)) {
+    if (is.null(registered.backend[[backend]])) {
+      stopf(paste0("Backend '%s' not found.\n",
+              "You can list available backends with lsambackends()."), backend)
+    }
+    backend = registered.backend[[backend]]()
+    attr(backend, "automlr.backend.invocation") =
+        attr(backend, "automlr.backend")
+  }
+  assertClass(backend, "AutomlrBackendConfig")
   budget = unlist(budget, recursive = FALSE)
   checkBudgetParam(budget)
   assertList(searchspace, types = "Autolearner", min.len = 1)
@@ -154,47 +190,46 @@ automlr.Task = function(task, measure = NULL, budget = 0,
     assertString(savefile)
     assertNumber(save.interval, lower = 0)
   }
+  assertNumeric(max.walltime.overrun, lower = 0, len = 1)
+  assertNumeric(max.learner.time, lower = 0, len = 1)
+  assertCount(verbosity)
+
   assert(identical(list(...), list()))
   # a delegated problem is a solved problem.
   automlr(makeS3Obj(c("AMState", "AMObject"),
           task = task,
           measure = coalesce(measure, getDefaultMeasure(task)),
           budget = budget,
-          spent = c(walltime = 0, cputime = 0, modeltime = 0,
-              evals = 0),
+          spent = c(walltime = 0, evals = 0),
           searchspace = searchspace,
           prior = prior,
-          backend = backend,
+          backend = attr(backend, "automlr.backend"),
+          backendoptions = backend,
           backendprivatedata = setClasses(
               new.env(parent = emptyenv()),
-              paste0("am", backend)),
-          seed = .Random.seed,
+              paste0("am", attr(backend, "automlr.backend"))),
+          seed = getSeed(),
           creation.time = Sys.time(),
           finish.time = NULL,
           previous.versions = list(),
-          isInitialized = FALSE),
-      savefile = savefile, save.interval = save.interval, verbose = verbose)
+          isInitialized = FALSE,
+          max.learner.time = max.learner.time,
+          `.interruptedBPD` = list()),
+      savefile = savefile, save.interval = save.interval,
+      max.walltime.overrun = max.walltime.overrun, verbosity = verbosity)
 }
 
 #' @title Continue automlr search from an \code{.rds} savefile, given as a
 #' \code{character(1)}.
-#' 
+#'
 #' @rdname automlr
 #' @export
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
-    save.interval = default.save.interval, new.seed = FALSE, verbose = FALSE,
-    ...) {
+    save.interval = default.save.interval, new.seed = FALSE,
+    max.walltime.overrun = if ("walltime" %in% names(budget))
+                budget['walltime'] * 0.1 + 600 else 3600, verbosity = 0, ...) {
   assertString(task)
   truefilename = gsub("(\\.rds|)$", ".rds", task)
-  if (!is.null(budget)) {
-    budget = unlist(budget, recursive = FALSE)
-    checkBudgetParam(budget)
-  }
-  if (!is.null(savefile)) {
-    assertString(savefile)
-    assertNumber(save.interval, lower = 0)
-  }
-  assertFlag(new.seed)
   assert(identical(list(...), list()))
   # yes, one could load an RDS file that contains a character(1) referring to
   # another RDS file...
@@ -204,16 +239,19 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
       savefile = savefile,
       save.interval = save.interval,
       new.seed = new.seed,
-      verbose = verbose)
+      max.walltime.overrun = max.walltime.overrun,
+      verbosity = verbosity)
 }
 
+
 #' @title Continue automlr search the result of a previous \code{automlr} run.
-#' 
+#'
 #' @rdname automlr
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
-    save.interval = default.save.interval, new.seed = FALSE, verbose = FALSE,
-    ...) {
+    save.interval = default.save.interval, new.seed = FALSE,
+    max.walltime.overrun = if ("walltime" %in% names(budget))
+                budget['walltime'] * 0.1 + 600 else 3600, verbosity = 0, ...) {
   if (!is.null(budget)) {
     budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)
@@ -222,24 +260,31 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
     assertString(savefile)
     assertNumber(save.interval, lower = 0)
   }
+  if (!is.null(max.walltime.overrun)) {
+    assertNumeric(max.walltime.overrun, lower = 0, len = 1)
+  }
+  assertCount(verbosity)
   assertFlag(new.seed)
   assert(identical(list(...), list()))
-  aminterface(task, budget, prior, savefile, save.interval, new.seed, verbose)
+  suspendInterruptsFor(
+      aminterface(task, budget, prior, savefile, save.interval, new.seed,
+          max.walltime.overrun, verbosity),
+      15)
 }
 
 #' @title Converte the \code{AMState} object as returned by
 #'   \code{\link{automlr}} to an \code{AMResult} object.
-#' 
+#'
 #' @description
 #' The result object contains information about the solution that is relatively
 #' backend-independent.
-#' 
+#'
 #' @param amstate [\code{AMState}]\cr
 #'   The AMState object which is to be converted.
-#' 
+#'
 #' @return [\code{AMResult}]
 #' Object representing the optimum found by the \code{\link{automlr}} run.
-#' 
+#'
 #' Object members:
 #' \describe{
 #'   \item{learner [\code{Learner}]}{The (constructed) learner that achieved the
@@ -253,7 +298,7 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
 #'     optimum.}
 #'   \item{... (further elements)}{Elements of the \code{AMState} object.}
 #'  }
-#' 
+#'
 #' @export
 amfinish = function(amstate) {
   assertClass(amstate, "AMState")
@@ -270,18 +315,18 @@ amfinish = function(amstate) {
 }
 
 #' @title Give some cute info about a given AMState
-#' 
+#'
 #' @description
 #' Optionally give a little or a lot (if \code{verbose == TRUE}) of info.
-#' 
+#'
 #' @param x [\code{AMState}|\code{AMResult}]\cr
 #'   What to print
 #' @param verbose [\code{logical(1)}]\cr
 #'   Print detailed info
 #' @param ... ignored
-#' 
+#'
 #' @method print AMObject
-#' 
+#'
 #' @export
 print.AMObject = function(x, verbose = FALSE, ...) {
   allversions = c(x$previous.versions, list(x))
