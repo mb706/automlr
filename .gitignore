@@ -25,3 +25,6 @@ R/mlrLearners.R
 .pydevproject
 __pycache__
 *.log
+amllogs/
+logs/
+*.rds
