@@ -105,6 +105,8 @@ javaLrn = c(
     "classif.J48",
     "classif.JRip",
     "classif.bartMachine",
+    "classif.PART",
+    "classif.OneR",
     NULL)
 
 if (!all(javaLrn %in% names(mlrLearnersNoWrap))) {
