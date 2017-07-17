@@ -92,6 +92,7 @@ slowLrn = c(
     "classif.nodeHarvest",  # currently broken in new R versions
     "classif.neuralnet",
     "classif.bartMachine",  # JVM seems broken.
+    "classif.gausspr",
     NULL)
 
 if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
