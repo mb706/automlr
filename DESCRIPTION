@@ -39,7 +39,6 @@ Suggests:
     sda,
     caret,
     mda,
-    sparsediscrim,
     kknn,
     class,
     rknn,
