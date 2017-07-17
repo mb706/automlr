@@ -32,4 +32,5 @@ mlr.predictLearner.ModelMultiplexer = NULL
   requirePackages("irace", why = "optMBO", default.method = "load", stop = FALSE,
     suppress.warnings = TRUE)
 
+  eigen(matrix(rnorm(4), nrow=2))  # load the LAPACK DLL
 }
