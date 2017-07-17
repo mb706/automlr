@@ -1,3 +1,4 @@
+# test the automlr() interface and that it throws errors if input is malformed.
 context("automlr_errors")
 
 test_that("error on budget misclassification", {

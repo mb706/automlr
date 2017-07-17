@@ -39,533 +39,210 @@
 #'   The task that the searchspace is being created. \code{buildLearners}
 #'   respects the task type, presence of NAs and type of covariates. Currently
 #'   not supported: weights, request of probability assignment instead of class.
-#' @param verbose [\code{logical(1)}]\cr
-#'   Give detailed warnings.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Give detailed warnings. See the \code{\link{automlr}} parameter.
 #' @export
-buildLearners = function(searchspace, task, verbose = FALSE) {
+buildLearners = function(searchspace, task, verbosity = 0) {
   
   # searchspace contains learners, wrappers and requiredwrappers.
   learners = searchspace[extractSubList(searchspace, "stacktype") == "learner"]
-  wrappers = searchspace[extractSubList(searchspace, "stacktype") %in%
-          c("wrapper", "requiredwrapper")]
+  wrappers = searchspace[extractSubList(searchspace, "stacktype") == "wrapper"]
   
   learnerObjects = list()
   modelTuneParsets = list()
   # need to keep track of all the parameter names, even the "fix" ones that
   # won't be in the SS
   allParamNames = list()
-  taskdesc = getTaskDescription(task)
-  
+
+  taskdesc = getTaskDesc(task)
+
   if (taskdesc$has.weights) {
     stop("Tasks with weights are currently not supported.")
   }
   
-  info.env = new.env(parent = baseenv())
-  info.env$info = taskdesc
-  idRef = list()
-  
-  allcovtypes = c("factors", "ordered", "numerics")
-  allcovproperties = c(allcovtypes, "missings")
-  covtypes = c(names(taskdesc$n.feat)[taskdesc$n.feat > 0],
-      if (taskdesc$has.missings) "missings")
-  maxcovtypes = setdiff(covtypes, "missings")
-  whichprops = min(3, length(taskdesc$class.levels))
-  requiredClassProperty = c("oneclass", "twoclass", "multiclass")[whichprops]
-  mincovtypes = covtypes
   wrapperList = list()
-  handlerList = list()
   for (w in wrappers) {
-    w$learner$searchspace = makeParamSet(params = lapply(w$searchspace,
-            createParameter, info.env = info.env, learnerid = w$learner$name,
-            forWrapper = TRUE))
-    wrapperList[[w$learner$name]] = w$learner
-    wrapperList[[w$learner$name]]$required = w$stacktype == "requiredwrapper"
-    if (identical(maxcovtypes, allcovtypes) && length(mincovtypes) == 0) {
-      next
-    }
-    if (w$stacktype != "requiredwrapper") {
-      next
-    }
-    for (t in covtypes) {
-      conv = w$learner$conversion(t)
-      if ("" %in% conv) {
-        mincovtypes = setdiff(mincovtypes, t)
-      }
-      maxcovtypes = union(maxcovtypes, setdiff(conv, c("", "missings")))
-    }
+    wl = w$learner
+    wl$searchspace = makeParamSet(params = lapply(w$searchspace,
+            createParameter, learnerid = wl$name, forWrapper = TRUE))
+    assert(wl$name %nin% names(wrapperList))
+    wrapperList[[wl$name]] = wl
   }
-  
+
+  reqs = getLearnerRequirements(task, wrapperList)
+
+  handlerList = list()
   for (i in seq_along(learners)) {
-    tryResult = try(l <- myCheckLearner(learners[[i]]$learner), silent = TRUE)
+    li = learners[[i]]
+    tryResult = try(lil <- myCheckLearner(li$learner), silent = TRUE)
     if (is.error(tryResult)) {
       errcall = attr(tryResult, "condition")$call[[1]]
       errmsg = attr(tryResult, "condition")$message
       if (identical(errcall, quote(requirePackages))) {
-        warningf("Package for learner '%s' is missing; skipping.",
-            learners[[i]]$learner)
+        if (verbosity.sswarnings(verbosity)) {
+          warningf("Package for learner '%s' is missing; skipping.",
+              li$learner)
+        }
         next
       } else {
         stopf("makeLearner gave unexpected error for learner '%s':\n%s",
-            learners[[i]]$learner, errmsg)
+            li$learner, errmsg)
       }
     }
-    
-    sslist = learners[[i]]$searchspace
-    if (taskdesc$type != l$type) {
+    if (taskdesc$type != lil$type) {
       # skip this learner, it is not fit for the task
-      if (verbose) {
-        messagef("Skipping learner '%s': Learner type not fit for task type.",
-            l$id)
-      }
-      next
-    }
-    if (!hasLearnerProperties(l, requiredClassProperty)) {
-      # can't handle the target variable type
-      if (verbose) {
+      if (verbosity.sswarnings(verbosity)) {
         messagef("Skipping learner '%s': Learner can not handle target type.",
-            l$id)
+            lil$id)
       }
       next
     }
-    learnercovtypes = intersect(allcovproperties, getLearnerProperties(l))
-    if (length(setdiff(mincovtypes, learnercovtypes)) != 0) {
-      # there are feature types that no wrapper can remove that the learner
-      # can't handle
-      if (verbose) {
-        messagef("Skipping learner '%s': Learner can not handle feature types.",
-            l$id)
+    learnerProps = getLearnerProperties(lil)
+    if (!all(reqs$presentprops %in% learnerProps)) {
+      if (verbosity.sswarnings(verbosity)) {
+        messagef("Skipping learner '%s': %s",
+            lil$id, "Learner can not handle the task.")
       }
       next
     }
-    if (length(intersect(maxcovtypes, learnercovtypes)) == 0) {
-      # we can't convert the features to any kind of feature that the learner
-      # can handle
-      if (verbose) {
-        messagef(paste("Skipping learner '%s':",
-            "Task has no features the learner can handle."),
-            l$id)
+
+    unfit.skip = FALSE
+    for (pp in reqs$featprops) {
+      if (!length(intersect(reqs$conversion[[pp]], learnerProps))) {
+        # there are feature types that no wrapper can remove that the learner
+        # can't handle
+        if (verbosity.sswarnings(verbosity)) {
+            messagef("Skipping learner '%s': %s %s",
+                    lil$id, "Learner can not handle feature types",
+                    "and necessary conversion can not be done.")
+        }
+        unfit.skip = TRUE
+        break
       }
+    }
+    if (unfit.skip) {
       next
     }
-    for (canHandle in intersect(allcovproperties, getLearnerProperties(l))) {
-      handlerList[[canHandle]] = c(handlerList[[canHandle]], l$id)
+    for (canHandle in intersect(learnerProps,
+        c("factors", "ordered", "numerics", "missings"))) {
+      handlerList[[canHandle]] %c=% lil$id
     }
-    aux = buildTuneSearchSpace(sslist, l, info.env, idRef, verbose)
-    modelTuneParsets[[l$id]] = aux$tss
-    allParamNames[[l$id]] = aux$nondefParamNames
+    aux = buildTuneSearchSpace(li$searchspace, lil, verbosity)
+    modelTuneParsets[[lil$id]] = aux$tss
+    allParamNames[[lil$id]] = aux$nondefParamNames
     # updated learner object with fixed hyperparameters
-    learnerObjects = c(learnerObjects, list(aux$l))
-    idRef = aux$idRef
+    learnerObjects %c=% list(aux$lrn)
   }
-  checkParamIds(idRef, verbose)
-  
+  checkParamIds(modelTuneParsets, verbosity)
+
   if (length(learnerObjects) == 0) {
     warning("No model fits the given task, returning NULL.")
     return(NULL)
   }
-  
+
   multiplexer = removeHyperPars(makeModelMultiplexer(learnerObjects),
       "selected.learner")
-  
-  
-  
+
   tuneParamSet = makeModelMultiplexerParamSetEx(multiplexer, modelTuneParsets,
       allParamNames)
   multiplexer$searchspace = tuneParamSet
   allLearners = unlist(tuneParamSet$pars$selected.learner$values)
-  makeAMExoWrapper(multiplexer, wrapperList, taskdesc, idRef, handlerList,
-      allLearners)
+  am = makeAMExoWrapper(multiplexer, wrapperList, taskdesc, reqs$datamissings,
+      handlerList, allLearners, modelTuneParsets)
+  adjustLearnerVerbosity(am, verbosity)
 }
 
-checkParamIds = function(idRef, verbose) {
+checkParamIds = function(parsets, verbosity) {
+  idRef = list()
+  for (ps in parsets) {
+    for (param in ps$pars) {
+      if (!is.null(param$amlr.id)) {
+        idRef[[param$amlr.id]] %c=% list(param)
+      }
+    }
+  }
   # check that the IDs match.
   for (parid in names(idRef)) {
     if (length(idRef[[parid]]) == 1) {
-      if (verbose) {
-        warningf(paste0("Parameter '%s' of learner '%s' is the only one with",
-                " parameter id '%s'."),
-            idRef[[parid]][[1]]$param$id, idRef[[parid]][[1]]$learner$id, parid)
+      # next  # not implemented and therefore only annoying
+      if (verbosity.sswarnings(verbosity) && FALSE) {  # suppress this for now
+        warningf(paste("Parameter '%s' of learner '%s' is the only one with",
+                "parameter id '%s'."),
+            idRef[[parid]][[1]]$id, idRef[[parid]][[1]]$amlr.lrnid, parid)
       }
       next
     }
     needstomatch = c("type", "len", "lower", "upper", "values", "allow.inf")
-    protopar = idRef[[parid]][[1]]$param
+    protopar = idRef[[parid]][[1]]
     for (otherpar in idRef[[parid]]) {
       for (property in needstomatch) {
         prop1 = protopar[[property]]
-        prop2 = otherpar$param[[property]]
+        prop2 = otherpar[[property]]
         if (!identical(prop1, prop2)) {
           stopf(paste0("Prameter '%s' of learner '%s' has the same id '%s' as",
                   " param '%s' of learner '%s', but their '%s' property do not",
                   " match. ('%s' vs. '%s')"),
-              protopar$id, idRef[[parid]][[1]]$learner$id, parid,
-              otherpar$param$id, otherpar$learner$id, property,
-              if (is.null(prop1)) "NULL" else paste(prop1, collapse = ", "),
-              if (is.null(prop2)) "NULL" else paste(prop2, collapse = ", "))
+              protopar$id, protopar$amlr.lrnid, parid,
+              otherpar$id, otherpar$amlr.lrnid, property,
+              convertToShortString(prop1), convertToShortString(prop2))
         }
       }
     }
   }
 }
 
-buildTuneSearchSpace = function(sslist, l, info.env, idRef, verbose) {
-  lp = getParamSet(l)
-  lpids = getParamIds(lp)
-  lptypes = getParamTypes(lp, use.names = TRUE)
-  allParams = extractSubList(sslist, "name")
-  untouchedParams = setdiff(lpids, allParams)
-  if (length(untouchedParams)) {
-    warningf(paste0("Learner '%s' has parameters %s that are not mentioned in",
-            " search space."),
-        l$id, paste(untouchedParams, collapse = ", "))
-  }
-  tuneSearchSpace = list()
-  canNotBeAMLRFIX = character(0)
-  areAlreadyAMLRFIX = character(0)
-  nondefParamNames = character(0)
-  for (param in sslist) {
-    if (param$type == "bool") {
-      # useful since now we can automatically check for feasibility by checking
-      # whether everything in param$values is feasible.
-      param$values = c(TRUE, FALSE)
+getLearnerRequirements = function(task, wrappers) {
+  taskdesc = getTaskDesc(task)
+  featprops = names(taskdesc$n.feat)[taskdesc$n.feat > 0]
+  
+  data = getTaskData(task, target.extra = TRUE)$data
+  types = vcapply(data, function(x)
+        switch(class(x)[1],
+            integer = "numerics",
+            numeric = "numerics",
+            factor = "factors",
+            ordered = "ordered",
+            stopf("Unsupported type: %s", class(x)[1])))
+  hasmissings = sapply(split(as.list(data), types),
+      function(x) any(sapply(x, is.na)))
+  datamissings = hasmissings
+  # hasmissings: logical with names "factors", "ordered", "numerics"
+  assertLogical(hasmissings, any.missing = FALSE)
+  assert(any(hasmissings) == taskdesc$has.missings)
+  assertSetEqual(names(hasmissings), featprops)
+  
+  conv = list(factors = "factors", ordered = "ordered", numerics = "numerics")
+  
+  for (wl in wrappers) {
+    if (wl$is.imputer) {
+      hasmissings[wl$datatype] = FALSE
     }
-    origParamName = amlrTransformName(param$name)
-    if (param$name != origParamName) {
-      if (is.null(param$req)) {
-        stopf(paste0("Parameter '%s' for learner '%s' has an .AMLRFIX suffix",
-                " but no requirements"),
-            param$name, l$id)
-      }
-      if (param$type %in% c("fix", "def")) {
-        stopf(paste0("Parameter '%s' for learner '%s' is of type '%s' but has",
-                " an .AMLRFIX suffix."),
-            param$name, l$id, param$type)
-      }
-      if (identical(param$special, "dummy")) {
-        stopf(paste0("Parameter '%s' for learner '%s' has an .AMLRFIX suffix",
-                " but is also a DUMMY parameter."),
-            param$name, l$id, param$type)
-      }
-      if (origParamName %in% canNotBeAMLRFIX) {
-        stopf(paste0("Parameter '%s' for learner '%s' cannot have an .AMLRFIX",
-                " suffix. Possible Reasons:\nanother parameter with that name",
-                " has type 'def' or 'fix', has no requirements or is a",
-                " 'dummy'."),
-            param$name, l$id)
-      }
-      areAlreadyAMLRFIX = union(areAlreadyAMLRFIX, origParamName)
-    }
-    if (is.null(param$req) || identical(param$special, "dummy") ||
-        param$type %in% c("def", "fix")) {
-      if (origParamName %in% areAlreadyAMLRFIX) {
-        stopf(paste0("Parameter '%s' for learner '%s' already defined with",
-                " .AMLRFIX suffix cannot be given without requirement or as",
-                " dummy, def or fix."),
-            param$name, l$id)
-      }
-      canNotBeAMLRFIX = union(canNotBeAMLRFIX, origParamName)
-    }
-    # inject --> is not in the learner already unless this is an AMLRPREFIX
-    # case
-    if (identical(param$special, "inject") &&
-        (origParamName %nin% areAlreadyAMLRFIX ||
-          origParamName %nin% getParamIds(getParamSet(l)))) {
-      if (origParamName %in% getParamIds(getParamSet(l))) {
-        stopf(paste0("Parameter '%s' is present in learner '%s' but is marked",
-                " as 'inject' in search space."),
-            param$name, l$id)
-      }
-      l$par.set = c(l$par.set, makeParamSet(createParameter(param, info.env,
-                  learnerid = l$id, do.trafo = FALSE, facingOutside = FALSE)))
-      lp = getParamSet(l)
-      lpids = getParamIds(lp)
-      # recreate lptypes here, since it may have changed
-      lptypes = getParamTypes(lp, use.names = TRUE)
-    } else if (identical(param$special, "dummy")) {
-      if (origParamName %in% getParamIds(getParamSet(l))) {
-        stopf(paste0("Parameter '%s' is present in learner '%s' but is marked",
-                " as 'dummy' in search space."),
-            param$name, l$id)
-      }
-      if (param$type %in% c("def", "fix")) {
-        stopf(paste0("Dummy parameter '%s' given for learner '%s' must not be",
-                " of type '%s'."),
-            param$name, l$id, param$type)
-      }
-    } else {
-      if (origParamName %nin% lpids) {
-        stopf(paste0("Parameter '%s' as listed in search space is not",
-                " available for learner '%s'."),
-            param$name, l$id)
-      }
-      if (!allfeasible(lp, param$values, origParamName, param$dim)) {
-        # there is one 'special case': param$values might be names that index
-        # into lp$pars[[param$name]]$values.
-        vals = getValues(lp)[[origParamName]]
-        if (isSubset(param$values, names(vals)) &&
-            param$dim == getParamLengths(lp)[[origParamName]]) {
-          param$values = vals[param$values]
-          assert(allfeasible(lp, param$values, origParamName, param$dim))
-        } else {
-          stopf(paste0("Parameter '%s' as listed in search space has",
-                  " infeasible bounds '%s' for learner '%s'."),
-                          param$name, paste(param$values, collapse = "', '"), l$id)
-        }
-      }
-      partype = lptypes[[origParamName]]
-      if ((partype %nin% c("numeric", "numericvector", "untyped")) &&
-          (param$type == "real" || (param$type == "int" &&
-              partype %nin% c("integer", "integervector")))) {
-        stopf(paste0("Parameter '%s' as listed in search space has wrong type",
-                " '%s' for learner '%s'"),
-            param$name, param$type, l$id)
-      }
-      if ((partype != "untyped") &&
-          ((param$type == "int" &&
-              partype %nin% c("integer", "integervector")) ||
-                       (param$type == "bool" &&
-                           partype %nin% c("logical", "logicalvector")) ||
-                       (param$type == "cat" &&
-                           partype %nin% c("discrete", "discretevector", "character",
-                                   "charactervector")))) {
-        if (verbose) {
-          warningf(paste0("Parameter '%s' for learner '%s' is of type '%s' and",
-                  " has different (but feasible) type '%s' listed in search",
-                  " space."),
-              param$name, l$id, partype, param$type)
-        }
-        if (param$type == "cat") {
-          # if the underlying type is a VectorParam but not discrete, we will
-          # have to unlist().
-          param$amlr.isNotCat = TRUE
-        }
-      }
-    }
-    if (param$type == "def") {
-      # check whether this is /actually/ the default
-      truedefault = getDefaults(getParamSet(l))[[origParamName]]
-      defaultcandidate = getHyperPars(l)[[origParamName]]
-      if (!is.null(defaultcandidate)) {
-        l = removeHyperPars(l, origParamName)
-        # we try to use the default, but apparently the value is already set in
-        # the learner object.
-        if (verbose &&
-            (is.null(truedefault) || truedefault != defaultcandidate)) {
-          warningf(paste0("Parameter '%s' for learner '%s' is of type",
-                  " 'default', but the learner has it already set to a",
-                  " different value.\nThis value hase been removed; the",
-                  " default will be used."),
-              param$name, l$id)
-        }
-      }
-      if (is.null(truedefault) != is.null(param$values) ||
-          (!is.null(truedefault) && truedefault != param$values)) {
-        warningf(paste0("Parameter '%s' for learner '%s' is of type 'default'",
-                " but its alleged default '%s' differs from the true default",
-                " '%s'."),
-            param$name, l$id,
-            if (is.null(param$values)) "NULL" else param$values,
-            if (is.null(truedefault)) "NULL" else truedefault)
-        param$type = "fix"
-      }
-    }
-    if (is.null(param$special) && param$type !="def" &&
-        hasRequires(lp$pars[[origParamName]]) && is.null(param$req)) {
-      warningf(paste0("Parameter '%s' for learner '%s' has a 'requires'",
-              " argument but the one given in the search space has not."),
-          param$name, l$id)
-    }
-    if (param$type != "def") {
-      nondefParamNames = c(nondefParamNames, origParamName)
-    }
-    if (param$type == "fix") {
-      if (!is.null(param$values)) {
-        if (lptypes[[origParamName]] == "discretevector") {
-          assignment = list(rep(list(param$values), param$dim))
-        } else {
-          assignment = list(
-              if (param$dim > 1) rep(param$values, param$dim) else param$values)
-        }
-          
-        names(assignment) = origParamName
-        l = setHyperPars(l, par.vals = assignment)
-      }
-    } else {
-      if (origParamName %in% names(getHyperPars(l))) {
-        # make sure this is not set at a default.
-        if (verbose) {
-          warningf(paste("Parameter '%s' for learner '%s' was already set to a",
-                  "value; this value has been removed."),
-              param$name, l$id)
-        }
-        l = removeHyperPars(l, param$name)
-      }
-      if (param$type != "def") {  # variable parameter
-        newparam = createParameter(param, info.env, learnerid = l$id)
-        if (!is.null(param$id)) {
-          idRef[[param$id]] = c(idRef[[param$id]],
-              list(list(learner = l, param = newparam)))
-        }
-        
-        newparam$amlr.isNotCat = !is.null(param$amlr.isNotCat)
-        tuneSearchSpace = c(tuneSearchSpace, list(newparam))
-      }
+    if (wl$is.converter) {
+      conv[[wl$convertfrom]] %union=% wl$datatype
     }
   }
-  list(tss = makeParamSet(params = tuneSearchSpace), l = l, idRef = idRef,
-      nondefParamNames = unique(nondefParamNames))
-}
-
-allfeasible = function(ps, totest, name, dimension) {
-  testlist = list(0)
-  names(testlist) = name
-  for (t in totest) {
-    if (getParamTypes(ps, use.names = TRUE)[[name]] == "discretevector") {
-      t = list(t)
-    }
-    testlist[[1]] = if (dimension > 1) rep(t, dimension) else t
-    if (!isFeasible(ps$pars[[name]], testlist[[1]])) {
-      # this would be easier if there was a way to disable requirements
-      # checking.
-      return(FALSE)
-    }
-  }
-  TRUE
-}
-
-createParameter = function(param, info.env, learnerid, do.trafo = TRUE,
-    facingOutside = TRUE, forWrapper = FALSE) {
-  # facingOutside == FALSE means
-  # 1) create LearnerParam instead of Param
-  # 2) remove .AMLRFIX# suffix
-  if (param$type %in% c("int", "real")) {
-    pmin = param$values[1]
-    pmax = param$values[2]
-  }
-  if (!facingOutside) {
-    param$name = amlrTransformName(param$name)
-  }
-  if (!do.trafo) {
-    if (!is.null(param$trafo)) {
-      if (param$type %in% c("int", "real") && !identical(param$trafo, "exp")) {
-        # if the transformation is not our own 'exp' trafo, then we can't say
-        # for sure what the real bounds are, or even what the param type is.
-        pmin = -Inf
-        pmax = Inf
-        param$type = "real"
-      }
-      param$trafo = NULL
-    }
-  }
-  if (!is.null(param$trafo) && identical(param$trafo, "exp")) {
-    if (param$type == "real") {
-      aux = createTrafo(pmin, pmax, FALSE)
-    } else {
-      # param$type == "int"
-      aux = createTrafo(pmin, pmax, TRUE)
-    }
-    ptrafo = aux$trafo
-    pmin = aux$newmin
-    pmax = aux$newmax
-  } else {
-    ptrafo = param$trafo  # will either be a function or NULL
-  }
-  surrogatetype = param$type
-  if (param$type == "fix" && !forWrapper) {
-    # don't warn for wrappers, for them fixed injects are the norm
-    warningf(paste0("Parameter '%s' for learner '%s' is marked",
-            " 'dummy/inject' and has type 'fix'; This usually does not make",
-            " sense."),
-        param$name, learnerid)
-    if (!is.null(param$values)) {
-      if (is.numeric(param$values[1])) {
-        surrogatetype = "real"
-        pmin = param$values[1]
-        pmax = param$values[1]
-      } else if (is.logical(param$values[1])) {
-        surrogatetype = "bool"
+  repeat {
+    oldconv = conv
+    for (n in names(conv)) {
+      for (t in conv[[n]]) {
+        conv[[n]] %union=% conv[[t]]
       }
     }
-  }
-  if (param$dim > 1) {
-    if (!facingOutside) {
-      constructor = switch(surrogatetype,
-          real = makeNumericVectorLearnerParam,
-          int = makeIntegerVectorLearnerParam,
-          cat = makeDiscreteVectorLearnerParam,
-          bool = makeLogicalVectorLearnerParam,
-          fix = makeDiscreteVectorLearnerParam,
-          NULL)
-    } else {
-      constructor = switch(surrogatetype,
-          real = makeNumericVectorParam,
-          int = makeIntegerVectorParam,
-          cat = makeDiscreteVectorParam,
-          bool = makeLogicalVectorParam,
-          fix = makeDiscreteVectorParam,
-          NULL)
+    if (identical(oldconv, conv)) {
+      break
     }
-    paramlist = list(id = param$name, len = param$dim, requires = param$req)
-  } else {
-    if (!facingOutside) {
-      constructor = switch(surrogatetype,
-          real = makeNumericLearnerParam,
-          int = makeIntegerLearnerParam,
-          cat = makeDiscreteLearnerParam,
-          bool = makeLogicalLearnerParam,
-          fix = makeDiscreteLearnerParam,
-          NULL)
-    } else {
-      constructor = switch(surrogatetype,
-          real = makeNumericParam,
-          int = makeIntegerParam,
-          cat = makeDiscreteParam,
-          bool = makeLogicalParam,
-          fix = makeDiscreteParam,
-          NULL)
-    }
-    paramlist = list(id = param$name, requires = param$req)
   }
-  paramlist = c(paramlist, switch(surrogatetype,
-                int = list(lower = pmin, upper = pmax, trafo = ptrafo),
-                real = list(lower = pmin, upper = pmax, trafo = ptrafo),
-                cat = list(values = {
-                            x = param$values
-                            if (!test_named(x)) {
-                                names(x) = param$values
-                            }
-                            x}),
-                bool = list(),
-                fix = list(values = {
-                            x = param$values
-                            if (!test_named(x)) {
-                                names(x) = param$values
-                            }
-                            x}),
-                def = stopf(paste0("Parameter '%s' for learner '%s' marked as 'inject'",
-                                " must not have type 'def'."),
-                        param$name, learnerid),
-                stopf("Unknown type '%s'; parameter '%s', learner '%s'", param$type,
-                        param$name, learnerid)))
-  if (!facingOutside) {
-    paramlist$trafo = NULL
+  
+  classlvlcount = min(3, length(taskdesc$class.levels))
+  presentprops = c("oneclass", "twoclass", "multiclass")[classlvlcount]
+  if (any(hasmissings)) {
+    presentprops %c=% "missings"
   }
-  pobject = do.call(constructor, paramlist, quote = TRUE)
-  if (!is.null(pobject$trafo)) {
-    environment(pobject$trafo) = list2env(as.list(info.env, all.names = TRUE),
-        parent = environment(pobject$trafo))
-    if (identical(param$trafo, "exp")) {
-      pobject$amlr.origValues = param$values
-    }
-    pobject$trafo = guardTrafoNa(pobject$trafo)
-  }
-  pobject$amlr.isDummy = identical(param$special, "dummy")
-  pobject
-}
-
-guardTrafoNa = function(origTrafo) {
-  force(origTrafo)
-  function(x) if (length(x) == 1 && is.na(x)) x else origTrafo(x)
+  list(
+      featprops = featprops,
+      conversion = conv,
+      presentprops = presentprops,
+      datamissings = datamissings)
 }
 
 #' @title Turn learner id string into learner object, if necessary
@@ -583,31 +260,6 @@ myCheckLearner = function (learner) {
     assertClass(learner, classes = "Learner")
   }
   learner
-}
-
-createTrafo = function(min, max, isint) {
-  if (isint) {
-    assert(min >= 0)
-    addzero = if (min == 0) 0
-    if (min == 0) {
-           min = 1
-       }
-    ratio = sqrt((min + 1) / min)
-    sequence = unique(c(addzero,
-            round(min * ratio ^ (seq(from = 0,
-                          to = floor(log(max / min, base = ratio))))),
-            max))
-    return(list(trafo = function(x) ifelse(is.na(x), NA, sequence[x]),
-            newmin = 1, newmax = length(sequence)))
-  } else {
-    force(min)
-    force(max)
-    assert(min > 0)
-    assert(max > 0)
-    
-    return(list(trafo = function(x) min * (max / min)^x,
-            newmin = 0, newmax = 1))
-  }
 }
 
 #' @title Like mlr's \code{makeModelMultiplexerParamSet}, but respecting
@@ -657,8 +309,8 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
         next
       }
       cprequires = replaceRequires(cprequires, substitution)
-      newrequires = substitute(a && b,
-          list(a = newrequires, b = deExpression(cprequires)))
+      newrequires = substitute((a) && (b),
+          list(a = newrequires, b = cprequires))
       # at this position, newrequires has the form
       # (new requires) && (old requires)
       # where the use of short-cirquiting && should solve any problems that we
@@ -667,41 +319,4 @@ makeModelMultiplexerParamSetEx = function(multiplexer, modelParsets,
     }
   }
   searchspace
-}
-
-replaceRequires = function(cprequires, substitution) {
-  # what we are going to do is substitute the variable names with their new
-  # prefixed versions.
-  # HOWEVER: R uses different scoping for function calls than for variables.
-  # therefore e.g.
-  # > c <- 1
-  # > c(c, c)
-  # doesn't give an error. This is a pain when trying to do what I'm doing here.
-  # So we will manually substitute all function calls with different names.
-  #
-  # the width.cutoff may be a problem? I wouldn't assume so if deparse keeps
-  # function name and opening parenthesis on the same line.
-  parsed = deparse(as.expression(cprequires),
-      control = c("keepInteger", "keepNA"), width.cutoff = 500)
-  funcallmatch = paste0("(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|",
-      "(`)((?:[^`\\\\]|\\\\.)+`))(\\()")
-  
-  parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", parsed)
-  #the following would be dumb:
-  #parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1],
-  # fixed = TRUE) # NO!
-  cprequires = asQuoted(paste(parsed, collapse = "\n"))
-  # the following line is a bit of R magic. Use do.call, so that cprequires,
-  # which is a 'quote' object, is expanded to its actual content. The
-  # 'substitute' call will change all names of the old parameters to the new
-  # parameters.
-  cprequires = do.call(substitute, list(cprequires, substitution))
-  
-  funcallmatchReverse = paste0("(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|",
-      "[.][._[:alpha:]])[._[:alnum:]]*)|",
-      "(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))(\\()")
-  parsed = deparse(cprequires,
-      control = c("keepInteger", "keepNA"), width.cutoff = 500)
-  parsed = gsub(funcallmatchReverse, "\\2\\1\\3\\4", parsed)
-  eval(asQuoted(paste(parsed, collapse = "\n")))
 }

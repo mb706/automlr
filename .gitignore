@@ -20,5 +20,11 @@ NAMESPACE
 .project
 tmp.R
 .ipynb_checkpoints
-
+*.Rsv
 R/mlrLearners.R
+.pydevproject
+__pycache__
+*.log
+amllogs/
+logs/
+*.rds

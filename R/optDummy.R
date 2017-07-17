@@ -38,6 +38,9 @@ amgetprior.amdummy = function(env) {
 #' 
 #' @param env [\code{environment}]\cr
 #'   The private data of this backend.
+#' @param opt [\code{AutomlrBackendConfig}]\cr
+#'   Options given for the backend. This is a list returned by a function that
+#'   was registered for the backend using \code{\link{registerBackend}}.
 #' @param prior [any]\cr
 #'   The prior as passed to the \code{\link{automlr}} invocation.
 #' @param learner [\code{Learner}]\cr
@@ -46,9 +49,11 @@ amgetprior.amdummy = function(env) {
 #'   The task to optimize the \code{Learner} over.
 #' @param measure [\code{Measure}]\cr
 #'   The measure to optimize.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Output options.
 #' 
 #' @return \code{NULL}
-amsetup.amdummy = function(env, prior, learner, task, measure) {
+amsetup.amdummy = function(env, opt, prior, learner, task, measure, verbosity) {
   cat("Called 'setup'\n")
   env$prior = coalesce(prior, 1)
   env$learner = learner
@@ -67,17 +72,23 @@ amsetup.amdummy = function(env, prior, learner, task, measure) {
 #'   The private data of this backend.
 #' @param stepbudget [\code{numeric}]\cr
 #'   The budget for this optimization step with one or several of the entries
-#'   \code{walltime}, \code{cputime} \code{modeltime} and \code{evals}. See
-#'   \code{\link{automlr}} for details.
+#'   \code{walltime} and \code{evals}. See \code{\link{automlr}} for details.
+#' @param verbosity [\code{numeric(1)}]\cr
+#'   Output options.
+#' @param deadline [\code{numeric(1)}]\cr
+#'   The number of seconds of runtime that this call should not exceed. While
+#'   the time budget gives a soft limit and tries to finish calculations that
+#'   have started by the time the budget is spent, this is a hard limit which
+#'   should be kept as closely as possible, even if it means throwing away data.
 #' 
 #' @return [\code{numeric(4)}]
 #' The budget spent during this invocation.
-amoptimize.amdummy = function(env, stepbudget) {
+amoptimize.amdummy = function(env, stepbudget, verbosity, deadline) {
   cat("Called 'optimize' with budget:\n")
   print(stepbudget)
   env$evals = env$evals + 1
   env$prior = env$prior + 1
-  c(walltime = 10, cputime = 10, modeltime = 10, evals = 1)
+  c(walltime = 10, evals = 1)
 }
 
 #' @title Reference implementation that exemplifies the backend interface.
@@ -109,9 +120,9 @@ amresult.amdummy = function(env) {
   cat("Called 'result'\n")
   list(learner = env$learner,
       opt.val = 0,
-      opt.point = removeMissingValues(sampleValue(env$learner$searchspace,
+      opt.point = removeMissingValues(sampleValue(getSearchspace(env$learner),
               trafo = TRUE)),
-      opt.path = makeOptPathDF(env$learner$searchspace, "y",
+      opt.path = makeOptPathDF(getSearchspace(env$learner), "y",
           env$measure$minimize),
       result = NULL)
 }
