@@ -67,7 +67,7 @@ Suggests:
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
-Version: 0.1.0
+Version: 0.2.1
 RoxygenNote: 6.0.1
 Collate: 
     'abortHandler.R'
