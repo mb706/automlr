@@ -3,11 +3,12 @@
 *automlr* is an R-package for *automatically* configuring *mlr* machine learning algorithms so that they perform well. It is designed for simplicity of use and supposed to run with minimal user intervention.
 
 automlr is currently under development. You can see the current status in the 'develop' branch, but it may not be in a state to run.
+
 * What does ~automlr~ offer?
 ~automlr~ complements ~mlr~ to make optimization over multiple learners and their respective hyperparameters possible. It offers:
 - A database of sensible hyperparameter search ranges for many ~mlr~ learners and preprocessing operators.
 - A process of combining these learners and preprocessing operations into a single ~Learner~ object, and the respective hyperparameters into a single searchspace.
-- A unified interface to optimization algorithms designed to enable simple optimization run continuations.
+- A unified interface to optimization algorithms designed to enable easy optimization run continuations.
 
 * Installation
 /Note: Installation of automlr is currently only tested on Linux systems. Installation on other systems, especially Win32, might not work./
@@ -42,7 +43,9 @@ To run a small example to fit some learners on the mlr-provided ~pid.task~, exec
 #+BEGIN_SRC R
 library("mlr")
 library("automlr")
-amrun = automlr(pid.task, backend = "random", budget = c(evals = 10))
+# depending on your RNG luck, this can take tens of minutes
+amrun = automlr(pid.task, backend = "random",
+  budget = c(evals = 10), verbosity = 1)
 result = amfinish(amrun)
 print(result, verbose = TRUE)
 #+END_SRC
@@ -50,9 +53,13 @@ This already shows all the mandatory arguments of ~automlr~: The task for which 
 
 You can subset the search space like so:
 #+BEGIN_SRC R
-# this example can take a while
 amrun2 = automlr(pid.task, backend = "random", budget = c(evals = 10),
     searchspace = list(mlrLearners$classif.randomForest, mlrLearners$classif.svm))
+#+END_SRC
+or
+#+BEGIN_SRC R
+amrun2 = automlr(pid.task, backend = "random", budget = c(evals = 10),
+    searchspace = list(mlrLearners[c("classif.randomForest", "classif.svm")]))
 #+END_SRC
 
 The functions and data exported by automlr that will be of interest to the user:
@@ -83,19 +90,17 @@ The default "native" backend of interrupting learners that run over time is not 
 ** setDefaultRWTBackend("fork") causes hangs
 This happens if you use ~automlr~ with the "fork" backend and a learner uses java. Currently, there is no way of using the fork backend with java based learners. Use the ~mlrLightweightNoJava~ searchspace to exclude all java based learners.
 * Project status
-Currently the project is undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
+The project is currently undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of automlr to be changing regularly.
 
-** Notes
+* Notes
 - The "irace" backend's behaviour deviates slightly from that of the ~irace~ package in so far that the number of evaluations per generation, and the slimming of the sampling distribution, are independent of the budget.
 - The "mbo" backend currently uses an inferior imputation method for the surrogate model, and its performance should not be seen as representative for ~mlrMBO~.
 - for tasks with tens of features and thousands of rows, expect automlr to use about 0.5-2MB of memory per row of data.
 
-** Project TODO
+* Project TODO
 (under consideration, subject to change)
-- [ ] release 0.2
-  - [ ] make debugging easier
-    - [ ] nicer printing of results
 - [ ] release 0.3
+  - [ ] nicer printing of results  
   - [ ] consistent randomness
     - [ ] test that execution with same seed gets same result
     - [ ] use seeds in learners that use external RNGs
@@ -129,7 +134,7 @@ Currently the project is undergoing heavy development; while the spirit of the a
   - [ ] batchJobs integration? (e.g. break run down into smaller jobs automatically)
   - [ ] priors for learners?
     
-** COMMENT immediate TODO
+** COMMENT also TODO
 The [X] blocks still need testing.
 - [ ] experimental setup
 - [ ] check what is taking random so long with some evals
