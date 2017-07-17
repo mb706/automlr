@@ -26,7 +26,7 @@ test_that("each searchspace item works", {
     expect_error(suppressSpecificWarning(capture.output(automlr(tsk,
       budget = c(evals = 1), verbosity=6,
       searchspace = list(lrn), backend = "random")),
-      "'and has different \\(but feasible\\) type'"), NA)
+      "' and has different \\(but feasible\\) type '|was already set to a value; this value has been removed"), NA)
   }
 
   # TODO: test the ones with no searchspace
@@ -38,7 +38,6 @@ test_that("each searchspace item works with different timeout backend.", {
 
   tsk = subsetTask(pid.task, 1:50)
 
-  configureMlr(defer.package.load = TRUE)
   setDefaultRWTBackend("fork")
 
   for (lrn in mlrLightweightNoWrapNoJava) {
@@ -47,10 +46,10 @@ test_that("each searchspace item works with different timeout backend.", {
       next
     }
     set.seed(123)
-    try(suppressSpecificWarning(capture.output(automlr(tsk,
+    expect_error(suppressSpecificWarning(capture.output(automlr(tsk,
       budget = c(evals = 1), verbosity=6,
       searchspace = list(lrn), backend = "random")),
-      "'and has different \\(but feasible\\) type'"))
+      "' and has different \\(but feasible\\) type '|was already set to a value; this value has been removed"), NA)
   }
 
   setDefaultRWTBackend("native")
