@@ -1,8 +1,8 @@
 #' @title Automatically choose a model with parameters to fit.
-#' 
+#'
 #' @description
 #' This is the main entry point of automlr.
-#' 
+#'
 #' @param task [\code{Task} | \code{AMState} | \code{character(1)}]\cr
 #'   Either: The mlr \code{Task} object to fit a model on. Or: An \code{AMState}
 #'   object, or a \code{character(1)} containing the file name of an \code{.rds}
@@ -91,7 +91,7 @@
 #'   evaluation of a learner may take after which it is aborted. Note that for
 #'   performance measurements that use multiple evaluations, e.g.
 #'   crossvalidation, a single datapoint takes a multiple of
-#'   \code{max.learner.time} seconds. 
+#'   \code{max.learner.time} seconds.
 #' @param verbosity [\code{integer(1)}]\cr
 #'   Level of warning and info messages which to show.
 #'   \describe{
@@ -102,13 +102,13 @@
 #'     \item{>=4}{Output from all learners.}
 #'     \item{>=5}{Output memory usage stats.}
 #'     \item{>=6}{Stop on learner error.}
-#'   } 
+#'   }
 #' @param ... No further arguments should be given.
-#' 
+#'
 #' @return [\code{AMState}]
 #' Object containing the result as well as info about the run. Use
 #' \code{\link{amfinish}} to extract the results.
-#' 
+#'
 #' Object members:
 #' \describe{
 #'   \item{task [\code{Task}]}{The task being trained for.}
@@ -132,8 +132,8 @@
 #'   \item{seed [\code{numeric}]}{The value of \code{.Random.seed} which to use
 #'     for continuation.}
 #'  }
-#'     
-#' 
+#'
+#'
 #' @examples
 #' \dontrun{
 #' library(mlr)
@@ -141,13 +141,13 @@
 #' automlr(iris.task, budget = c(evals = 1000), backend = "random",
 #'   savefile = "iris")
 #' > SOME RESULT
-#' 
+#'
 #' # optimize for another 1000 evaluations, loading the 'iris.rds' savefile
 #' # automatically and saving back to it during evaluation.
 #' automlr("iris", budget = c(evals = 2000))
 #' > MORE RESULTS
 #' }
-#' 
+#'
 #' @include mlrLearners.R lsambackends.R defaults.R
 #' @export
 automlr = function(task, ...) {
@@ -155,14 +155,14 @@ automlr = function(task, ...) {
 }
 
 #' @title Create an \code{AMState} object and run automlr.
-#' 
+#'
 #' @rdname automlr
 #' @export
 automlr.Task = function(task, measure = NULL, budget = 0,
     searchspace = mlrLearners, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, backend,
     max.walltime.overrun = if ("walltime" %in% names(budget))
-      budget['walltime'] * 0.1 + 60 else 3600, max.learner.time = Inf,
+      budget['walltime'] * 0.1 + 600 else 3600, max.learner.time = Inf,
     verbosity = 0, ...) {
   # Note: This is the 'canonical' function signature.
   assertClass(task, "Task")
@@ -193,7 +193,7 @@ automlr.Task = function(task, measure = NULL, budget = 0,
   assertNumeric(max.walltime.overrun, lower = 0, len = 1)
   assertNumeric(max.learner.time, lower = 0, len = 1)
   assertCount(verbosity)
-  
+
   assert(identical(list(...), list()))
   # a delegated problem is a solved problem.
   automlr(makeS3Obj(c("AMState", "AMObject"),
@@ -221,13 +221,13 @@ automlr.Task = function(task, measure = NULL, budget = 0,
 
 #' @title Continue automlr search from an \code{.rds} savefile, given as a
 #' \code{character(1)}.
-#' 
+#'
 #' @rdname automlr
 #' @export
 automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
-    save.interval = default.save.interval, new.seed = FALSE, 
+    save.interval = default.save.interval, new.seed = FALSE,
     max.walltime.overrun = if ("walltime" %in% names(budget))
-                budget['walltime'] * 0.1 + 60 else 3600, verbosity = 0, ...) {
+                budget['walltime'] * 0.1 + 600 else 3600, verbosity = 0, ...) {
   assertString(task)
   truefilename = gsub("(\\.rds|)$", ".rds", task)
   assert(identical(list(...), list()))
@@ -245,13 +245,13 @@ automlr.character = function(task, budget = NULL, prior = NULL, savefile = task,
 
 
 #' @title Continue automlr search the result of a previous \code{automlr} run.
-#' 
+#'
 #' @rdname automlr
 #' @export
 automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
     save.interval = default.save.interval, new.seed = FALSE,
     max.walltime.overrun = if ("walltime" %in% names(budget))
-                budget['walltime'] * 0.1 + 60 else 3600, verbosity = 0, ...) {
+                budget['walltime'] * 0.1 + 600 else 3600, verbosity = 0, ...) {
   if (!is.null(budget)) {
     budget = unlist(budget, recursive = FALSE)
     checkBudgetParam(budget)
@@ -274,17 +274,17 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
 
 #' @title Converte the \code{AMState} object as returned by
 #'   \code{\link{automlr}} to an \code{AMResult} object.
-#' 
+#'
 #' @description
 #' The result object contains information about the solution that is relatively
 #' backend-independent.
-#' 
+#'
 #' @param amstate [\code{AMState}]\cr
 #'   The AMState object which is to be converted.
-#' 
+#'
 #' @return [\code{AMResult}]
 #' Object representing the optimum found by the \code{\link{automlr}} run.
-#' 
+#'
 #' Object members:
 #' \describe{
 #'   \item{learner [\code{Learner}]}{The (constructed) learner that achieved the
@@ -298,7 +298,7 @@ automlr.AMState = function(task, budget = NULL, prior = NULL, savefile = NULL,
 #'     optimum.}
 #'   \item{... (further elements)}{Elements of the \code{AMState} object.}
 #'  }
-#' 
+#'
 #' @export
 amfinish = function(amstate) {
   assertClass(amstate, "AMState")
@@ -315,18 +315,18 @@ amfinish = function(amstate) {
 }
 
 #' @title Give some cute info about a given AMState
-#' 
+#'
 #' @description
 #' Optionally give a little or a lot (if \code{verbose == TRUE}) of info.
-#' 
+#'
 #' @param x [\code{AMState}|\code{AMResult}]\cr
 #'   What to print
 #' @param verbose [\code{logical(1)}]\cr
 #'   Print detailed info
 #' @param ... ignored
-#' 
+#'
 #' @method print AMObject
-#' 
+#'
 #' @export
 print.AMObject = function(x, verbose = FALSE, ...) {
   allversions = c(x$previous.versions, list(x))
