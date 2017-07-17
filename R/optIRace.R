@@ -286,7 +286,7 @@ amoptimize.amirace = function(env, stepbudget, verbosity, deadline) {
 
   tryCatch({
       env$tuneresult = myTuneIrace(env$learner, env$task, env$rdesc,
-          list(env$measure), getSearchspace(env$learner), env$ctrl,
+          list(env$measure), getSearchspace(env$learner), ctrl,
           env$opt.path, verbosity.traceout(verbosity), resample)
     }, error = function(e) {
       if (conditionMessage(e) == noResTimeout) {
