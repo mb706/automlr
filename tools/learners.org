@@ -546,7 +546,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - K :: int 1..#p# exp: number of variables per subset. number of subsets is inverse of this
+   - K :: int 1..#floor(p/2)# exp: number of variables per subset. number of subsets is inverse of this
    - L :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
 ** Boosting
 *** classif.ada
