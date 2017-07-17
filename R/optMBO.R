@@ -90,16 +90,6 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
     usedParset = simplifyParams(usedParset)
   }
 
-  for (p in usedParset$pars) {
-    if (isDiscrete(p) && length(p$values) > 53) {
-      stopf(paste("Parameter '%s' has more than 53 possible (in fact %s)",
-              "values. Since mbo uses pencil and paper to calculate things,",
-              "it can't handle numbers that big.%s"), p$id, length(p$values),
-          ifelse(p$id != "selected.learner", "",
-              " Try to use searchspace = mlrLightweight[NoWrap]."))
-    }
-  }
-
   resDesc = opt$resampling
   objective = smoof::makeSingleObjectiveFunction(
       name = "automlr learner optimization",
@@ -136,6 +126,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
       show.learner.output = verbosity.traceout(verbosity))
   if (any(c("factors", "ordered") %in% getLearnerProperties(mboLearner))) {
     mboLearner = cpoFixFactors() %>>%
+        selectedLearnerSplitter() %>>%
         cpoDropConstants(id = "predrop") %>>%
         cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
         cpoImputeConstant("MISSING", affect.type = c("ordered", "factor"),
@@ -162,6 +153,21 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   env$zeroEvals = getOptPathLength(env$opt.state$opt.path)
   # clean up environment, it is used in objectiveFun().
 }
+
+SLSplit = function(data) {
+  sl = data$selected.learner
+  rest = dropNamed(data, "selected.learner")
+  newdat = do.call(data.frame, sapply(learnercats, function(lvl) {
+    factor(sl, levels = lvl)
+  }, simplify = FALSE))
+  cbind(newdat, rest)
+}
+
+
+selectedLearnerSplitter = makeCPO("selectedLearnerSplitter",
+  .properties.needed = "missings", .datasplit = "target",
+  .stateless = TRUE, cpo.trafo = { data = SLSplit(data) },
+  cpo.retrafo = { data = SLSplit(data) })
 
 
 amresult.ammbo = function(env) {
