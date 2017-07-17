@@ -95,9 +95,6 @@ Currently the project is undergoing heavy development; while the spirit of the a
 - [ ] release 0.2
   - [ ] make debugging easier
     - [ ] nicer printing of results
-  - [ ] searchspace
-    - [ ] automlr.targettype: oneclass, twoclass, multiclass, rcens, lcens, icens
-  - [ ] java vs. "fork" backend fix
 - [ ] release 0.3
   - [ ] consistent randomness
     - [ ] test that execution with same seed gets same result
@@ -134,8 +131,6 @@ Currently the project is undergoing heavy development; while the spirit of the a
     
 ** COMMENT immediate TODO
 The [X] blocks still need testing.
-- [ ] check MBO backend
-- [ ] repair irace backend
 - [ ] experimental setup
 - [ ] check what is taking random so long with some evals
 - [ ] error imputation wrapper
