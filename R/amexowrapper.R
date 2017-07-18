@@ -1,4 +1,7 @@
 
+DODEBUG = new.env(parent = emptyenv())
+DODEBUG$DEBUG = TRUE
+
 #################################
 # Creator                       #
 #################################
@@ -232,7 +235,9 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   args = handleAmlrfix(args)
 
   sl = args$selected.learner
-  catf("Training %s", sl)
+  if (DODEBUG$DEBUG) {
+    catf("Training %s", sl)
+  }
 
   learner$properties = learner$base.learners[[sl]]$properties
 
@@ -242,18 +247,24 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   .learner$learner = learner  # respect automlrWrappedLearner interface
 
   ret = NextMethod("trainLearner")
-  catf("Done %s", sl)
+  if (DODEBUG$DEBUG) {
+    catf("Done %s", sl)
+  }
   ret
 }
 
 #' @export
 predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   sl = .model$learner.model$learner$par.vals$selected.learner
-  catf("Predicting %s", sl)
+  if (DODEBUG$DEBUG) {
+    catf("Predicting %s", sl)
+  }
   .newdata = .newdata %>>% .model$learner.model$learner$retrafo
 
   ret = NextMethod("predictLearner")
-  catf("Done %s", sl)
+  if (DODEBUG$DEBUG) {
+    catf("Done %s", sl)
+  }
   ret
 }
 
