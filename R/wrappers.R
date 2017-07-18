@@ -93,6 +93,7 @@ slowLrn = c(
     "classif.neuralnet",
     "classif.bartMachine",  # JVM seems broken.
     "classif.gausspr",
+    "classif.earth",  # DLL can not be loaded, too many of them.
     NULL)
 
 if (!all(slowLrn %in% names(mlrLearnersNoWrap))) {
