@@ -71,7 +71,8 @@ Suggests:
     bst,
     RRF,
     evtree,
-    penalized
+    penalized,
+    RFast
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
