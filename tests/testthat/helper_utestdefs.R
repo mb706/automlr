@@ -96,25 +96,6 @@ AllLearner = autolearner(
          sp("int1.AMLRFIX2", "int", c(11, 20), req = quote(automlr.has.missings==TRUE && automlr.has.factors == FALSE))))
 
 
-fremover = makeCPO("fremover", .properties.adding = "factors", .stateless = TRUE, .datasplit = "onlyfactor",
-  cpo.trafo = function(data, target) { data[character(0)] }, cpo.retrafo = function(data) { data[character(0)] })
-
-asnumcpo = makeCPO("as.numeric", .properties.adding = c("factors", "ordered"), .properties.needed = "numerics",
-  .stateless = TRUE, .datasplit = "factor", cpo.trafo = function(data, target) {
-    as.data.frame(lapply(data, as.numeric), row.names = rownames(data)) }, cpo.retrafo = function(data) {
-      as.data.frame(lapply(data, as.numeric), row.names = rownames(data)) })
-numasordcpo = makeCPO("num.as.ordered", .properties.adding = "numerics", .properties.needed = "ordered",
-  .stateless = TRUE, .datasplit = "numeric", cpo.trafo = function(data, target) {
-    as.data.frame(lapply(data, as.ordered), row.names = rownames(data)) }, cpo.retrafo = function(data) {
-      as.data.frame(lapply(data, as.ordered), row.names = rownames(data)) })
-facasordcpo = makeCPO("fac.as.ordered", .properties.adding = "factors", .properties.needed = "ordered",
-  .stateless = TRUE, .datasplit = "onlyfactor", cpo.trafo = function(data, target) {
-    as.data.frame(lapply(data, as.ordered), row.names = rownames(data)) }, cpo.retrafo = function(data) {
-      as.data.frame(lapply(data, as.ordered), row.names = rownames(data)) })
-ordasfaccpo = makeCPO("ord.as.factor", .properties.adding = "ordered", .properties.needed = "factors",
-  .stateless = TRUE, .datasplit = "ordered", cpo.trafo = function(data, target) {
-    as.data.frame(lapply(data, factor, ordered = FALSE), row.names = rownames(data)) }, cpo.retrafo = function(data) {
-      as.data.frame(lapply(data, factor, ordered = FALSE), row.names = rownames(data)) })
 reversefacorder = makeCPO("reverse", .stateless = TRUE, .datasplit = "factor",
   cpo.trafo = function(data, target) {
     as.data.frame(lapply(data, function(x) factor(x, levels = rev(levels(x)))),
@@ -123,17 +104,6 @@ reversefacorder = makeCPO("reverse", .stateless = TRUE, .datasplit = "factor",
     as.data.frame(lapply(data, function(x) factor(x, levels = rev(levels(x)))),
       row.names = rownames(data))
   })
-splitnumcpo = makeCPO("as.factor", numsplits: integer[2, 5],
-  .properties.adding = "numerics", .properties.needed = "factors",
-  .datasplit = "numeric", cpo.trafo = {
-    breaks = lapply(data, function(d)
-      unique(c(-Inf, quantile(d, (1:(numsplits - 1)) / numsplits, na.rm = TRUE), Inf)))
-    cpo.retrafo = function(data) {
-      as.data.frame(mapply(function(d, b) cut(d, breaks = b), d = data, b = breaks, SIMPLIFY = FALSE),
-        row.names = rownames(data))
-    }
-    cpo.retrafo(data)
-  }, cpo.retrafo = NULL)
 
 cpoToBinary = makeCPO("to.binary", .datasplit = "factor", cpo.trafo = {
   maxnames = sapply(data, function(x) { tbl = table(x) ; names(tbl)[which.max(tbl)] })
