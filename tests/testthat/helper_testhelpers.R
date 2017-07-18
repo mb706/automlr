@@ -9,7 +9,7 @@ library("checkmate")
 configureMlr()  # set defaults
 configureMlr(show.learner.output = TRUE, on.learner.error = "warn")
 
-DODEBUG$DEBUG = FALSE
+DODEBUG$TEST = TRUE
 
 # Create a data frame with the given number of features. The factorial features
 # have nClasses cases.
