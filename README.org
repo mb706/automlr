@@ -97,6 +97,10 @@ Unfortunately, the runtime of different learners varies widely. To exclude the m
 
 If a single evaluation is stuck in a a loop and does not finish, it is possible that this is a bug in the learner. If you can provide useful information about a bug, please open an "Issue" on github. Gather this information using ~gdb~ or your debugger of choice (if you know your way around one); otherwise try to find a way to reproduce the behaviour. I (and probably the learner package's developer) are very happy to track down and fix these kind of bugs.
 
+** Maximal Number of DLLs reached
+This is because R is very conservative on how many DLLs it allows to be loaded. If you are using R >= 3.4, one solution is to set the environmental variable `R_MAX_NUM_DLLS` to something greater than 100, as found out [[https://stackoverflow.com/a/43689526][here]]. Otherwise, reduce the number of learners you are using in your searchspace.
+
+If you are doing this, also take care that your `ulimit -n` might need adjusting.
 * Project status
 The project is currently undergoing heavy development; while the spirit of the application is expected to be stable, the user interface may undergo slight changes in the future. Expect the internals of ~automlr~ to be changing regularly.
 
