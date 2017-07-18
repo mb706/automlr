@@ -129,7 +129,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
   if (any(c("factors", "ordered") %in% getLearnerProperties(mboLearner))) {
     mboLearner = cpoFixFactors() %>>%
         selectedLearnerSplitter() %>>%
-        cpoDropConstants(id = "predrop") %>>%
+        cpoDropConstants(id = "predrop", ignore.na = TRUE) %>>%
         cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
         cpoImputeConstant("MISSING", affect.type = c("ordered", "factor"),
             make.dummy.cols = FALSE) %>>%
@@ -137,7 +137,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
         mboLearner
   } else {
     mboLearner = cpoFixFactors() %>>%
-        cpoDropConstants(id = "predrop") %>>%
+        cpoDropConstants(id = "predrop", ignore.na = TRUE) %>>%
         cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
         cpoDummyEncode(TRUE) %>>%
         cpoDropConstants(id = "postdrop") %>>%
