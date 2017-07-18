@@ -131,8 +131,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
         selectedLearnerSplitter() %>>%
         cpoDropConstants(id = "predrop", ignore.na = TRUE) %>>%
         cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
-        cpoImputeConstFact(affect.type = c("ordered", "factor"),
-          make.dummy.cols = FALSE) %>>%
+        cpoImputeConstFact(affect.type = c("ordered", "factor")) %>>%
         cpoDropConstants(id = "postdrop") %>>%
         mboLearner
   } else {
