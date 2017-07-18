@@ -107,7 +107,7 @@ appendOptPath = function(op1, op2) {
 
 # in-place subset an opt.path
 subsetOptPath = function(op1, subset) {
-  
+
   for (vect in c("error.message", "exec.time", "dob", "eol", "extra")) {
     op1$env[[vect]] = op1$env[[vect]][subset]
   }
@@ -122,7 +122,7 @@ subsetOptPath = function(op1, subset) {
 # similarly copied from mlr logFunOpt.R
 logFunQuiet = function(learner, task, resampling, measures, par.set, control,
     opt.path, dob, x, y, remove.nas, stage, prev.stage) {
-  
+
   if (stage == 1L) {
     list(start.time = Sys.time())
   }
@@ -172,7 +172,7 @@ replaceRequires = function(cprequires, substitution) {
   # if the `replaceRequires` worked without 'deparse', this would *still*
   # be necessary for irace, since irace deparses the requirements.
   substitution = lapply(substitution, function(q) substitute((q), list(q = q)))
-  
+
   # what we are going to do is substitute the variable names with their new
   # prefixed versions.
   # HOWEVER: R uses different scoping for function calls than for variables.
@@ -188,7 +188,7 @@ replaceRequires = function(cprequires, substitution) {
       control = c("keepInteger", "keepNA"), width.cutoff = 500)
   funcallmatch = paste0("(?:((?:[[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*)|",
       "(`)((?:[^`\\\\]|\\\\.)+`))(\\()")
-  
+
   parsed = gsub(funcallmatch, "\\2.AUTOMLR_TEMP_\\1\\3\\4", parsed)
   #the following would be dumb:
   #parsed[1] = sub(".AUTOMLR_TEMP_expression(", "expression(", parsed[1],
@@ -199,7 +199,7 @@ replaceRequires = function(cprequires, substitution) {
   # 'substitute' call will change all names of the old parameters to the new
   # parameters.
   cprequires = do.call(substitute, list(cprequires, substitution))
-  
+
   funcallmatchReverse = paste0("(?:\\.AUTOMLR_TEMP_((?:[[:alpha:]]|",
       "[.][._[:alpha:]])[._[:alnum:]]*)|",
       "(`)\\.AUTOMLR_TEMP_((?:[^`\\\\]|\\\\.)+`))(\\()")
@@ -225,7 +225,7 @@ langIdentical = function(l1, l2) {
 
 generateRealisticImputeVal = function(measure, learner, task) {
   naked = dropFeatures(task, getTaskFeatureNames(task))
-  retval = bootstrapB632(learner, naked, iters = 100, show.info = FALSE)$aggr
+  retval = repcv(learner, naked, folds = 10, reps = 50, show.info = FALSE)$aggr
   # and because convertYForTuner is retarded:
   retval * ifelse(measure$minimize, 1 , -1)
 }
@@ -455,11 +455,11 @@ myAssignInNamespace = function(what, value, ns) {
 #################################
 
 #' @title Retrieve a suggested search space of the given learner
-#' 
+#'
 #' @description
 #' Learners created with \code{\link{buildLearners}} have a \code{$searchspace}
 #' slot that can be accessed with this function.
-#' 
+#'
 #' @param learner [\code{Learner}]\cr
 #'   Learner
 #' @export
@@ -499,7 +499,7 @@ getSeed = function() {
 # Learner Wrapping              #
 #################################
 
-# make a copy of paramSet that has all 'when' attributes set to 'train'. 
+# make a copy of paramSet that has all 'when' attributes set to 'train'.
 makeAllTrainPars = function(paramSet) {
   paramSet$pars = lapply(paramSet$pars, function(x) {
         x$when = "train"
@@ -534,7 +534,7 @@ wrapLearner = function(cl, short.name, name, learner,
       package = "automlr")
   wrapper$fix.factors.prediction = FALSE
 
-  
+
   wrapper$learner = removeHyperPars(learner,
       intersect(names2(getHyperPars(learner)), getParamIds(par.set)))
   wrapper$config = config
@@ -555,11 +555,11 @@ trainLearner.automlrWrappedLearner = function(.learner, .task, .subset,
 
   learner = .learner$learner
   # set the mlr $config of the learner to the config of the .learner
-  # also we want errors to be thrown as usual 
+  # also we want errors to be thrown as usual
   learner = setLLConfig(learner, insert(getLLConfig(.learner),
           list(on.learner.error = "stop", on.learner.warning = "warn")))
 
-  # we want errors to be thrown here, but ModelMultiplexer doesn't keep 
+  # we want errors to be thrown here, but ModelMultiplexer doesn't keep
   # options for further down. FIXME: report this
   oldMlrOptions = getMlrOptions()
   on.exit(do.call(configureMlr, oldMlrOptions), add = TRUE)

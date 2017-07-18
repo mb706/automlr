@@ -39,7 +39,6 @@ Suggests:
     sda,
     caret,
     mda,
-    sparsediscrim,
     kknn,
     class,
     rknn,
@@ -64,11 +63,19 @@ Suggests:
     e1071,
     deepnet,
     nnet,
-    neuralnet
+    neuralnet,
+    earth,
+    pamr,
+    RSNNS,
+    C50,
+    bst,
+    RRF,
+    evtree,
+    penalized
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
-Version: 0.1.0
+Version: 0.2.1
 RoxygenNote: 6.0.1
 Collate: 
     'abortHandler.R'

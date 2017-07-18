@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 from collections import OrderedDict
+from collections import defaultdict
 import re
 
 outfile = "../R/mlrLearners.R"
 infile = "learners.org"
 prefixfile = "learners.prefix"
 
+categories = defaultdict(list)
 
 def splitList(slist, pattern):
     """Split a list of strings into list of lists of strings, divided at regex 'pattern'"""
@@ -191,15 +193,23 @@ def completeOutput(learners):
     retstring += ")"
     return retstring
 
+def catOutput(categories):
+    retstring = "learnercats = list(\n"
+    retstring += ',\n'.join('  ' + k.replace(" ", "") + ' = c("' + '", "'.join(v) + '")' for k, v in categories.items())
+    retstring += "\n)"
+    return retstring
+
 
 def makeLearners(cat):
     learners = OrderedDict()
-    for subcat in splitList(cat, r"\*\* .*").values():
+    for catname, subcat in splitList(cat, r"\*\* .*").items():
         newlearners = splitList(subcat, r"\*\*\* .*")
         for k, v in newlearners.items():
             assert k not in learners
             learners[k] = v
+            categories[catname.strip("* :")].append(k.strip("* :"))
     return learners
+
 
 
 filetext = list(x.strip('\n') for x in open(infile))
@@ -211,3 +221,4 @@ if __name__ == "__main__":
         for l in open(prefixfile):
             f.write(l)
         f.write(completeOutput(makeLearners(cat)))
+        f.write("\n\n" + catOutput(categories))

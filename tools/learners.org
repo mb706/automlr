@@ -302,7 +302,7 @@
 **** Variable Parameters:
    - U :: TRUE, FALSE: {tree.u} no pruning y/n
    - O :: TRUE, FALSE: no collapsing y/n
-   - C :: 1e-10..0.9999999999: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
+   - C :: exp 1e-3..0.5: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
    - M :: int 1..#floor(n/2)# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 2.. (2..30) exp: cv folds {tree.n} req: U == FALSE && R == TRUE
@@ -318,7 +318,7 @@
 *** classif.PART
 - WEKA PART decision list
 **** Variable Parameters:
-   - C :: 1e-10..0.9999999999: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
+   - C :: exp 1e-3..0.5: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
    - M :: int 1..#floor(n/2)# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 2.. (2..30) exp: {tree.n} req: R == TRUE && U == FALSE
@@ -546,7 +546,7 @@
 *** classif.rotationForest
 - random forest + pca
 **** Variable Parameters:
-   - K :: int 1..#p# exp: number of variables per subset. number of subsets is inverse of this
+   - K :: int 1..#floor(p/2)# exp: number of variables per subset. number of subsets is inverse of this
    - L :: int 1.. (25..500) exp: {rf.numtree} number of trees to grow
 ** Boosting
 *** classif.ada
