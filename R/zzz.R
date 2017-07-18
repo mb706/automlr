@@ -33,4 +33,7 @@ mlr.predictLearner.ModelMultiplexer = NULL
     suppress.warnings = TRUE)
 
   eigen(matrix(1:4, nrow=2))  # load the LAPACK DLL
+
+  options(rf.cores=0)  # randomForestSRC is bad and should feel bad
+  options(mc.cores=1)
 }
