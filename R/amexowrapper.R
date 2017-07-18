@@ -213,7 +213,8 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
 
   args = args[names(args) %nin% .learner$wrapperparnames]
 
-  cpo = buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers)
+  cpo = buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers) %>>%
+    cpoDropConstants(ignore.na = TRUE, id = "automlr.drop.constants")
 
   # TODO: the "right" solution here is to have another
   # 'applyExpressionBoundTrafos-Wrapper', but this will work for now
