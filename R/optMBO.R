@@ -161,6 +161,9 @@ reverselearnercats = unlist(lapply(names(learnercats), function(x) {
 
 SLSplit = function(data) {
   sl = data$selected.learner
+  if (is.null(sl)) {
+    return(data)
+  }
   rest = dropNamed(data, "selected.learner")
   newdat = do.call(data.frame, sapply(learnercats, function(lvl) {
     factor(sl, levels = lvl)
