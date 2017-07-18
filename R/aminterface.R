@@ -36,7 +36,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     savefile = gsub("(\\.rds|)$", ".rds", savefile)
     amstate$savefile = savefile
   }
-  
+
   # update the amstate object
 
   # a deep copy of backendprivatedata is necessary so that an AMState object
@@ -50,7 +50,7 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
   }
 
   amstate$measure = coalesce(amstate$measure, getDefaultMeasure(amstate$task))
-  
+
   # check if budget is already exceeded. in this case we return the (updated)
   # amstate object
   if (!is.null(budget)) {
@@ -60,12 +60,12 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
     amstate$finish.time = Sys.time()
     return(amstate)
   }
-  
+
   if (!new.seed) {
     setSeed(amstate$seed)
   }
   amstate$seed = getSeed()
-  
+
   # set backendprivatedata. This gets called once per amstate lifetime.
   if (!amstate$isInitialized) {
     handleInterrupts({
@@ -81,9 +81,19 @@ aminterface = function(amstate, budget = NULL, prior = NULL, savefile = NULL,
           amstate$isInitialized = TRUE
           updatePriors(amstate)
         }, stop("Ctrl-C Abort"))
+
+    amstate$seed = getSeed()
+
+    amstate$finish.time = Sys.time()
+    if (!is.null(savefile)) {
+      writefile(savefile, amstate, basename)
+      # since writefile might use the rng:
+      setSeed(amstate$seed)
+    }
+
   }
-  
-  
+
+
   # the writing out of intermediate results to `savefile` is done here and not
   # delegated to the backend functions. We call the backend with timeout until
   # next write to disk. This greatly reduces complexity at some marginal
