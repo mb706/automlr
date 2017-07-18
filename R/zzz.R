@@ -23,7 +23,7 @@ mlr.predictLearner.ModelMultiplexer = NULL
   # this is necessary for some linux kernels to prevent segfaults.
   # if the JVM is already running, it is too late, however, and we just hope
   # the user knows what he's doing.
-  options(java.parameters = c("-Xss2560k", "-Xmx2g"))
+  options(java.parameters = c("-Xss2560k", "-Xmx1g"))
 
   # there is a limit on how many DLLs can be loaded; make sure mlrMBO
   # is loaded before the others; same with irace
