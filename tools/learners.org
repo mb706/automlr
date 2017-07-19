@@ -302,7 +302,7 @@
 **** Variable Parameters:
    - U :: TRUE, FALSE: {tree.u} no pruning y/n
    - O :: TRUE, FALSE: no collapsing y/n
-   - C :: exp 1e-3..0.5: {tree.c} pruning confidence. req: U == FALSE && R == FALSE
+   - C :: 1e-3..0.5: {tree.c} pruning confidence. TODO: exp. req: U == FALSE && R == FALSE
    - M :: int 1..#floor(n/2)# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 2.. (2..30) exp: cv folds {tree.n} req: U == FALSE && R == TRUE
@@ -318,7 +318,7 @@
 *** classif.PART
 - WEKA PART decision list
 **** Variable Parameters:
-   - C :: exp 1e-3..0.5: {tree.c} pruning confidence: req: R == FALSE && U == FALSE
+   - C :: 1e-3..0.5: {tree.c} pruning confidence TODO: exp: req: R == FALSE && U == FALSE
    - M :: int 1..#floor(n/2)# exp: {tree.m} minimum instances per leaf
    - R :: TRUE, FALSE: {tree.r} reduced error pruning req: U == FALSE
    - N :: int 2.. (2..30) exp: {tree.n} req: R == TRUE && U == FALSE
