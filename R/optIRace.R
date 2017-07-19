@@ -15,7 +15,7 @@
 #'   resampling to evaluate model performance.
 #' @export
 makeBackendconfIrace = registerBackend("irace",
-    function(nbIterations = 10, newpopulation = 10,
+    function(nbIterations = 10, newpopulation = 20,
         resampling = hout) {
       assertCount(nbIterations)
       assertCount(newpopulation)
