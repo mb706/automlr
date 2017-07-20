@@ -131,8 +131,7 @@ amsetup.ammbo = function(env, opt, prior, learner, task, measure, verbosity) {
         selectedLearnerSplitter() %>>%
         cpoDropConstants(id = "predrop", ignore.na = TRUE) %>>%
         cpoImputeHist(affect.type = "numeric", id = "numimp") %>>%
-        cpoImputeConstant("MISSING", affect.type = c("ordered", "factor"),
-            make.dummy.cols = FALSE) %>>%
+        cpoImputeConstFact(affect.type = c("ordered", "factor")) %>>%
         cpoDropConstants(id = "postdrop") %>>%
         mboLearner
   } else {
@@ -162,6 +161,9 @@ reverselearnercats = unlist(lapply(names(learnercats), function(x) {
 
 SLSplit = function(data) {
   sl = data$selected.learner
+  if (is.null(sl)) {
+    return(data)
+  }
   rest = dropNamed(data, "selected.learner")
   newdat = do.call(data.frame, sapply(learnercats, function(lvl) {
     factor(sl, levels = lvl)

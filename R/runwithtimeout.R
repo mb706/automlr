@@ -310,7 +310,7 @@ getPatchFunctions = function() {
               }
             } else {
               tcwrapper <- function(...) {
-                patches$tryCatch$orig(expr, ..., finally)
+                patches$tryCatch$orig(expr, ..., finally = finally)
               }
             }
             do.call(tcwrapper, handlers)

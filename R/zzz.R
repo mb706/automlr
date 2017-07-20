@@ -32,5 +32,11 @@ mlr.predictLearner.ModelMultiplexer = NULL
   requirePackages("irace", why = "optMBO", default.method = "load", stop = FALSE,
     suppress.warnings = TRUE)
 
-  eigen(matrix(1:4, nrow=2))  # load the LAPACK DLL
+  # load the LAPACK DLL
+  eigen(matrix(1:4, nrow=2))
+  # load RcppZiggurat, if available
+  try(RcppZiggurat::zrnorm(1), silent = TRUE)
+
+  options(rf.cores=0)  # randomForestSRC is bad and should feel bad
+  options(mc.cores=1)
 }

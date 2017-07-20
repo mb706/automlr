@@ -1,4 +1,7 @@
 
+DODEBUG = new.env(parent = emptyenv())
+DODEBUG$TEST = FALSE
+
 #################################
 # Creator                       #
 #################################
@@ -214,6 +217,9 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   args = args[names(args) %nin% .learner$wrapperparnames]
 
   cpo = buildCPO(handleAmlrfix(wrapperargs), .learner$wrappers)
+  if (!DODEBUG$TEST) {
+    cpo = cpo %>>% cpoDropConstants(ignore.na = TRUE, id = "automlr.drop.constants")
+  }
 
   # TODO: the "right" solution here is to have another
   # 'applyExpressionBoundTrafos-Wrapper', but this will work for now
@@ -231,7 +237,9 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   args = handleAmlrfix(args)
 
   sl = args$selected.learner
-  catf("Training %s", sl)
+  if (!DODEBUG$TEST) {
+    catf("Training %s", sl)
+  }
 
   learner$properties = learner$base.learners[[sl]]$properties
 
@@ -241,18 +249,24 @@ trainLearner.AMExoWrapper = function(.learner, .task, .subset, .weights = NULL,
   .learner$learner = learner  # respect automlrWrappedLearner interface
 
   ret = NextMethod("trainLearner")
-  catf("Done %s", sl)
+  if (!DODEBUG$TEST) {
+    catf("Done %s", sl)
+  }
   ret
 }
 
 #' @export
 predictLearner.AMExoWrapper = function(.learner, .model, .newdata, ...) {
   sl = .model$learner.model$learner$par.vals$selected.learner
-  catf("Predicting %s", sl)
+  if (!DODEBUG$TEST) {
+    catf("Predicting %s", sl)
+  }
   .newdata = .newdata %>>% .model$learner.model$learner$retrafo
 
   ret = NextMethod("predictLearner")
-  catf("Done %s", sl)
+  if (!DODEBUG$TEST) {
+    catf("Done %s", sl)
+  }
   ret
 }
 
