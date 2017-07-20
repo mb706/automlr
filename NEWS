@@ -1,3 +1,6 @@
+* automlr 0.3.0
+- Using CPO preprocessing
+- Bugfixes
 * automlr 0.2.1
 - Bugfixes
 - Removed 53 learner limit for mbo

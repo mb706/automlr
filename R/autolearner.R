@@ -518,7 +518,9 @@ createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
     if (is.language(pmax)) {
       pmax = eval(pmax, envir = env, enclos = globalenv())
     }
-    assert(pmax >= pmin)
+    if (!(pmax >= pmin)) {
+      return(pmin)
+    }
     if (is.int) {
       assertIntegerish(pmin, any.missing = FALSE, len = 1)
       assertIntegerish(pmax, any.missing = FALSE, len = 1)
@@ -549,7 +551,7 @@ createExpressionTrafo = function(pmin, pmax, is.int, is.exp) {
       }
       assertNumeric(pmin, any.missing = FALSE, len = 1)
       assertNumeric(pmax, any.missing = FALSE, len = 1)
-      
+
       trafofn(x * (pmax - pmin) + pmin)
     }
   }

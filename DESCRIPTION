@@ -71,13 +71,15 @@ Suggests:
     bst,
     RRF,
     evtree,
-    penalized
+    penalized,
+    RFast
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
-Version: 0.2.1
+Version: 0.3.0
 RoxygenNote: 6.0.1
 Collate: 
+    'CPO.R'
     'abortHandler.R'
     'amexowrapper.R'
     'aminterface.R'
