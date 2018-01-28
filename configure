@@ -10,6 +10,8 @@ sourcepath=$(dirname "$(readlink -f "$0")")
 cd "$sourcepath"
 
 cd tools
+ls -l
+chmod +x ./searchspaceconvert.py
 ./searchspaceconvert.py
 cd ..
 
