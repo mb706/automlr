@@ -1,22 +1,19 @@
 #!/bin/sh
 
 if [ -z "$R_HOME" ] ; then
-  RBIN="/usr/bin/env R --vanilla"
+  RBIN="/usr/bin/env Rscript"
 else
-  RBIN="${R_HOME}/bin/R --vanilla"
+  RBIN="${R_HOME}/bin/Rscript"
 fi
 
-sourcepath=$(dirname "$(readlink -f "$0")")
-cd "$sourcepath"
+#sourcepath=$(dirname "$(readlink -f "$0")")
+#cd "$sourcepath"
 
 cd tools
 ./searchspaceconvert.py
 cd ..
 
-${RBIN} <<EOF
-library(checkmate)
-library(roxygen2)
-roxygenise()
-EOF
+${RBIN} -e "roxygen2::roxygenise()"
+
 
 

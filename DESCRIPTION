@@ -72,7 +72,7 @@ Suggests:
     RRF,
     evtree,
     penalized,
-    RFast
+    Rfast
 Roxygen: list(wrap = FALSE)
 LazyData: yes
 ByteCompile: yes
